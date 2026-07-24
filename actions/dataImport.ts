@@ -98,6 +98,21 @@ export async function importUserData(
       ? (data.schedulingPreferences as Row)
       : null;
 
+  // A stale JWT can carry a user id from a different database (e.g. after a DB
+  // migration): the session looks valid but no users row matches, so every
+  // write fails an opaque userId foreign-key error. Catch it up front.
+  const accountExists = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!accountExists) {
+    return {
+      success: false,
+      error:
+        "Your account wasn't found in this database. Sign out and sign in (or register) again, then retry the import.",
+    };
+  }
+
   try {
     let imported = 0;
     await db.$transaction(

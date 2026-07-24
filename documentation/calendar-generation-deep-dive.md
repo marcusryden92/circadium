@@ -18,7 +18,9 @@ inputs:
   templates:       EventTemplate[]         (recurring weekly blocks)
   planners:        Planner[]               (tasks, goals, plans, etc.)
   previousCalendar:SimpleEvent[]           (so we can preserve memoized past)
-  options:         GenerateCalendarOptions (travel matrix, categories, ...)
+  options:         GenerateCalendarOptions (travel matrix, categories,
+                                            queues/dependencies,
+                                            externalBusyEvents, ...)
 
 output:
   events:         SimpleEvent[]              // plans, scheduled tasks, completed, memoized
@@ -66,7 +68,7 @@ All scheduling knobs live in [constants.ts](../utils/calendar-generation/constan
 | `SCHEDULING_CONFIG.MAX_ITERATIONS` | 10000 | Safety net against infinite loops. |
 | `SCHEDULING_CONFIG.MIN_SLOT_SIZE` | 5 | Smallest slot the geometry helpers will preserve. |
 | `SCHEDULING_CONFIG.ADJACENT_TRAVEL_TOLERANCE_MS` | 10 min | Slack for matching adjacent travel slots (used by `findAdjacentTravel*`). |
-| `SchedulingFailureReason` | enum | `TOO_LARGE`, `NO_SLOTS`, `ITERATION_LIMIT`, `DEPENDENCY_CONFLICT`, `INVALID_TASK`, `TEMPLATE_ERROR`. |
+| `SchedulingFailureReason` | enum | `TOO_LARGE`, `NO_SLOTS`, `IMPOSSIBLE_CONSTRAINTS`, `ITERATION_LIMIT`, `DEPENDENCY_CONFLICT`, `INVALID_TASK`, `TEMPLATE_ERROR`. |
 
 Strategy weights and scoring values live separately in [strategies/defaultStrategy.ts](../utils/calendar-generation/strategies/defaultStrategy.ts) (covered in [Section 10](#10-strategies)).
 
@@ -122,9 +124,9 @@ A few invariants worth internalizing:
 
 [models/SchedulingModels.ts](../utils/calendar-generation/models/SchedulingModels.ts) carries the shape contracts between phases:
 
-- `CalendarGenerationInput` — the typed input to `CalendarGenerator`, including `previousEngineMessages` which the message emitter consults to carry the user-owned `dismissed` flag forward by id.
+- `CalendarGenerationInput` — the typed input to `CalendarGenerator`, including `previousEngineMessages` (which the message emitter consults to carry the user-owned `dismissed` flag forward by id), `queues` / `dependencies` (the precedence inputs), and `externalBusyEvents` (imported external-calendar events resolved to busy blocks — `SimpleEvent` shape, `eventType: external`; they join the fixed-event fabric and are filtered back out at final assembly).
 - `CalendarGenerationResult` extends `SchedulingResult` with `categoryEvents`, `travelEvents`, `plannerScores`, and `messages` (the orchestrator's full output).
-- `SchedulingContext` — the bag of state passed to every scheduling call: `currentDate`, `weekStartDay`, `allPlanners`, `scheduledEvents`, `metrics`, `categories` (Map), `plannerLocationMap`, `plannerCategoryMap`, `categoryEligibilityMap`, `plannerConstraintsMap` (per-item earliest-start / allowed-times, resolved down the tree), `previousCalendarById` (identity reuse for stable regens), the optional `schedulerRecorder`, and the per-iteration `placementCutoffDate` (tail buffer).
+- `SchedulingContext` — the bag of state passed to every scheduling call: `userId`, `currentDate`, `weekStartDay`, `allPlanners`, `scheduledEvents`, `metrics`, `categories` (Map), `plannerLocationMap`, `plannerCategoryMap`, `categoryEligibilityMap`, `plannerConstraintsMap` (per-item earliest-start / allowed-times, resolved down the tree), `predecessorMap` (incoming queue/dependency edges per planner — the placement gate's input), `previousCalendarById` (identity reuse for stable regens), the optional `schedulerRecorder`, and the per-iteration `placementCutoffDate` (tail buffer).
 - `SlotSelectionResult` — what `selectBestSlot` hands to `reserveTaskSlot`. Crucially carries `absorbableTravel` and `reclaimPrecedingGapTravel` as `TravelShardSpan | null`, so removal is by identity (`travelId`), not heuristic time search. `slideIntoFreedTravel` says whether the task back-extends into the freed span or keeps the candidate's clipped start (leg removed either way — see Section 16). Also carries `grantedDurationMinutes` — the minutes the reservation will actually occupy (`task.duration` for plain placements; what `ChunkSizing.grant` returned for chunked ones).
 - `ChunkSizing` — dynamic sizing for chunked placement (split tasks, goal day caps): `{ minMinutes, grant(headroomMinutes, dayBudgetMinutes), dayBudget?(slotStart) }`. When passed to `scheduleTask`, slots are fit-tested at `minMinutes` and `grant` decides the reserved duration from the selected slot's real headroom — chunk sizes derive from calendar geometry, not a fixed block size. See [Section 6](#6-the-dynamic-scheduling-pipeline).
 - `SchedulingFailure` — `{ taskId, taskTitle, reason: SchedulingFailureReason, details, context? }`.
@@ -164,14 +166,17 @@ Returns `{ eventArray, memoizedEventIds, previousById }`. The ID set is used dow
 
 Returns `{ filteredEvents, recurringTemplateEvents, perTemplateMasks, largestTemplateGap, updatedMetrics }`.
 
-### Phase 4 — Build location and category maps
+**External busy fabric (between Phase 3 and slot building).** Any `input.externalBusyEvents` — imported external-calendar events resolved to busy blocks (`SimpleEvent` shape, `eventType: external`; see the "External calendars" domain note in CLAUDE.md) — are concatenated onto the template-filtered events to form `fabricEvents` ([CalendarGenerator.ts](../utils/calendar-generation/core/CalendarGenerator.ts) `[...filteredEvents, ...input.externalBusyEvents]`). It is `fabricEvents` — **not** `filteredEvents` — that feeds `buildAvailableSlots` (Phase 6a) and `prepareSchedulingContext` (Phase 8, as `scheduledEvents`), so external blocks act as occupied time in the initial carve and every horizon expansion. They are filtered back out at final assembly (Phase 11).
 
-Four read-only derivations computed before any slot work:
+### Phase 4 — Build location, category, and precedence maps
+
+Read-only derivations computed before any slot work (all off the planners + categories + precedence inputs, none touching the slot array):
 
 - [buildLocationMap.ts](../utils/calendar-generation/helpers/CalendarGenerator/buildLocationMap.ts) wraps [LocationMapper/buildLocationMap.ts](../utils/calendar-generation/helpers/LocationMapper/buildLocationMap.ts). Resolution order per planner: **(1)** own `locationId` (unless `useParentLocation`), **(2)** ancestor chain via `parentId`, **(3)** the planner's effective category's `locationId`.
 - [buildPlannerCategoryMap.ts](../utils/calendar-generation/helpers/CalendarGenerator/buildPlannerCategoryMap.ts) resolves each planner's effective categoryId by walking the parent chain, with memoization (O(n) overall even for deep trees).
 - [buildCategoryEligibilityMap.ts](../utils/calendar-generation/helpers/CalendarGenerator/buildCategoryEligibilityMap.ts) resolves each category to the set of category ids whose windows its items may occupy (itself + non-confined ancestors, up to a `confineToOwnWindows` ceiling). Built off the full category list — the chain walks through classification-only ancestors. See [Section 12](#12-category-system) for how the match sites consume it.
 - [buildPlannerConstraintsMap.ts](../utils/calendar-generation/helpers/CalendarGenerator/buildPlannerConstraintsMap.ts) resolves each planner's scheduling constraints (`earliestStartDate`, `allowedTimes`) down the tree: earliest = latest date in the chain, allowed = the chain of settings objects (intersected interval-wise at placement time — settings-level algebra would need day-set × range-set intersection for no gain). Plans are excluded (fixed anchors). Rides `SchedulingContext.plannerConstraintsMap`; parse/interval helpers live in [utils/allowedTimes.ts](../../utils/allowedTimes.ts).
+- `buildPrecedenceEdges` + `buildPredecessorMap` turn the `queues` + `dependencies` inputs into `PrecedenceEdge`s (transparency already applied) and group them by successor into `predecessorMap` (the placement gate's input, rides `SchedulingContext`). `computeEffectiveScores` then folds the root-lifted edges into the urgency scores so a prerequisite rides its dependents' urgency (the candidate sort uses these; raw urgency still feeds `plannerScores`). The raw urgency pass itself (`scoreCandidatesAndRootGoals`) runs earlier — near the top of `generate()`, before Phase 2 — and covers non-candidate root goals too.
 
 ### Phase 5 — Filter scheduled categories
 
@@ -200,11 +205,11 @@ This is the most consequential phase. It happens in three sub-steps:
 
 ### Phase 8 — Prepare scheduling context
 
-[prepareSchedulingContext.ts](../utils/calendar-generation/helpers/CalendarGenerator/prepareSchedulingContext.ts) packs everything into a single `SchedulingContext` object: current date, week start, planners, scheduled events, metrics, the `Category` lookup map, all four Phase 4 maps (planner→location, planner→category, category eligibility, planner constraints), `previousCalendarById` (identity reuse for stable regens), and the scheduler recorder.
+[prepareSchedulingContext.ts](../utils/calendar-generation/helpers/CalendarGenerator/prepareSchedulingContext.ts) packs everything into a single `SchedulingContext` object: userId, current date, week start, planners, scheduled events (`fabricEvents`, external busy blocks included), metrics, the `Category` lookup map, all five Phase 4 derivations (planner→location, planner→category, category eligibility, planner constraints, predecessor map), `previousCalendarById` (identity reuse for stable regens), and the scheduler recorder.
 
 ### Phase 9 — Prepare candidates
 
-Urgency scoring runs once at the top of `CalendarGenerator.execute()` — before validation, before this phase — via [scoreCandidatesAndRootGoals](../utils/calendar-generation/helpers/PrioritySorter/sortByPriorityAndConstraints.ts). The pass covers scheduling candidates (standalone tasks + ready root goals) **plus every top-level uncompleted goal**, so consumers like the dashboard can rank goals the scheduler intentionally skipped (e.g. not-yet-ready ones) using the same denominator (sum of all planner durations). The resulting map is returned in `plannerScores` and passed into this phase.
+Urgency scoring runs once near the top of `CalendarGenerator.generate()` — just after validation, before Phase 2 and long before this phase — via [scoreCandidatesAndRootGoals](../utils/calendar-generation/helpers/PrioritySorter/sortByPriorityAndConstraints.ts). The pass covers scheduling candidates (standalone tasks + ready root goals) **plus every top-level uncompleted goal**, so consumers like the dashboard can rank goals the scheduler intentionally skipped (e.g. not-yet-ready ones) using the same denominator (sum of all planner durations). The resulting map is returned in `plannerScores` and passed into this phase.
 
 Scoring itself: tasks without a deadline get `MIN_URGENCY_MULTIPLIER * priority`; tasks with a deadline use a sigmoid over deadline proximity (parameters in `URGENCY_CONFIG`: `CURVE_STEEPNESS: 4`, `CRITICAL_THRESHOLD: 0.7`, scaled into `[URGENCY_SCALE_MIN, URGENCY_SCALE_MAX] = [0.3, 1.0]`).
 
@@ -224,7 +229,7 @@ Constructs `new Scheduler(timeSlotManager, travelManager, strategy, context)` an
 
 [assembleFinalEvents.ts](../utils/calendar-generation/helpers/CalendarGenerator/assembleFinalEvents.ts) produces three of the output arrays (a fourth output, `plannerScores`, comes from the Phase 9 scoring pass — see above; a fifth, `messages`, comes from Phase 12 — see below):
 
-- **`events`** — memoized + plan + completed + scheduled tasks + templates, with trespass flags stamped via [markTrespassingEvents](../utils/calendar-generation/helpers/EventAssembler/markTrespassingEvents.ts) and template events filtered out at the end via [assembleFinalEventList](../utils/calendar-generation/helpers/EventAssembler/assembleFinalEventList.ts).
+- **`events`** — memoized + plan + completed + scheduled tasks + templates, with trespass flags stamped via [markTrespassingEvents](../utils/calendar-generation/helpers/EventAssembler/markTrespassingEvents.ts) and template **and external busy** events filtered out at the end via [assembleFinalEventList](../utils/calendar-generation/helpers/EventAssembler/assembleFinalEventList.ts) (it drops both `EventType.template` and `EventType.external`, so imported external-calendar busy blocks — which were injected into the fabric only to carve slots — never reach the persisted output; they live in their own `ExternalEvent` rows owned by the refresh path).
 - **`categoryEvents`** — [buildCategoryEvents](../utils/calendar-generation/helpers/EventAssembler/buildCategoryEvents.ts) materializes one `CategoryEvent` per `CategoryTimeWindow` per matching day across the horizon. IDs are composite: `` `${categoryTimeWindowId}|${YYYY-MM-DD-local}` ``. [stampCategoryEventBorders](../utils/calendar-generation/helpers/EventAssembler/stampCategoryEventBorders.ts) propagates `trespassingStart` / `trespassingEnd` flags from category slots and insufficient-travel slots onto the persisted rows.
 - **`travelEvents`** — [generateTravelEvents](../utils/calendar-generation/helpers/TravelManager/generateTravelEvents.ts) merges contiguous shards of each logical travel back into a single `TravelEvent`, keyed by `travelId`.
 
@@ -453,6 +458,7 @@ These tests live in [`__tests__/calendar-generation/`](../__tests__/calendar-gen
 - [`completed-task-not-rescheduled.test.ts`](../__tests__/calendar-generation/completed-task-not-rescheduled.test.ts) — guards the Phase 9 completed-task filter: a completed task under a ready goal renders exactly once, at its completion window, and never re-enters the scheduler.
 - [`category-window-recurrence-exceptions.test.ts`](../__tests__/calendar-generation/category-window-recurrence-exceptions.test.ts) — guards `expandCategoryWindowPeriods`: deleted occurrences vacate both the CategoryEvents and the slot fabric, moved occurrences keep their original-date id while relocating placement, and a move across the horizon seam emits exactly once (containing-range rule). The seam case leaves one window fragment uncovered so the marker-based pickup path is the one exercised.
 - [`expansion-without-categories.test.ts`](../__tests__/calendar-generation/expansion-without-categories.test.ts) — guards the marker-less growth path: with zero CategorySlots there is nothing for `markLastCategoryAsFinal` to stamp, so the chunk base must derive from the current horizon end rather than the fallback pickup (today) — otherwise expansion rebuilds the same chunk forever and an overflow task fails `NO_SLOTS` instead of placing past day 28.
+- [`external-busy-blocks.test.ts`](../__tests__/calendar-generation/external-busy-blocks.test.ts) — guards the external-busy-fabric merge: imported external-calendar events (resolved through the real `deriveExternalBusyEvents` + mode/exception path) carve the free-slot fabric like fixed events so tasks are pushed off busy windows, while `assembleFinalEventList` keeps them out of the persisted `events` output.
 
 All but the seam, window-exception, and marker-less-expansion tests run against a trimmed live-data snapshot in `fixtures/` — hand-built minimal fixtures rarely produce a valid slot fabric and fail silently, so new full-pipeline tests should extend the fixture pattern. Deliberate exceptions exist where the test's specific geometry demands hand-built inputs (the seam/window/cascade tests plus [`split-task-scheduling.test.ts`](../__tests__/calendar-generation/split-task-scheduling.test.ts), [`goal-day-cap.test.ts`](../__tests__/calendar-generation/goal-day-cap.test.ts), and [`scheduling-constraints.test.ts`](../__tests__/calendar-generation/scheduling-constraints.test.ts)); the full engine-test index lives in CLAUDE.md's Tests section.
 
@@ -532,7 +538,7 @@ DEFAULT_LOCATION_GROUPING_PENALTIES = {
 
 [buildSchedulingStrategy.ts](../utils/calendar-generation/helpers/CalendarGenerator/buildSchedulingStrategy.ts) always includes `EarliestSlotStrategy`. `LocationGroupingStrategy` is added only if a `travelTimeMatrix` was supplied. Weights default to `DEFAULT_STRATEGY_WEIGHTS` but can be overridden per call.
 
-> Note: task urgency / deadline prioritization is **not** a strategy. Scores are computed once at the top of `CalendarGenerator.execute()` via `scoreCandidatesAndRootGoals` and consumed by `sortByPriorityAndConstraints` before any slot scoring.
+> Note: task urgency / deadline prioritization is **not** a strategy. Scores are computed once at the top of `CalendarGenerator.generate()` via `scoreCandidatesAndRootGoals` and consumed by `sortByPriorityAndConstraints` before any slot scoring.
 
 ---
 
@@ -601,7 +607,7 @@ Each generation, `buildCategoryEvents` materializes one `CategoryEvent` row per 
 
 ## 13. Debugging the Engine
 
-The engine has a built-in switchboard at [calendarGeneration.ts:98–114](../utils/calendar-generation/calendarGeneration.ts#L98-L114). Set `enableLogging = true` and flip individual flags:
+The engine has a built-in switchboard at [calendarGeneration.ts:114–130](../utils/calendar-generation/calendarGeneration.ts#L114-L130). Set `enableLogging = true` and flip individual flags:
 
 | Flag | What it dumps |
 | --- | --- |
@@ -650,10 +656,13 @@ generateCalendar(...)
 CalendarGenerator.generate()
    │
    ├─ (1)  validateInput                       → fail-fast on bad input
+   ├─ (1b) scoreCandidatesAndRootGoals         → urgency scores (candidates + root goals)
    ├─ (2)  buildInitialEventArray              → memoized + plan + completed events
    ├─ (3)  expandTemplates                     → recurring events + PerTemplateMask[]
+   ├─ (3b) merge externalBusyEvents → fabricEvents (carved around, filtered out at assembly)
    ├─ (4)  buildLocationMap + buildPlannerCategoryMap
    │       + buildCategoryEligibilityMap + buildPlannerConstraintsMap
+   │       + buildPrecedenceEdges + buildPredecessorMap + computeEffectiveScores
    ├─ (5)  filter scheduledCategories          (useTimeWindows + timeSlots.length > 0)
    │
    ├─ (6a) buildAvailableSlots                 → initial 28-day slot array
@@ -714,8 +723,9 @@ CalendarGenerator.generate()
 - **`useTimeWindows + timeSlots.length > 0` is the scheduling gate.** A category missing either still contributes location inheritance but does not constrain slot geometry.
 - **CategoryEvent ID is local-date keyed.** `` `${windowId}|${YYYY-MM-DD-local}` ``. Never derive the date component from the UTC instant — the diff layer assumes local. See [`expansion-seam.test.ts`](../__tests__/calendar-generation/expansion-seam.test.ts).
 - **Template events are filtered out of `events`.** They're consumed by the slot builder (as `PerTemplateMask[]`), not surfaced in the final `SimpleEvent[]`. The renderer reads recurring template instances separately.
+- **External busy blocks are fabric-only.** `options.externalBusyEvents` (`eventType: external`) are merged into the fixed-event fabric (`fabricEvents`) after template expansion so the slot carve and every horizon expansion treat imported-calendar commitments as occupied time — but `assembleFinalEventList` filters them out of the returned `events`. They are never memoized and never synced; they live in `ExternalEvent` rows owned by the refresh path, and the calendar renders them separately as a read-only overlay.
 - **Trespass flags propagate from slots to `CategoryEvent` rows.** Don't compute trespass in the renderer — the engine writes it via `stampCategoryEventBorders` so cold loads render correctly.
-- **Urgency is not a strategy.** Strategy weights affect *slot scoring* only. Urgency scores are computed once at the top of `CalendarGenerator.execute()` (via `scoreCandidatesAndRootGoals`, which also covers non-candidate root goals so the dashboard can rank them) and consumed by `sortByPriorityAndConstraints` before any strategy runs. The same map is returned as `plannerScores`.
+- **Urgency is not a strategy.** Strategy weights affect *slot scoring* only. Urgency scores are computed once at the top of `CalendarGenerator.generate()` (via `scoreCandidatesAndRootGoals`, which also covers non-candidate root goals so the dashboard can rank them) and consumed by `sortByPriorityAndConstraints` before any strategy runs. The same map is returned as `plannerScores`.
 - **Absorb/reclaim removal and slide are separate decisions.** Removing a redundant travel leg is always correct for a same-location follow-up — a constrained task must never pay a fictional round trip just because its bounds exist. Only the **slide** (back-extending the task into the freed span) can violate a bound, so `selectBestSlot` validates it per candidate: the slid task start must be `>= effectiveAfter` (afterTime chain / earliest date, applied to unconstrained tasks too — a queue-bounded successor must not slide below its gate bound) and must sit in the same allowed interval as the candidate (checked via `intersectIntervalWithAllowed`). On failure the placement carries `slideIntoFreedTravel: false`: the leg is still removed, the task keeps the candidate's clipped start, the freed span becomes plain free time (a visible pad — dead space beats fictional commutes), and the span adds no capacity bonus. Guarded by the "travel coalescing under constraints" tests in [`scheduling-constraints.test.ts`](../__tests__/calendar-generation/scheduling-constraints.test.ts).
 - **Chunk events are never memoized.** `buildMemoizedEvents` excludes split planners entirely — an uncompleted past chunk must vanish so its minutes reschedule; the frozen past is the row's `completedSegments`, re-emitted fresh each regen.
 - **Day budgets key on the slot's start day, but charges split at midnight.** `ChunkSizing.dayBudget(slotStart)` tests the local day the slot starts on; a midnight-crossing placement charges every day it touches (`addIntervalMinutesByDay`). Keep both sides of that seam consistent when extending cap logic.
