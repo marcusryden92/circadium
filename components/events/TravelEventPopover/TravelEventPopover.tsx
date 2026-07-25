@@ -2,46 +2,28 @@
 
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import { useSelector } from "react-redux";
-import {
-  AlertTriangle,
-  ArrowUpRight,
-  Car,
-  Clock,
-  GripVertical,
-  Settings,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Car, Settings } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import { formatTime } from "@/utils/calendarUtils";
 import type { RootState } from "@/redux/store";
-import { TypeBadge } from "@/components/ui";
+import { Button, FieldStack, FieldValue, TypeBadge } from "@/components/ui";
 import { CalendarPopover } from "../CalendarPopover";
-import { PopoverAction } from "../PopoverAction";
 import {
-  header,
-  dragHandle,
-  headerBadges,
-  closeBtn,
-  titleRow,
-  titleStatic,
-  body,
-  metaRow,
-  footer,
-} from "../CalendarPopover/CalendarPopover.css";
+  POPOVER_WIDTH,
+  popoverBody,
+  fullBleedLandscape,
+  PopoverHeader,
+  PopoverTitleRow,
+  PopoverWhen,
+  PopoverCallout,
+  PopoverFooter,
+} from "../popover";
 import {
-  headerCursor,
   tone,
   statusNote,
-  travelTitle,
-  titleIcon,
-  mutedText,
-  estimateRow,
-  estimateValue,
-  alertBox,
-  alertIcon,
-  alertText,
+  routeArrow,
+  estimateValueRow,
+  estimateDelta,
 } from "./TravelEventPopover.css";
 
 interface TravelExtendedProps {
@@ -61,7 +43,6 @@ interface TravelEventPopoverProps {
   onClose: () => void;
 }
 
-const POPOVER_WIDTH = 340;
 const POPOVER_HEIGHT = 320;
 
 const TravelEventPopover: React.FC<TravelEventPopoverProps> = ({
@@ -119,120 +100,98 @@ const TravelEventPopover: React.FC<TravelEventPopoverProps> = ({
     >
       {({ startDrag, isDragging }) => (
         <>
-          <div
-            className={`${header} ${headerCursor[isDragging ? "dragging" : "idle"]}`}
-          >
-            <button
-              type="button"
-              className={dragHandle}
-              onMouseDown={startDrag}
-              aria-label="Drag to move"
-              title="Drag to move"
-            >
-              <GripVertical size={16} strokeWidth={2} />
-            </button>
-            <div className={headerBadges}>
-              <TypeBadge
-                size="sm"
-                tone={
-                  variant === "error"
-                    ? "error"
-                    : variant === "warning"
-                      ? "warning"
-                      : "type"
-                }
-              >
-                {variant === "error"
-                  ? "warning"
-                  : variant === "warning"
-                    ? "overconstrained"
-                    : "travel"}
-              </TypeBadge>
-              {variant !== "ok" && (
-                <span className={`${statusNote} ${tone[variant]}`}>
+          <PopoverHeader
+            onStartDrag={startDrag}
+            isDragging={isDragging}
+            onClose={onClose}
+            badges={
+              <>
+                <TypeBadge
+                  size="sm"
+                  tone={
+                    variant === "error"
+                      ? "error"
+                      : variant === "warning"
+                        ? "warning"
+                        : "type"
+                  }
+                >
                   {variant === "error"
-                    ? "insufficient travel time"
-                    : "travel window exceeded"}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              className={closeBtn}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X size={15} strokeWidth={2} />
-            </button>
-          </div>
-
-          <div className={titleRow}>
-            <h3
-              className={`${titleStatic} ${travelTitle}`}
-              title={`${fromName} → ${toName}`}
-            >
-              <Car size={18} strokeWidth={2} aria-hidden className={titleIcon} />
-              {fromName} <span className={mutedText}>→</span> {toName}
-            </h3>
-          </div>
-
-          <div className={body}>
-            <div className={metaRow}>
-              <Clock size={13} strokeWidth={2} aria-hidden className={mutedText} />
-              <span>
-                {format(startTime, "EEE MMM d")} · {formatTime(startTime)} –{" "}
-                {formatTime(endTime)}
-                {allottedLabel ? ` · ${allottedLabel} allotted` : ""}
-              </span>
-            </div>
-
-            {requiredLabel && (
-              <div className={estimateRow}>
-                <span className={mutedText}>Engine estimate</span>
-                <span className={estimateValue}>{requiredLabel}</span>
-                {allottedLabel && requiredMinutes != null && travelMinutes != null && (
-                  <span className={`${estimateValue} ${tone[variant]}`}>
-                    ·{" "}
-                    {requiredMinutes - travelMinutes > 0
-                      ? `${requiredMinutes - travelMinutes}m short`
-                      : `${travelMinutes - requiredMinutes}m extra`}
+                    ? "warning"
+                    : variant === "warning"
+                      ? "overconstrained"
+                      : "travel"}
+                </TypeBadge>
+                {variant !== "ok" && (
+                  <span className={`${statusNote} ${tone[variant]}`}>
+                    {variant === "error"
+                      ? "insufficient travel time"
+                      : "travel window exceeded"}
                   </span>
                 )}
-              </div>
+              </>
+            }
+          />
+
+          <PopoverTitleRow
+            leadingIcon={<Car size={18} strokeWidth={2} aria-hidden />}
+            titleAttr={`${fromName} → ${toName}`}
+            staticContent={
+              <>
+                {fromName} <span className={routeArrow}>→</span> {toName}
+              </>
+            }
+          />
+
+          <div className={popoverBody}>
+            <PopoverWhen
+              start={startTime}
+              end={endTime}
+              suffix={allottedLabel ? `${allottedLabel} allotted` : undefined}
+            />
+
+            {requiredLabel && (
+              <FieldStack size="sm" label="Engine estimate">
+                <span className={estimateValueRow}>
+                  <FieldValue>{requiredLabel}</FieldValue>
+                  {allottedLabel &&
+                    requiredMinutes != null &&
+                    travelMinutes != null && (
+                      <span className={`${estimateDelta} ${tone[variant]}`}>
+                        {requiredMinutes - travelMinutes > 0
+                          ? `${requiredMinutes - travelMinutes}m short`
+                          : `${travelMinutes - requiredMinutes}m extra`}
+                      </span>
+                    )}
+                </span>
+              </FieldStack>
             )}
 
             {variant !== "ok" && (
-              <div className={alertBox[variant]}>
-                <AlertTriangle
-                  size={14}
-                  strokeWidth={2.2}
-                  className={`${alertIcon} ${tone[variant]}`}
-                  aria-hidden
-                />
-                <span className={alertText}>
-                  {variant === "error"
-                    ? "The engine couldn't fit the full travel time between these events. The route will run short — consider freeing up time on either side, or switch to a faster transport mode in Locations."
-                    : "This travel slot is longer than the route's expected duration. The engine reserved the window to keep surrounding events from drifting."}
-                </span>
-              </div>
+              <PopoverCallout
+                tone={variant}
+                className={fullBleedLandscape}
+                icon={<AlertTriangle size={14} strokeWidth={2.2} />}
+              >
+                {variant === "error"
+                  ? "The engine couldn't fit the full travel time between these events. The route will run short — consider freeing up time on either side, or switch to a faster transport mode in Locations."
+                  : "This travel slot is longer than the route's expected duration. The engine reserved the window to keep surrounding events from drifting."}
+              </PopoverCallout>
             )}
 
-            <div className={footer}>
-              <PopoverAction
-                onClick={openLocationsRoute}
-                icon={<Settings size={13} strokeWidth={2} />}
-                label="Adjust travel times in Locations"
-              />
-              <PopoverAction
-                onClick={openLocationsRoute}
-                icon={<ArrowUpRight size={13} strokeWidth={2} />}
-                label="Open full travel matrix"
-              />
-            </div>
+            <PopoverFooter
+              primary={
+                <Button variant="glass" size="sm" onClick={openLocationsRoute}>
+                  <Settings size={13} strokeWidth={2} />
+                  Adjust travel times
+                </Button>
+              }
+            />
           </div>
         </>
       )}
     </CalendarPopover>
   );
 };
+
 export default TravelEventPopover;

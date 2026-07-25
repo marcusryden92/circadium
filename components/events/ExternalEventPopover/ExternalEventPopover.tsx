@@ -1,12 +1,10 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { format } from "date-fns";
-import { CalendarClock, Clock, GripVertical, Settings, X } from "lucide-react";
+import { CalendarClock, Settings } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import { formatTime } from "@/utils/calendarUtils";
 import type { AppDispatch } from "@/redux/store";
 import { upsertExternalSource } from "@/redux/slices/externalCalendarSlice";
 import {
@@ -16,29 +14,20 @@ import {
 import { toggleModeException } from "@/utils/external-calendar/modeExceptions";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import type { RuntimeEventExtendedProps } from "@/types/ui";
-import { TypeBadge, Switch } from "@/components/ui";
+import { Button, TypeBadge } from "@/components/ui";
 import { CalendarPopover } from "../CalendarPopover";
 import { PopoverColorPicker } from "../PopoverColorPicker";
 import {
-  header,
-  dragHandle,
-  headerBadges,
-  closeBtn,
-  titleRow,
-  titleStatic,
-  body,
-  metaRow,
-} from "../CalendarPopover/CalendarPopover.css";
-import {
-  mutedText,
-  sourceRow,
-  switchRow,
-  switchLabel,
-  switchTitle,
-  switchHint,
-  footerActions,
-  settingsLink,
-} from "./ExternalEventPopover.css";
+  POPOVER_WIDTH,
+  popoverBody,
+  fullBleedLandscape,
+  PopoverHeader,
+  PopoverTitleRow,
+  PopoverWhen,
+  PopoverNote,
+  PopoverToggleField,
+  PopoverFooter,
+} from "../popover";
 
 interface ExternalEventPopoverProps {
   event: EventImpl;
@@ -48,7 +37,6 @@ interface ExternalEventPopoverProps {
   onClose: () => void;
 }
 
-const POPOVER_WIDTH = 340;
 const POPOVER_HEIGHT = 300;
 const FALLBACK_ACCENT = "#8b8b8b";
 
@@ -59,6 +47,7 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
   endTime,
   onClose,
 }) => {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { updateAll, externalSources } = useCalendarProvider();
 
@@ -68,7 +57,8 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
   const busy = !!ext.externalBusy;
   const allDay = !!ext.externalAllDay;
   const source = externalSources.find((s) => s.id === sourceId);
-  const sourceName = source?.name ?? ext.externalSourceName ?? "Imported calendar";
+  const sourceName =
+    source?.name ?? ext.externalSourceName ?? "Imported calendar";
 
   // Optimistic like the settings row: the source recolors in Redux
   // immediately (color is render-only, no regen), the server write settles
@@ -111,92 +101,76 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
       title={event.title || "Imported event"}
       onClose={onClose}
     >
-      {({ startDrag }) => (
+      {({ startDrag, isDragging }) => (
         <>
-          <div className={header}>
-            <button
-              type="button"
-              className={dragHandle}
-              onMouseDown={startDrag}
-              aria-label="Drag to move"
-              title="Drag to move"
-            >
-              <GripVertical size={16} strokeWidth={2} />
-            </button>
-            <div className={headerBadges}>
+          <PopoverHeader
+            onStartDrag={startDrag}
+            isDragging={isDragging}
+            onClose={onClose}
+            badges={
               <TypeBadge size="sm" tone="type">
                 imported
               </TypeBadge>
-            </div>
-            <button
-              type="button"
-              className={closeBtn}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X size={15} strokeWidth={2} />
-            </button>
-          </div>
+            }
+          />
 
-          <div className={titleRow}>
-            <h3 className={titleStatic} title={event.title}>
-              {event.title || "Imported event"}
-            </h3>
-          </div>
-
-          <div className={body}>
-            <div className={metaRow}>
-              <Clock
-                size={13}
-                strokeWidth={2}
-                aria-hidden
-                className={mutedText}
-              />
-              <span>
-                {format(startTime, "EEE MMM d")} · {formatTime(startTime)} –{" "}
-                {formatTime(endTime)}
-              </span>
-            </div>
-
-            <div className={sourceRow}>
-              <CalendarClock size={13} strokeWidth={2} aria-hidden />
-              <span>From {sourceName}. Edits happen in the source calendar.</span>
-            </div>
-
-            {allDay ? (
-              <div className={sourceRow}>
-                <span>All-day events never block scheduling.</span>
-              </div>
-            ) : (
-              <div className={switchRow}>
-                <span className={switchLabel}>
-                  <span className={switchTitle}>Blocks scheduling</span>
-                  <span className={switchHint}>
-                    {busy
-                      ? "The engine keeps this time free."
-                      : "Shown on the calendar only — the engine may schedule over it."}
-                  </span>
-                </span>
-                <Switch
-                  checked={busy}
-                  onCheckedChange={onToggleBusy}
-                  aria-label="Blocks scheduling"
-                />
-              </div>
-            )}
-
-            {source && (
-              <div className={footerActions}>
+          <PopoverTitleRow
+            titleAttr={event.title}
+            staticContent={event.title || "Imported event"}
+            trailing={
+              source ? (
                 <PopoverColorPicker
                   currentColor={source.color ?? FALLBACK_ACCENT}
                   onChange={onChangeColor}
                 />
-                <Link href="/settings" className={settingsLink} onClick={onClose}>
-                  <Settings size={12} strokeWidth={2} aria-hidden />
-                  Calendar settings
-                </Link>
-              </div>
+              ) : undefined
+            }
+          />
+
+          <div className={popoverBody}>
+            <PopoverWhen start={startTime} end={endTime} />
+
+            <PopoverNote
+              className={fullBleedLandscape}
+              icon={<CalendarClock size={13} strokeWidth={2} aria-hidden />}
+            >
+              From {sourceName}. Edits happen in the source calendar.
+            </PopoverNote>
+
+            {allDay ? (
+              <PopoverNote className={fullBleedLandscape}>
+                All-day events never block scheduling.
+              </PopoverNote>
+            ) : (
+              <PopoverToggleField
+                className={fullBleedLandscape}
+                title="Blocks scheduling"
+                hint={
+                  busy
+                    ? "The engine keeps this time free."
+                    : "Shown on the calendar only — the engine may schedule over it."
+                }
+                checked={busy}
+                onCheckedChange={onToggleBusy}
+                ariaLabel="Blocks scheduling"
+              />
             )}
+
+            <PopoverFooter
+              primary={
+                <Button
+                  variant="glass"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    router.push("/settings");
+                  }}
+                >
+                  <Settings size={13} strokeWidth={2} />
+                  Calendar settings
+                </Button>
+              }
+            />
           </div>
         </>
       )}

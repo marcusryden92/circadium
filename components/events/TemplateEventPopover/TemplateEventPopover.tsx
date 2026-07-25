@@ -2,24 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import {
-  Clock,
-  Copy,
-  GripVertical,
-  Pencil,
-  RotateCcw,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Copy, Repeat, RotateCcw, Trash2 } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import {
-  Button,
-  CategoryBadge,
-  Input,
-  TimePicker,
-  TypeBadge,
-} from "@/components/ui";
+import { Button, CategoryBadge, FieldStack, TypeBadge } from "@/components/ui";
 import {
   occurrenceKeyFromEventId,
   hasMovedException,
@@ -27,33 +13,21 @@ import {
 import { applyTemplateOccurrenceRestore } from "@/utils/calendarEventHandlers";
 import { PopoverLocationPicker } from "../PopoverLocationPicker";
 import { PopoverColorPicker } from "../PopoverColorPicker";
-import { formatTime, timeOnDate } from "@/utils/calendarUtils";
+import { timeOnDate } from "@/utils/calendarUtils";
 import { calendarColors } from "@/data/calendarColors";
 import { vars } from "@/lib/theme";
 import { CalendarPopover } from "../CalendarPopover";
-import { PopoverAction } from "../PopoverAction";
 import {
-  header,
-  dragHandle,
-  headerBadges,
-  closeBtn,
-  titleRow,
-  titleStatic,
-  titleInput,
-  renamePencil,
-  body,
-  metaRow,
-  footer,
-  timeFieldsRow,
-  timeField,
-  timeFieldLabel,
-} from "../CalendarPopover/CalendarPopover.css";
-import {
-  headerGrabbing,
-  metaIcon,
-  note,
-  restoreBtn,
-} from "./TemplateEventPopover.css";
+  POPOVER_WIDTH,
+  popoverBody,
+  fullBleedLandscape,
+  PopoverHeader,
+  PopoverTitleRow,
+  PopoverWhen,
+  PopoverTimeFields,
+  PopoverNote,
+  PopoverFooter,
+} from "../popover";
 
 interface TemplateEventPopoverProps {
   event: EventImpl;
@@ -67,7 +41,6 @@ interface TemplateEventPopoverProps {
   onEditTimes?: (newStart: Date, newEnd: Date) => void;
 }
 
-const POPOVER_WIDTH = 320;
 const POPOVER_HEIGHT = 390;
 
 const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
@@ -157,6 +130,18 @@ const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
   };
 
   const categoryColor = event.backgroundColor ?? vars.muted;
+  const categoryName = event.extendedProps.categoryName as string | undefined;
+
+  const durationMinutes = Math.max(
+    0,
+    Math.round((endTime.getTime() - startTime.getTime()) / 60000),
+  );
+  const durationLabel = (() => {
+    if (durationMinutes < 60) return `${durationMinutes}m`;
+    const h = Math.floor(durationMinutes / 60);
+    const m = durationMinutes % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  })();
 
   return (
     <CalendarPopover
@@ -172,166 +157,129 @@ const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
     >
       {({ startDrag, isDragging }) => (
         <>
-          <div className={isDragging ? `${header} ${headerGrabbing}` : header}>
-            <button
-              type="button"
-              className={dragHandle}
-              onMouseDown={startDrag}
-              aria-label="Drag to move"
-              title="Drag to move"
-            >
-              <GripVertical size={16} strokeWidth={2} />
-            </button>
-            <div className={headerBadges}>
-              <TypeBadge size="sm">template</TypeBadge>
-              {(event.extendedProps.categoryName as string | undefined) && (
-                <CategoryBadge size="sm" color={categoryColor}>
-                  {event.extendedProps.categoryName as string}
-                </CategoryBadge>
-              )}
-            </div>
-            <button
-              type="button"
-              className={closeBtn}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X size={15} strokeWidth={2} />
-            </button>
-          </div>
-
-          <div className={titleRow}>
-            {isEditingTitle ? (
-              <Input
-                ref={titleInputRef}
-                variant="titleInline"
-                type="text"
-                value={titleValue}
-                onChange={(e) => setTitleValue(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={handleTitleKeyDown}
-                className={titleInput}
-              />
-            ) : (
+          <PopoverHeader
+            onStartDrag={startDrag}
+            isDragging={isDragging}
+            onClose={onClose}
+            badges={
               <>
-                <h3
-                  className={titleStatic}
-                  onClick={startEditing}
-                  title="Click to rename"
-                >
-                  {titleValue}
-                </h3>
-                <button
-                  type="button"
-                  className={renamePencil}
-                  onClick={startEditing}
-                  aria-label="Rename"
-                >
-                  <Pencil size={14} strokeWidth={2} />
-                </button>
+                <TypeBadge size="sm">template</TypeBadge>
+                {categoryName && (
+                  <CategoryBadge size="sm" color={categoryColor}>
+                    {categoryName}
+                  </CategoryBadge>
+                )}
               </>
-            )}
-          </div>
+            }
+          />
 
-          <div className={body}>
-            <div className={metaRow}>
-              <Clock
-                size={13}
-                strokeWidth={2}
-                aria-hidden
-                className={metaIcon}
+          <PopoverTitleRow
+            editor={{
+              isEditing: isEditingTitle,
+              value: titleValue,
+              inputRef: titleInputRef,
+              onChange: setTitleValue,
+              onBlur: handleTitleSave,
+              onKeyDown: handleTitleKeyDown,
+              onStartEditing: startEditing,
+            }}
+            trailing={
+              <PopoverColorPicker
+                currentColor={currentColor}
+                onChange={applyColor}
               />
-              <span>
-                {format(startTime, "EEE")} · {formatTime(startTime)} –{" "}
-                {formatTime(endTime)}
-              </span>
-            </div>
+            }
+          />
 
-            {onEditTimes && (
-              <div className={timeFieldsRow}>
-                <div className={timeField}>
-                  <span className={timeFieldLabel}>start</span>
-                  <TimePicker
-                    value={format(startTime, "HH:mm")}
-                    ariaLabel="Start time"
-                    onChange={(next) => {
-                      // The end stays fixed — a form start edit is the
-                      // top-edge resize. An end at or before it wraps to the
-                      // next morning.
-                      const newStart = timeOnDate(startTime, next);
-                      if (newStart.getTime() === startTime.getTime()) return;
-                      const newEnd =
-                        endTime <= newStart
-                          ? new Date(endTime.getTime() + 24 * 60 * 60 * 1000)
-                          : endTime;
-                      onEditTimes(newStart, newEnd);
-                    }}
-                  />
-                </div>
-                <div className={timeField}>
-                  <span className={timeFieldLabel}>end</span>
-                  <TimePicker
-                    value={format(endTime, "HH:mm")}
-                    ariaLabel="End time"
-                    onChange={(next) => {
-                      // End at or before start wraps to the next morning.
-                      let newEnd = timeOnDate(startTime, next);
-                      if (newEnd <= startTime) {
-                        newEnd = new Date(
-                          newEnd.getTime() + 24 * 60 * 60 * 1000,
-                        );
-                      }
-                      if (newEnd.getTime() === endTime.getTime()) return;
-                      onEditTimes(startTime, newEnd);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+          <div className={popoverBody}>
+            <PopoverWhen
+              start={startTime}
+              end={endTime}
+              showDate={false}
+              suffix={durationLabel}
+            />
 
-            <div className={note}>
+            <PopoverNote
+              className={fullBleedLandscape}
+              icon={<Repeat size={13} strokeWidth={2} aria-hidden />}
+            >
               {isException
                 ? "This occurrence was moved out of its usual slot. Other edits still apply to every occurrence."
                 : "Editing applies to every occurrence of this template."}
-            </div>
+            </PopoverNote>
 
-            {isException && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRestore}
-                className={restoreBtn}
-              >
-                <RotateCcw size={11} strokeWidth={2.2} />
-                Restore to series
-              </Button>
+            {onEditTimes && (
+              <PopoverTimeFields
+                start={{
+                  value: format(startTime, "HH:mm"),
+                  onChange: (next) => {
+                    // The end stays fixed — a form start edit is the top-edge
+                    // resize. An end at or before it wraps to the next morning.
+                    const newStart = timeOnDate(startTime, next);
+                    if (newStart.getTime() === startTime.getTime()) return;
+                    const newEnd =
+                      endTime <= newStart
+                        ? new Date(endTime.getTime() + 24 * 60 * 60 * 1000)
+                        : endTime;
+                    onEditTimes(newStart, newEnd);
+                  },
+                }}
+                end={{
+                  value: format(endTime, "HH:mm"),
+                  onChange: (next) => {
+                    // End at or before start wraps to the next morning.
+                    let newEnd = timeOnDate(startTime, next);
+                    if (newEnd <= startTime) {
+                      newEnd = new Date(newEnd.getTime() + 24 * 60 * 60 * 1000);
+                    }
+                    if (newEnd.getTime() === endTime.getTime()) return;
+                    onEditTimes(startTime, newEnd);
+                  },
+                }}
+              />
             )}
 
             {templateItem && (
-              <PopoverLocationPicker
-                value={templateItem.locationId ?? null}
-                onChange={handleLocationChange}
-              />
+              <FieldStack size="sm" label="Location">
+                <PopoverLocationPicker
+                  value={templateItem.locationId ?? null}
+                  onChange={handleLocationChange}
+                />
+              </FieldStack>
             )}
 
-            <PopoverColorPicker
-              currentColor={currentColor}
-              onChange={applyColor}
+            <PopoverFooter
+              utility={
+                <>
+                  <Button
+                    variant="glass"
+                    size="sm"
+                    onClick={onDelete}
+                    aria-label="Delete"
+                    title="Delete"
+                  >
+                    <Trash2 size={13} strokeWidth={2} color={vars.status.error} />
+                  </Button>
+                  <Button
+                    variant="glass"
+                    size="sm"
+                    onClick={onCopy}
+                    aria-label="Duplicate"
+                    title="Duplicate"
+                  >
+                    <Copy size={13} strokeWidth={2} />
+                  </Button>
+                </>
+              }
+              primary={
+                isException ? (
+                  <Button variant="glass" size="sm" onClick={handleRestore}>
+                    <RotateCcw size={12} strokeWidth={2.2} />
+                    Restore to series
+                  </Button>
+                ) : undefined
+              }
             />
-
-            <div className={footer}>
-              <PopoverAction
-                onClick={onCopy}
-                icon={<Copy size={13} strokeWidth={2} />}
-                label="Duplicate"
-              />
-              <PopoverAction
-                onClick={onDelete}
-                icon={<Trash2 size={13} strokeWidth={2} />}
-                label="Delete"
-                variant="danger"
-              />
-            </div>
           </div>
         </>
       )}

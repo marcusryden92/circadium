@@ -2,6 +2,7 @@ import { Copy, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useCalendarProvider } from "@/context/CalendarProvider";
+import { ConfirmModal } from "@/components/ui";
 import { EventImpl } from "@fullcalendar/core/internal";
 import { EventTemplate } from "@/types/prisma";
 
@@ -39,7 +40,7 @@ const TemplateEventContent: React.FC<TemplateEventContentProps> = ({
   scopedDelete = false,
   onEditTimes,
 }) => {
-  const { updateTemplateArray, userSettings } = useCalendarProvider();
+  const { updateTemplateArray } = useCalendarProvider();
 
   const elementRef = useRef<HTMLDivElement>(null);
   const [elementHeight, setElementHeight] = useState<number>(0);
@@ -47,28 +48,25 @@ const TemplateEventContent: React.FC<TemplateEventContentProps> = ({
   const [showPopover, setShowPopover] = useState<boolean>(false);
   const [eventRect, setEventRect] = useState<DOMRect | null>(null);
   const [onHover, setOnHover] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
   const startTime = event.start ? new Date(event.start) : new Date();
   const endTime = event.end ? new Date(event.end) : new Date();
-  const red = userSettings.styles.events.errorColor;
 
   const handleClickDelete = () => {
     setShowPopover(false);
     // Scoped delete hands off to a "this occurrence vs. every occurrence"
-    // prompt — flashing the tile red would falsely imply it was already
-    // deleted (and linger on cancel).
+    // prompt, which is itself the confirmation.
     if (scopedDelete) {
       onDelete();
       return;
     }
-    const parentElement = elementRef.current?.closest(
-      ".fc-event"
-    ) as HTMLElement;
-    if (parentElement) {
-      parentElement.style.backgroundColor = red;
-      parentElement.style.border = `solid 2px ${red}`;
-    }
-    setTimeout(() => onDelete(), 500);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteConfirm(false);
+    onDelete();
   };
 
   const handleEditTitle = (newTitle: string) => {
@@ -145,6 +143,22 @@ const TemplateEventContent: React.FC<TemplateEventContentProps> = ({
           }
         />
       )}
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Delete template"
+        body={
+          <>
+            Delete <strong>{event.title || "this template"}</strong>? This
+            removes the recurring block from every week.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        tone="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+      />
     </EventWrapper>
   );
 };

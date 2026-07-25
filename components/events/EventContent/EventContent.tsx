@@ -1,10 +1,11 @@
 // EventContent.tsx
 import { Check, ArrowRight, Trash2 } from "lucide-react";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { ConfirmModal } from "@/components/ui";
 import { floorMinutes } from "@/utils/calendarUtils";
 import EventPopover from "../EventPopover";
 import EventWrapper from "../EventWrapper";
@@ -51,6 +52,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const [eventRect, setEventRect] = useState<DOMRect | null>(null);
   const [onHover, setOnHover] = useState<boolean>(false);
   const [showDeleteScope, setShowDeleteScope] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [pendingMoveScope, setPendingMoveScope] = useState<{
     newStart: Date;
     deltaMs: number;
@@ -90,27 +92,29 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
     : undefined;
   const isRecurringOccurrence =
     !!occurrencePlan && planIsRecurring(occurrencePlan);
+  // A moved one-off always means "just this one", so it skips the scope prompt
+  // and goes straight to the plain delete confirm.
+  const isMovedOneOff =
+    isRecurringOccurrence &&
+    occurrencePlanId !== null &&
+    occurrenceKey !== null &&
+    hasMovedException(occurrencePlan?.recurrenceExceptions, occurrenceKey);
 
   const onDelete = () => {
-    if (isRecurringOccurrence) {
-      // An already-customized occurrence skips the prompt — deleting a moved
-      // one-off always means "just this one".
-      if (
-        occurrencePlanId &&
-        occurrenceKey !== null &&
-        hasMovedException(occurrencePlan.recurrenceExceptions, occurrenceKey)
-      ) {
-        applyOccurrenceDelete(
-          updateAll,
-          occurrencePlanId,
-          occurrenceKey,
-          event.id,
-        );
-        setShowPopover(false);
-        return;
-      }
-      setShowPopover(false);
+    setShowPopover(false);
+    // A not-yet-customized recurring occurrence asks scope (this vs every);
+    // everything else confirms first.
+    if (isRecurringOccurrence && !isMovedOneOff) {
       setShowDeleteScope(true);
+      return;
+    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteConfirm(false);
+    if (isMovedOneOff && occurrencePlanId && occurrenceKey !== null) {
+      applyOccurrenceDelete(updateAll, occurrencePlanId, occurrenceKey, event.id);
       return;
     }
     handleClickDelete(
@@ -142,6 +146,24 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   // the chunk's length into the task's total duration.
   const isDerivedSlice =
     isChunkEventId(event.id) || isCompletedSegmentEventId(event.id);
+
+  // Chunk/segment tiles resolve to their owning row, so the confirm counts the
+  // subtasks that a Delete would actually cascade through (goal roots only).
+  const deleteRowId = isDerivedSlice ? plannerIdFromEventId(event.id) : event.id;
+  const deletedSubtaskCount = useMemo(() => {
+    let count = 0;
+    const stack = [deleteRowId];
+    while (stack.length > 0) {
+      const parentId = stack.pop();
+      for (const p of planner) {
+        if (p.parentId === parentId) {
+          count += 1;
+          stack.push(p.id);
+        }
+      }
+    }
+    return count;
+  }, [planner, deleteRowId]);
   const canEditEnd =
     !isCompleted && !isDerivedSlice && !event.extendedProps.isTemplateItem;
   // Task/goal starts are engine-placed; only plans anchor their own start.
@@ -311,6 +333,29 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
           onCancel={() => setPendingMoveScope(null)}
         />
       )}
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Delete item"
+        body={
+          <>
+            Are you sure you want to delete{" "}
+            <strong>{event.title || "this item"}</strong>?
+            {deletedSubtaskCount > 0 && (
+              <>
+                {" "}
+                This will also delete {deletedSubtaskCount} subtask
+                {deletedSubtaskCount !== 1 ? "s" : ""}.
+              </>
+            )}
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        tone="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+      />
     </EventWrapper>
   );
 };

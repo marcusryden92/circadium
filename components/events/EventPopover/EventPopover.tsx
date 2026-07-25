@@ -2,18 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import {
-  ArrowUpRight,
-  Check,
-  Clock,
-  Copy,
-  GripVertical,
-  Pencil,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowUpRight, Check, Clock, Copy, Trash2 } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
+import { format } from "date-fns";
 import useTitleEditor from "@/hooks/useTitleEditor";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { PopoverLocationPicker } from "../PopoverLocationPicker";
@@ -23,7 +14,7 @@ import {
   assignLocationToPlanner,
   setUseParentLocation,
 } from "@/actions/locations";
-import { formatTime, timeOnDate } from "@/utils/calendarUtils";
+import { timeOnDate } from "@/utils/calendarUtils";
 import { plannerIdFromEventId } from "@/utils/planRecurrence";
 import { taskIsSplittable, splitCompletedMinutes } from "@/utils/taskSplitting";
 import { PlannerType } from "@/types/prisma";
@@ -32,28 +23,20 @@ import {
   getCompleteTaskTreeIds,
   getRootParentId,
 } from "@/utils/goalPageHandlers";
-import { CategoryBadge, Input, TimePicker, TypeBadge } from "@/components/ui";
+import { Button, CategoryBadge, FieldStack, TypeBadge } from "@/components/ui";
 import { vars } from "@/lib/theme";
 import { CalendarPopover } from "../CalendarPopover";
-import { PopoverAction } from "../PopoverAction";
 import {
-  header,
-  dragHandle,
-  headerBadges,
-  closeBtn,
-  titleRow,
-  titleStatic,
-  titleInput,
-  renamePencil,
-  body,
-  metaRow,
-  footer,
-  timeFieldsRow,
-  timeField,
-  timeFieldLabel,
-  timeFieldStatic,
-} from "../CalendarPopover/CalendarPopover.css";
-import { metaIcon, statusActionsRow } from "./EventPopover.css";
+  POPOVER_WIDTH,
+  popoverBody,
+  fullBleedLandscape,
+  PopoverHeader,
+  PopoverTitleRow,
+  PopoverWhen,
+  PopoverTimeFields,
+  PopoverNote,
+  PopoverFooter,
+} from "../popover";
 
 interface EventPopoverProps {
   event: EventImpl;
@@ -71,7 +54,6 @@ interface EventPopoverProps {
   setShowPopover: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const POPOVER_WIDTH = 340;
 const POPOVER_HEIGHT = 430;
 
 function formatSplitProgress(completed: number, total: number): string {
@@ -221,6 +203,7 @@ const EventPopover: React.FC<EventPopoverProps> = ({
   const showStatusActions =
     !isTemplate &&
     (plannerType === PlannerType.task || plannerType === PlannerType.goal);
+  const isPlan = plannerType !== PlannerType.task && plannerType !== PlannerType.goal;
 
   const durationMinutes = Math.max(
     0,
@@ -270,6 +253,8 @@ const EventPopover: React.FC<EventPopoverProps> = ({
 
   const leafCategory = categoryChain[categoryChain.length - 1];
 
+  const canEditTimes = !!(onEditStartTime || onEditEndTime);
+
   return (
     <CalendarPopover
       anchorRect={eventRect}
@@ -284,210 +269,154 @@ const EventPopover: React.FC<EventPopoverProps> = ({
     >
       {({ startDrag, isDragging }) => (
         <>
-          <div
-            className={header}
-            style={{ cursor: isDragging ? "grabbing" : "default" }}
-          >
-            <button
-              type="button"
-              className={dragHandle}
-              onMouseDown={startDrag}
-              aria-label="Drag to move"
-              title="Drag to move"
-            >
-              <GripVertical size={16} strokeWidth={2} />
-            </button>
-            <div className={headerBadges}>
-              <TypeBadge size="sm">{typeLabel}</TypeBadge>
-              {leafCategory && (
-                <CategoryBadge
-                  size="sm"
-                  color={leafCategory.color ?? vars.muted}
-                >
-                  {leafCategory.name}
-                </CategoryBadge>
-              )}
-            </div>
-            <button
-              type="button"
-              className={closeBtn}
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <X size={15} strokeWidth={2} />
-            </button>
-          </div>
-
-          <div className={titleRow}>
-            {isEditing ? (
-              <Input
-                ref={inputRef}
-                variant="titleInline"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyDown}
-                className={titleInput}
-              />
-            ) : (
+          <PopoverHeader
+            onStartDrag={startDrag}
+            isDragging={isDragging}
+            onClose={onClose}
+            badges={
               <>
-                <h3
-                  className={titleStatic}
-                  onClick={startEditing}
-                  title="Click to rename"
-                >
-                  {title}
-                </h3>
-                <button
-                  type="button"
-                  className={renamePencil}
-                  onClick={startEditing}
-                  aria-label="Rename"
-                >
-                  <Pencil size={14} strokeWidth={2} />
-                </button>
+                <TypeBadge size="sm">{typeLabel}</TypeBadge>
+                {leafCategory && (
+                  <CategoryBadge size="sm" color={leafCategory.color ?? vars.muted}>
+                    {leafCategory.name}
+                  </CategoryBadge>
+                )}
               </>
-            )}
-            <PopoverColorPicker
-              currentColor={currentColor}
-              onChange={applyColor}
-            />
-          </div>
+            }
+          />
 
-          <div className={body}>
-            <div className={metaRow}>
-              <Clock
-                size={13}
-                strokeWidth={2}
-                aria-hidden
-                className={metaIcon}
+          <PopoverTitleRow
+            editor={{
+              isEditing,
+              value: title,
+              inputRef,
+              onChange: setTitle,
+              onBlur: handleBlur,
+              onKeyDown: handleKeyDown,
+              onStartEditing: startEditing,
+            }}
+            trailing={
+              <PopoverColorPicker
+                currentColor={currentColor}
+                onChange={applyColor}
               />
-              <span>
-                {format(startTime, "EEE MMM d")} · {formatTime(startTime)} –{" "}
-                {formatTime(endTime)} · {durationLabel}
-              </span>
-            </div>
+            }
+          />
 
-            {(onEditStartTime || onEditEndTime) && (
-              <div className={timeFieldsRow}>
-                <div className={timeField}>
-                  <span className={timeFieldLabel}>start</span>
-                  {onEditStartTime ? (
-                    <TimePicker
-                      value={format(startTime, "HH:mm")}
-                      ariaLabel="Start time"
-                      onChange={(next) => {
+          <div className={popoverBody}>
+            <PopoverWhen start={startTime} end={endTime} suffix={durationLabel} />
+
+            {canEditTimes && (
+              <PopoverTimeFields
+                start={{
+                  value: format(startTime, "HH:mm"),
+                  onChange: onEditStartTime
+                    ? (next) => {
                         const newStart = timeOnDate(startTime, next);
                         if (newStart.getTime() === startTime.getTime()) return;
                         onEditStartTime(newStart);
-                      }}
-                    />
-                  ) : (
-                    <span className={timeFieldStatic}>
-                      {format(startTime, "HH:mm")}
-                    </span>
-                  )}
-                </div>
-                <div className={timeField}>
-                  <span className={timeFieldLabel}>end</span>
-                  {onEditEndTime ? (
-                    <TimePicker
-                      value={format(endTime, "HH:mm")}
-                      ariaLabel="End time"
-                      onChange={(next) => {
+                      }
+                    : undefined,
+                }}
+                end={{
+                  value: format(endTime, "HH:mm"),
+                  onChange: onEditEndTime
+                    ? (next) => {
                         // End at or before start wraps to the next morning.
                         let newEnd = timeOnDate(startTime, next);
                         if (newEnd <= startTime) {
-                          newEnd = new Date(
-                            newEnd.getTime() + 24 * 60 * 60 * 1000,
-                          );
+                          newEnd = new Date(newEnd.getTime() + 24 * 60 * 60 * 1000);
                         }
                         if (newEnd.getTime() === endTime.getTime()) return;
                         onEditEndTime(newEnd);
-                      }}
-                    />
-                  ) : (
-                    <span className={timeFieldStatic}>
-                      {format(endTime, "HH:mm")}
-                    </span>
-                  )}
-                </div>
-              </div>
+                      }
+                    : undefined,
+                }}
+              />
             )}
 
             {plannerItem && taskIsSplittable(plannerItem) && (
-              <div className={metaRow}>
-                <Check
-                  size={13}
-                  strokeWidth={2}
-                  aria-hidden
-                  className={metaIcon}
-                />
-                <span>
-                  {formatSplitProgress(
-                    splitCompletedMinutes(plannerItem),
-                    plannerItem.duration,
-                  )}
-                </span>
-              </div>
+              <PopoverNote
+                className={fullBleedLandscape}
+                icon={<Check size={13} strokeWidth={2} aria-hidden />}
+              >
+                {formatSplitProgress(
+                  splitCompletedMinutes(plannerItem),
+                  plannerItem.duration,
+                )}
+              </PopoverNote>
             )}
 
             {plannerItem && (
-              <PopoverLocationPicker
-                value={plannerItem.locationId ?? null}
-                onChange={handleLocationChange}
-                isOverridden={locationOverrideEnabled}
-                onToggleOverride={
-                  inheritedInfo ? handleToggleLocationOverride : undefined
-                }
-                inheritedLocationName={inheritedInfo?.locationName}
-                inheritedFromLabel={inheritedInfo?.fromLabel}
-              />
+              <FieldStack size="sm" label="Location">
+                <PopoverLocationPicker
+                  value={plannerItem.locationId ?? null}
+                  onChange={handleLocationChange}
+                  isOverridden={locationOverrideEnabled}
+                  onToggleOverride={
+                    inheritedInfo ? handleToggleLocationOverride : undefined
+                  }
+                  inheritedLocationName={inheritedInfo?.locationName}
+                  inheritedFromLabel={inheritedInfo?.fromLabel}
+                />
+              </FieldStack>
             )}
 
-            {showStatusActions && (
-              <div className={statusActionsRow}>
-                <PopoverAction
-                  onClick={onComplete}
-                  variant={isCompleted ? "primary" : "primaryFilled"}
-                  icon={<Check size={13} strokeWidth={2.2} />}
-                  label={isCompleted ? "Completed" : "Complete"}
-                />
-                {displayPostponeButton && (
-                  <PopoverAction
-                    onClick={onPostpone}
-                    variant="primary"
-                    icon={<Clock size={13} strokeWidth={2} />}
-                    label="Postpone"
-                  />
-                )}
-              </div>
-            )}
-
-            <div className={footer}>
-              <PopoverAction
-                onClick={onDelete}
-                icon={<Trash2 size={13} strokeWidth={2} />}
-                label="Delete"
-                variant="danger"
-              />
-              {plannerType !== PlannerType.task &&
-              plannerType !== PlannerType.goal ? (
-                <PopoverAction
-                  onClick={onCopy}
-                  icon={<Copy size={13} strokeWidth={2} />}
-                  label="Duplicate"
-                />
-              ) : (
-                <span></span>
-              )}
-              <PopoverAction
-                onClick={openFullEditor}
-                icon={<ArrowUpRight size={13} strokeWidth={2} />}
-                label="Open full editor"
-              />
-            </div>
+            <PopoverFooter
+              utility={
+                <>
+                  <Button
+                    variant="glass"
+                    size="sm"
+                    onClick={onDelete}
+                    aria-label="Delete"
+                    title="Delete"
+                  >
+                    <Trash2 size={13} strokeWidth={2} color={vars.status.error} />
+                  </Button>
+                  {isPlan && (
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={onCopy}
+                      aria-label="Duplicate"
+                      title="Duplicate"
+                    >
+                      <Copy size={13} strokeWidth={2} />
+                    </Button>
+                  )}
+                  <Button
+                    variant="glass"
+                    size="sm"
+                    onClick={openFullEditor}
+                    aria-label="Open full editor"
+                    title="Open full editor"
+                  >
+                    <ArrowUpRight size={13} strokeWidth={2} />
+                  </Button>
+                </>
+              }
+              primary={
+                showStatusActions ? (
+                  <>
+                    <Button
+                      variant={isCompleted ? "glass" : "solid"}
+                      size="sm"
+                      onClick={onComplete}
+                    >
+                      <Check size={13} strokeWidth={2.2} />
+                      {isCompleted ? "Completed" : "Complete"}
+                    </Button>
+                    {displayPostponeButton && (
+                      <Button variant="glass" size="sm" onClick={onPostpone}>
+                        <Clock size={13} strokeWidth={2} />
+                        Postpone
+                      </Button>
+                    )}
+                  </>
+                ) : undefined
+              }
+            />
           </div>
         </>
       )}
