@@ -122,12 +122,28 @@ export function useItemHandlers(
   // No cascade prompt: subtasks default to inheriting via the parent-chain
   // walk, so a root change flows down by itself; deliberate child overrides
   // are left alone ("Reset sub-goal places" is the explicit tree-wide reset).
+  //
+  // Picking a location from the item's own picker is an explicit choice, so it
+  // must also stop inheriting from the category (clear useParentLocation) —
+  // otherwise the engine keeps ignoring this locationId (useParentLocation
+  // wins in resolveLocation) and the item schedules location-less.
   const handleLocationChange = useCallback(
     (locationId: string | null) => {
       if (!item) return;
-      handleUpdateField("locationId", locationId);
+      updatePlannerArray((prev: Planner[]) =>
+        prev.map((p) =>
+          p.id === item.id
+            ? {
+                ...p,
+                locationId,
+                useParentLocation: false,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      );
     },
-    [item, handleUpdateField],
+    [item, updatePlannerArray],
   );
 
   const handleToggleLocationOverride = useCallback(() => {

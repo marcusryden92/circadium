@@ -60,7 +60,19 @@ function resolveLocation(
   const ancestorLocation = findAncestorLocation(planner.parentId, plannerMap);
   if (ancestorLocation) return ancestorLocation;
 
-  return resolveCategoryLocation(planner, plannerMap, categoryLocationMap);
+  const categoryLocation = resolveCategoryLocation(
+    planner,
+    plannerMap,
+    categoryLocationMap,
+  );
+  if (categoryLocation) return categoryLocation;
+
+  // Nothing to inherit (no ancestor and no category supplies a location). Fall
+  // back to the item's own locationId rather than silently dropping to
+  // "Anywhere" — otherwise a row with useParentLocation === true but a real
+  // locationId (the item-detail picker used to set locationId without clearing
+  // the inherit flag) resolves location-less and gets no travel around it.
+  return planner.locationId ?? null;
 }
 
 export function buildLocationMap(
