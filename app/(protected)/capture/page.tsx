@@ -12,6 +12,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { CornerDownLeft, Plus, Sparkles } from "lucide-react";
 import {
+  BottomSheet,
   Button,
   Caption,
   ConfirmModal,
@@ -27,6 +28,7 @@ import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useSelector } from "react-redux";
 import { listRow } from "@/lib/theme";
 import { usePlatform } from "@/hooks/usePlatform";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { deleteGoal } from "@/utils/goalPageHandlers";
 import { demoteRootIntoGoal } from "@/utils/goal-handlers/demoteRootIntoGoal";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
@@ -73,10 +75,12 @@ import {
   fieldLabel,
   fieldInput,
   actionRow,
+  actionSpacer,
   errorText,
   nestModalBody,
   nestNote,
   footerHint,
+  sheetHandlerBody,
   emptyMain,
   emptyMainTitle,
 } from "./page.css";
@@ -97,6 +101,11 @@ export default function CapturePage() {
     (state: RootState) => state.calendarSource.isLoaded,
   );
   const { modKey } = usePlatform();
+  const isMobile = useIsMobile();
+
+  // Mobile presents the triage handler as a bottom sheet instead of an inline
+  // pane; tapping a queue row opens it. Desktop ignores this flag.
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const queue = useMemo(
     () =>
@@ -132,6 +141,13 @@ export default function CapturePage() {
       selectedId ? (queue.find((q) => q.id === selectedId) ?? null) : null,
     [queue, selectedId],
   );
+
+  // When the queue drains to nothing (last item saved/trashed), drop the sheet
+  // so it can't spring back open when the auto-pin below re-selects a freshly
+  // captured item. Inert on desktop.
+  useEffect(() => {
+    if (!selected) setSheetOpen(false);
+  }, [selected]);
 
   // Draft state — local edits before commit, bundled as one object so the
   // five fields move together. Reset whenever the selected item changes so
@@ -361,8 +377,9 @@ export default function CapturePage() {
 
   useCaptureKeyboard({
     // The nest modal traps focus and owns Enter/Escape; pausing the global
-    // triage keys keeps them from leaking to the card underneath.
-    paused: nestOpen,
+    // triage keys keeps them from leaking to the card underneath. On mobile
+    // the handler lives in a sheet, so the keys only apply while it's open.
+    paused: nestOpen || (isMobile && !sheetOpen),
     selected,
     queue,
     setSelectedId,
@@ -383,6 +400,150 @@ export default function CapturePage() {
     ? targetGoals.find((g) => g.id === nestTargetId)?.title || "Untitled"
     : null;
 
+  const breadcrumbEl = selected ? (
+    <div className={breadcrumb}>
+      <span>
+        {Math.max(
+          0,
+          queue.findIndex((q) => q.id === selected.id),
+        ) + 1}{" "}
+        of {queue.length}
+      </span>
+      <span>·</span>
+      <span>
+        captured{" "}
+        {formatDistanceToNowStrict(new Date(selected.createdAt), {
+          addSuffix: true,
+        })}
+      </span>
+    </div>
+  ) : null;
+
+  // The handler contents, minus the surrounding box — desktop wraps this in the
+  // glass `card`, mobile drops it straight into the bottom sheet.
+  const triageInner = selected ? (
+    <>
+      <h2 className={itemTitle}>{selected.title}</h2>
+
+      <div className={typeGrid}>
+        {TYPE_OPTIONS.map((opt, idx) => {
+          const active = draft.type === opt.key;
+          const focused = typeCursor === idx;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              className={`${typeCard} ${active ? typeCardActive : ""} ${focused ? typeCardFocused : ""}`}
+              onClick={() => {
+                setDraftType(opt.key);
+                setTypeCursor(idx);
+              }}
+            >
+              <span className={typeCardLabel}>{opt.label}</span>
+              <span className={typeCardSub}>{opt.sub}</span>
+              <span className={typeCardKbd}>key · {opt.hint}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className={`${typeCard} ${typeCardDanger} ${typeCursor === TYPE_OPTIONS.length ? typeCardFocused : ""}`}
+          onClick={trashSelected}
+          title="Delete this item"
+        >
+          <span className={typeCardLabel}>trash</span>
+          <span className={typeCardSub}>not worth doing</span>
+          <span className={typeCardKbd}>key · x</span>
+        </button>
+      </div>
+
+      <div className={fieldGrid}>
+        <div className={field}>
+          <span className={fieldLabel}>duration</span>
+          {draft.type === "goal" ? (
+            <span className={fieldInput} style={{ opacity: 0.4 }}>
+              —
+            </span>
+          ) : (
+            <Input
+              variant="bare"
+              className={fieldInput}
+              type="number"
+              min={1}
+              value={draft.duration}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  duration: Number(e.target.value) || 0,
+                }))
+              }
+              onFocus={(e) => e.target.select()}
+            />
+          )}
+        </div>
+
+        {draft.type === "plan" ? (
+          <div className={field}>
+            <span className={fieldLabel}>scheduled</span>
+            <DateTimePicker
+              variant="bare"
+              value={draft.starts}
+              onChange={(starts) => setDraft((d) => ({ ...d, starts }))}
+              weekStartsOn={weekStartDay}
+              ariaLabel="Scheduled time"
+            />
+          </div>
+        ) : (
+          <div className={field}>
+            <span className={fieldLabel}>deadline</span>
+            <DateTimePicker
+              mode="date"
+              variant="bare"
+              value={draft.deadline}
+              onChange={(deadline) => setDraft((d) => ({ ...d, deadline }))}
+              weekStartsOn={weekStartDay}
+              ariaLabel="Deadline"
+            />
+          </div>
+        )}
+
+        <div className={field}>
+          <span className={fieldLabel}>category</span>
+          <CategoryPicker
+            categories={categories}
+            value={draft.categoryId}
+            onChange={(categoryId) => setDraft((d) => ({ ...d, categoryId }))}
+            selected={selectedCategory}
+          />
+        </div>
+      </div>
+
+      <div className={actionRow}>
+        <Button variant="glass" size="sm" onClick={skipSelected}>
+          Skip
+        </Button>
+        <Button
+          variant="glass"
+          size="sm"
+          onClick={() => commitSelected(false)}
+        >
+          Save, not ready
+        </Button>
+        <span className={`${spacer} ${actionSpacer}`} />
+        {targetGoals.length > 0 && (
+          <Button variant="glass" size="sm" onClick={() => setNestOpen(true)}>
+            File under existing goal
+          </Button>
+        )}
+        <Button variant="solid" size="sm" onClick={() => commitSelected(true)}>
+          {draft.type === "goal" ? "Save" : "Save & mark ready"}
+        </Button>
+      </div>
+
+      {nestError && <div className={errorText}>{nestError}</div>}
+    </>
+  ) : null;
+
   return (
     <div className={page}>
       <PageHeader
@@ -393,8 +554,12 @@ export default function CapturePage() {
             : `${queue.length} to triage · raw notes → schedulable items`
         }
       >
-        <span className={spacer} />
-        <Kbd keys={[modKey, "K"]} instruction="capture" />
+        {!isMobile && (
+          <>
+            <span className={spacer} />
+            <Kbd keys={[modKey, "K"]} instruction="capture" />
+          </>
+        )}
       </PageHeader>
 
       <div className={mainGrid}>
@@ -442,13 +607,19 @@ export default function CapturePage() {
               </div>
             ) : (
               queue.map((item) => {
-                const active = item.id === selectedId;
+                // On mobile the highlight tracks the open sheet, not the pinned
+                // selection, so no row looks "active" while the sheet is shut.
+                const active =
+                  item.id === selectedId && (!isMobile || sheetOpen);
                 return (
                   <button
                     key={item.id}
                     type="button"
                     className={`${listRow({ selected: active })} ${queueRow} ${active ? queueRowActive : ""}`}
-                    onClick={() => setSelectedId(item.id)}
+                    onClick={() => {
+                      setSelectedId(item.id);
+                      if (isMobile) setSheetOpen(true);
+                    }}
                   >
                     <span className={queueRowTitle}>{item.title}</span>
                     <span className={queueRowAge}>
@@ -461,236 +632,117 @@ export default function CapturePage() {
           </div>
         </aside>
 
-        <section className={main}>
-          {!isLoaded ? (
-            <div className={emptyMain}>
-              <Loader size="md" label="Loading triage" />
-            </div>
-          ) : !selected ? (
-            <div className={emptyMain}>
-              <Sparkles size={24} strokeWidth={2} style={{ opacity: 0.5 }} />
-              <div className={emptyMainTitle}>Nothing to triage</div>
-              <div>
-                Every captured note has a type, duration, and deadline. Jot
-                something on the left, or open Library to keep working.
+        {!isMobile && (
+          <section className={main}>
+            {!isLoaded ? (
+              <div className={emptyMain}>
+                <Loader size="md" label="Loading triage" />
               </div>
-            </div>
-          ) : (
-            <>
-              <div className={breadcrumb}>
-                <span>
-                  {Math.max(
-                    0,
-                    queue.findIndex((q) => q.id === selected.id),
-                  ) + 1}{" "}
-                  of {queue.length}
-                </span>
-                <span>·</span>
-                <span>
-                  captured{" "}
-                  {formatDistanceToNowStrict(new Date(selected.createdAt), {
-                    addSuffix: true,
-                  })}
-                </span>
+            ) : !selected ? (
+              <div className={emptyMain}>
+                <Sparkles size={24} strokeWidth={2} style={{ opacity: 0.5 }} />
+                <div className={emptyMainTitle}>Nothing to triage</div>
+                <div>
+                  Every captured note has a type, duration, and deadline. Jot
+                  something on the left, or open Library to keep working.
+                </div>
               </div>
-
-              <div className={card}>
-                <h2 className={itemTitle}>{selected.title}</h2>
-
-                <div className={typeGrid}>
-                  {TYPE_OPTIONS.map((opt, idx) => {
-                    const active = draft.type === opt.key;
-                    const focused = typeCursor === idx;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        className={`${typeCard} ${active ? typeCardActive : ""} ${focused ? typeCardFocused : ""}`}
-                        onClick={() => {
-                          setDraftType(opt.key);
-                          setTypeCursor(idx);
-                        }}
-                      >
-                        <span className={typeCardLabel}>{opt.label}</span>
-                        <span className={typeCardSub}>{opt.sub}</span>
-                        <span className={typeCardKbd}>key · {opt.hint}</span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    className={`${typeCard} ${typeCardDanger} ${typeCursor === TYPE_OPTIONS.length ? typeCardFocused : ""}`}
-                    onClick={trashSelected}
-                    title="Delete this item"
-                  >
-                    <span className={typeCardLabel}>trash</span>
-                    <span className={typeCardSub}>not worth doing</span>
-                    <span className={typeCardKbd}>key · x</span>
-                  </button>
-                </div>
-
-                <div className={fieldGrid}>
-                  <div className={field}>
-                    <span className={fieldLabel}>duration</span>
-                    {draft.type === "goal" ? (
-                      <span className={fieldInput} style={{ opacity: 0.4 }}>
-                        —
-                      </span>
-                    ) : (
-                      <Input
-                        variant="bare"
-                        className={fieldInput}
-                        type="number"
-                        min={1}
-                        value={draft.duration}
-                        onChange={(e) =>
-                          setDraft((d) => ({
-                            ...d,
-                            duration: Number(e.target.value) || 0,
-                          }))
-                        }
-                        onFocus={(e) => e.target.select()}
-                      />
-                    )}
-                  </div>
-
-                  {draft.type === "plan" ? (
-                    <div className={field}>
-                      <span className={fieldLabel}>scheduled</span>
-                      <DateTimePicker
-                        variant="bare"
-                        value={draft.starts}
-                        onChange={(starts) =>
-                          setDraft((d) => ({ ...d, starts }))
-                        }
-                        weekStartsOn={weekStartDay}
-                        ariaLabel="Scheduled time"
-                      />
-                    </div>
-                  ) : (
-                    <div className={field}>
-                      <span className={fieldLabel}>deadline</span>
-                      <DateTimePicker
-                        mode="date"
-                        variant="bare"
-                        value={draft.deadline}
-                        onChange={(deadline) =>
-                          setDraft((d) => ({ ...d, deadline }))
-                        }
-                        weekStartsOn={weekStartDay}
-                        ariaLabel="Deadline"
-                      />
-                    </div>
-                  )}
-
-                  <div className={field}>
-                    <span className={fieldLabel}>category</span>
-                    <CategoryPicker
-                      categories={categories}
-                      value={draft.categoryId}
-                      onChange={(categoryId) =>
-                        setDraft((d) => ({ ...d, categoryId }))
-                      }
-                      selected={selectedCategory}
-                    />
-                  </div>
-                </div>
-
-                <div className={actionRow}>
-                  <Button variant="glass" size="sm" onClick={skipSelected}>
-                    Skip
-                  </Button>
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() => commitSelected(false)}
-                  >
-                    Save, not ready
-                  </Button>
+            ) : (
+              <>
+                {breadcrumbEl}
+                <div className={card}>{triageInner}</div>
+                <div className={footerHint}>
+                  <Kbd
+                    keys={<CornerDownLeft size={11} strokeWidth={2.4} />}
+                    instruction="save & next"
+                  />
+                  <Kbd
+                    keys={["1", "2", "3"]}
+                    separator="/"
+                    instruction="type"
+                  />
+                  <Kbd
+                    keys={["←", "→"]}
+                    separator="/"
+                    instruction="cycle buttons"
+                  />
+                  <Kbd keys="x" instruction="trash" />
                   <span className={spacer} />
-                  {targetGoals.length > 0 && (
-                    <Button
-                      variant="glass"
-                      size="sm"
-                      onClick={() => setNestOpen(true)}
-                    >
-                      File under existing goal
-                    </Button>
-                  )}
-                  <Button
-                    variant="solid"
-                    size="sm"
-                    onClick={() => commitSelected(true)}
+                  <span
+                    role="button"
+                    onClick={() => router.push("/library")}
+                    style={{ cursor: "pointer", textDecoration: "underline" }}
                   >
-                    {draft.type === "goal" ? "Save" : "Save & mark ready"}
-                  </Button>
+                    Open Library
+                  </span>
                 </div>
-
-                {nestError && <div className={errorText}>{nestError}</div>}
-              </div>
-
-              <div className={footerHint}>
-                <Kbd
-                  keys={<CornerDownLeft size={11} strokeWidth={2.4} />}
-                  instruction="save & next"
-                />
-                <Kbd keys={["1", "2", "3"]} separator="/" instruction="type" />
-                <Kbd
-                  keys={["←", "→"]}
-                  separator="/"
-                  instruction="cycle buttons"
-                />
-                <Kbd keys="x" instruction="trash" />
-                <span className={spacer} />
-                <span
-                  role="button"
-                  onClick={() => router.push("/library")}
-                  style={{ cursor: "pointer", textDecoration: "underline" }}
-                >
-                  Open Library
-                </span>
-              </div>
-
-              <ConfirmModal
-                open={nestOpen}
-                title="File under existing goal"
-                body={
-                  <div className={nestModalBody}>
-                    <GoalPickerList
-                      goals={targetGoals}
-                      onSelect={setNestTargetId}
-                      onSubmit={commitNest}
-                    />
-                    <div className={nestNote}>
-                      {nestTargetTitle ? (
-                        <>
-                          Confirming turns{" "}
-                          <strong>{selected.title || "this item"}</strong> into
-                          a goal filed under{" "}
-                          <strong>{nestTargetTitle}</strong>. It leaves the
-                          triage queue; add subtasks to schedule its work.
-                        </>
-                      ) : (
-                        <>
-                          Select a goal to file{" "}
-                          <strong>{selected.title || "this item"}</strong>{" "}
-                          under. Whatever type it is now, it becomes a goal
-                          nested inside the one you pick.
-                        </>
-                      )}
-                    </div>
-                  </div>
-                }
-                confirmLabel="File under goal"
-                cancelLabel="Cancel"
-                confirmDisabled={!nestTargetId}
-                onCancel={closeNest}
-                onConfirm={commitNest}
-              />
-            </>
-          )}
-        </section>
+              </>
+            )}
+          </section>
+        )}
       </div>
+
+      {isMobile && (
+        <BottomSheet
+          open={sheetOpen && !!selected}
+          onOpenChange={(next) => {
+            if (!next) setSheetOpen(false);
+          }}
+          title={selected?.title || "Triage"}
+          hideTitle
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => {
+            if (nestOpen) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (nestOpen) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (nestOpen) e.preventDefault();
+          }}
+        >
+          <div className={sheetHandlerBody}>
+            {breadcrumbEl}
+            {triageInner}
+          </div>
+        </BottomSheet>
+      )}
+
+      <ConfirmModal
+        open={nestOpen}
+        title="File under existing goal"
+        body={
+          <div className={nestModalBody}>
+            <GoalPickerList
+              goals={targetGoals}
+              onSelect={setNestTargetId}
+              onSubmit={commitNest}
+            />
+            <div className={nestNote}>
+              {nestTargetTitle ? (
+                <>
+                  Confirming turns{" "}
+                  <strong>{selected?.title || "this item"}</strong> into a goal
+                  filed under <strong>{nestTargetTitle}</strong>. It leaves the
+                  triage queue; add subtasks to schedule its work.
+                </>
+              ) : (
+                <>
+                  Select a goal to file{" "}
+                  <strong>{selected?.title || "this item"}</strong> under.
+                  Whatever type it is now, it becomes a goal nested inside the
+                  one you pick.
+                </>
+              )}
+            </div>
+          </div>
+        }
+        confirmLabel="File under goal"
+        cancelLabel="Cancel"
+        confirmDisabled={!nestTargetId}
+        onCancel={closeNest}
+        onConfirm={commitNest}
+      />
     </div>
   );
 }

@@ -139,8 +139,8 @@ export const metaRow = style([
 export const footer = style({
   paddingTop: space["2"],
   borderTop: `${borderWidth.hairline}px solid ${vars.rule}`,
-  display: "flex",
-  flexDirection: "column",
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr",
   gap: space["0.5"],
   // The top rule separates actions from fields — keep it full-bleed when the
   // body pairs into landscape columns.

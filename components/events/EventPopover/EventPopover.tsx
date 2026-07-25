@@ -25,13 +25,13 @@ import {
 } from "@/actions/locations";
 import { formatTime, timeOnDate } from "@/utils/calendarUtils";
 import { plannerIdFromEventId } from "@/utils/planRecurrence";
-import {
-  taskIsSplittable,
-  splitCompletedMinutes,
-} from "@/utils/taskSplitting";
+import { taskIsSplittable, splitCompletedMinutes } from "@/utils/taskSplitting";
 import { PlannerType } from "@/types/prisma";
 import { calendarColors } from "@/data/calendarColors";
-import { getCompleteTaskTreeIds, getRootParentId } from "@/utils/goalPageHandlers";
+import {
+  getCompleteTaskTreeIds,
+  getRootParentId,
+} from "@/utils/goalPageHandlers";
 import { CategoryBadge, Input, TimePicker, TypeBadge } from "@/components/ui";
 import { vars } from "@/lib/theme";
 import { CalendarPopover } from "../CalendarPopover";
@@ -349,6 +349,10 @@ const EventPopover: React.FC<EventPopoverProps> = ({
                 </button>
               </>
             )}
+            <PopoverColorPicker
+              currentColor={currentColor}
+              onChange={applyColor}
+            />
           </div>
 
           <div className={body}>
@@ -442,11 +446,6 @@ const EventPopover: React.FC<EventPopoverProps> = ({
               />
             )}
 
-            <PopoverColorPicker
-              currentColor={currentColor}
-              onChange={applyColor}
-            />
-
             {showStatusActions && (
               <div className={statusActionsRow}>
                 <PopoverAction
@@ -468,23 +467,25 @@ const EventPopover: React.FC<EventPopoverProps> = ({
 
             <div className={footer}>
               <PopoverAction
-                onClick={openFullEditor}
-                icon={<ArrowUpRight size={13} strokeWidth={2} />}
-                label="Open full editor"
-              />
-              {plannerType !== PlannerType.task &&
-                plannerType !== PlannerType.goal && (
-                  <PopoverAction
-                    onClick={onCopy}
-                    icon={<Copy size={13} strokeWidth={2} />}
-                    label="Duplicate"
-                  />
-                )}
-              <PopoverAction
                 onClick={onDelete}
                 icon={<Trash2 size={13} strokeWidth={2} />}
                 label="Delete"
                 variant="danger"
+              />
+              {plannerType !== PlannerType.task &&
+              plannerType !== PlannerType.goal ? (
+                <PopoverAction
+                  onClick={onCopy}
+                  icon={<Copy size={13} strokeWidth={2} />}
+                  label="Duplicate"
+                />
+              ) : (
+                <span></span>
+              )}
+              <PopoverAction
+                onClick={openFullEditor}
+                icon={<ArrowUpRight size={13} strokeWidth={2} />}
+                label="Open full editor"
               />
             </div>
           </div>

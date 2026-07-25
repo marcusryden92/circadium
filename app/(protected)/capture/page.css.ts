@@ -1,4 +1,4 @@
-﻿import { style } from "@vanilla-extract/css";
+﻿import { style, globalStyle } from "@vanilla-extract/css";
 import { vars } from "@/lib/theme/tokens.css";
 import { space, media, radii, zIndex } from "@/lib/theme/scales";
 import { glass } from "@/lib/theme/recipes.css";
@@ -139,6 +139,10 @@ export const main = style({
   gap: space["3.5"],
   overflowY: "auto",
   paddingRight: space["1"],
+  // Mobile moves the handler into a bottom sheet; the inline pane is hidden.
+  // The CSS hide (not just the JS gate) suppresses the first-frame flash before
+  // useIsMobile resolves on a client-side navigation.
+  "@media": { [media.mobile]: { display: "none" } },
 });
 
 export const breadcrumb = style([
@@ -159,14 +163,6 @@ export const card = style([
     display: "flex",
     flexDirection: "column",
     gap: space["5"],
-    "@media": {
-      [media.mobile]: {
-        padding: space["5"],
-        borderRadius: 0,
-        borderLeftWidth: 0,
-        borderRightWidth: 0,
-      },
-    },
   },
 ]);
 
@@ -177,7 +173,10 @@ export const itemTitle = style([
     color: vars.ink,
     margin: 0,
     transition: themeTransition,
-    "@media": { [media.mobile]: { fontSize: 22 } },
+    "@media": {
+      [media.mobile]: { fontSize: 22 },
+      [media.landscapePhone]: { fontSize: 19 },
+    },
   },
 ]);
 
@@ -185,7 +184,12 @@ export const typeGrid = style({
   display: "grid",
   gridTemplateColumns: "repeat(4, 1fr)",
   gap: space["2"],
-  "@media": { [media.mobile]: { gridTemplateColumns: "repeat(2, 1fr)" } },
+  "@media": {
+    [media.mobile]: { gridTemplateColumns: "repeat(2, 1fr)" },
+    // Landscape phone: viewport is short, so keep all four cards on one row
+    // to reclaim vertical space inside the sheet.
+    [media.landscapePhone]: { gridTemplateColumns: "repeat(4, 1fr)" },
+  },
 });
 
 export const typeCard = style({
@@ -242,11 +246,14 @@ export const typeCardSub = style({
 });
 
 // color: inherit keeps the hint legible on the inverted (ink-bg) active card.
+// Hidden on touch, where the shortcut is meaningless and the shorter card
+// helps the sheet fit a short landscape viewport.
 export const typeCardKbd = style([
   fieldLabelPreset,
   {
     color: "inherit",
     opacity: 0.6,
+    "@media": { [media.mobile]: { display: "none" } },
   },
 ]);
 
@@ -254,7 +261,14 @@ export const fieldGrid = style({
   display: "grid",
   gridTemplateColumns: "repeat(3, 1fr)",
   gap: space["3"],
-  "@media": { [media.mobile]: { gridTemplateColumns: "1fr" } },
+  "@media": {
+    [media.mobile]: { gridTemplateColumns: "1fr" },
+    // Landscape phone: three fields side by side to stay above the fold.
+    [media.landscapePhone]: {
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: space["2"],
+    },
+  },
 });
 
 export const field = style({
@@ -386,6 +400,36 @@ export const actionRow = style({
   alignItems: "center",
   gap: space["2.5"],
   flexWrap: "wrap",
+  "@media": {
+    // Mobile (in the bottom sheet): stack full-width buttons for solid touch
+    // targets; the primary "Save" lands at the bottom, closest to the thumb.
+    [media.mobile]: {
+      flexDirection: "column",
+      alignItems: "stretch",
+      gap: space["2"],
+    },
+    // Landscape phone: revert to a wrapping row so the short viewport isn't
+    // consumed by a tall button stack.
+    [media.landscapePhone]: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: space["2"],
+    },
+  },
+});
+
+// The flex spacer that pushes the primary actions right on desktop is inert in
+// the mobile stack — drop it so it never opens a vertical gap.
+export const actionSpacer = style({
+  "@media": { [media.mobile]: { display: "none" } },
+});
+
+globalStyle(`${actionRow} > button`, {
+  "@media": {
+    [media.mobile]: { width: "100%", minHeight: 44 },
+    [media.landscapePhone]: { width: "auto", minHeight: 40 },
+  },
 });
 
 export const errorText = style([
@@ -422,6 +466,19 @@ export const footerHint = style([
     transition: themeTransition,
   },
 ]);
+
+// Mobile sheet body: the BottomSheet owns the surface (fill, radius, padding),
+// so the handler content just needs the card's vertical rhythm without its own
+// box. Tightens on a landscape phone to fit the short viewport.
+export const sheetHandlerBody = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: space["5"],
+  paddingTop: space["1"],
+  "@media": {
+    [media.landscapePhone]: { gap: space["3.5"] },
+  },
+});
 
 export const emptyMain = style([
   text.bodyLg,
