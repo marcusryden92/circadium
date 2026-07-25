@@ -11,6 +11,7 @@ import type { TriageType } from "../_constants";
 // slot (typeCursor === typeKeys.length) is the trash button. Left/Right cycle
 // across all slots; Enter trashes on the trash slot, saves otherwise.
 export function useCaptureKeyboard({
+  paused = false,
   selected,
   queue,
   setSelectedId,
@@ -21,6 +22,7 @@ export function useCaptureKeyboard({
   setTypeCursor,
   typeKeys,
 }: {
+  paused?: boolean;
   selected: Planner | null;
   queue: Planner[];
   setSelectedId: (id: string | null) => void;
@@ -32,7 +34,7 @@ export function useCaptureKeyboard({
   typeKeys: ReadonlyArray<TriageType>;
 }) {
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || paused) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
@@ -79,6 +81,7 @@ export function useCaptureKeyboard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [
+    paused,
     selected,
     queue,
     setSelectedId,

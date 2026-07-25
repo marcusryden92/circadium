@@ -14,6 +14,7 @@ import { CornerDownLeft, Plus, Sparkles } from "lucide-react";
 import {
   Button,
   Caption,
+  ConfirmModal,
   DateTimePicker,
   Input,
   Kbd,
@@ -21,11 +22,13 @@ import {
   PageHeader,
   vars,
 } from "@/components/ui";
+import { GoalPickerList } from "@/components/GoalPickerList";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useSelector } from "react-redux";
 import { listRow } from "@/lib/theme";
 import { usePlatform } from "@/hooks/usePlatform";
 import { deleteGoal } from "@/utils/goalPageHandlers";
+import { demoteRootIntoGoal } from "@/utils/goal-handlers/demoteRootIntoGoal";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { isUnprocessed } from "@/utils/plannerStatus";
 import { ageLabel } from "@/utils/timeFormatting";
@@ -70,6 +73,9 @@ import {
   fieldLabel,
   fieldInput,
   actionRow,
+  errorText,
+  nestModalBody,
+  nestNote,
   footerHint,
   emptyMain,
   emptyMainTitle,
@@ -81,11 +87,15 @@ export default function CapturePage() {
     userId,
     planner,
     categories,
+    queues,
+    dependencies,
     updatePlannerArray,
     updateAll,
     weekStartDay,
   } = useCalendarProvider();
-  const isLoaded = useSelector((state: RootState) => state.calendarSource.isLoaded);
+  const isLoaded = useSelector(
+    (state: RootState) => state.calendarSource.isLoaded,
+  );
   const { modKey } = usePlatform();
 
   const queue = useMemo(
@@ -118,7 +128,8 @@ export default function CapturePage() {
   }, [queue, selectedId]);
 
   const selected = useMemo(
-    () => (selectedId ? queue.find((q) => q.id === selectedId) ?? null : null),
+    () =>
+      selectedId ? (queue.find((q) => q.id === selectedId) ?? null) : null,
     [queue, selectedId],
   );
 
@@ -140,8 +151,21 @@ export default function CapturePage() {
     categoryId: "",
   });
 
+  // "File under existing goal" modal — a secondary path off the triage card.
+  // Kept out of the draft so the fast task/plan/goal flow is untouched.
+  const [nestOpen, setNestOpen] = useState(false);
+  const [nestTargetId, setNestTargetId] = useState<string | null>(null);
+  const [nestError, setNestError] = useState<string | null>(null);
+
+  const closeNest = useCallback(() => {
+    setNestOpen(false);
+    setNestTargetId(null);
+  }, []);
+
   useEffect(() => {
     if (!selected) return;
+    setNestError(null);
+    closeNest();
     setDraft({
       type:
         selected.plannerType === "plan"
@@ -155,7 +179,22 @@ export default function CapturePage() {
       starts: selected.starts ? selected.starts.slice(0, 16) : "",
       categoryId: selected.categoryId ?? "",
     });
-  }, [selected]);
+  }, [selected, closeNest]);
+
+  // Triaged top-level goals the current item can be nested under.
+  const targetGoals = useMemo(
+    () =>
+      planner
+        .filter(
+          (p) =>
+            p.parentId == null &&
+            p.isTriaged &&
+            p.plannerType === "goal" &&
+            p.id !== selectedId,
+        )
+        .sort((a, b) => (a.title || "").localeCompare(b.title || "")),
+    [planner, selectedId],
+  );
 
   useEffect(() => {
     const idx = typeKeys.indexOf(draft.type);
@@ -215,45 +254,93 @@ export default function CapturePage() {
     [jot, userId, updatePlannerArray],
   );
 
+  // Stamp the draft's triage fields onto a row. isReady is passed in because
+  // the nest path lets the demote below override it with the goal's readiness;
+  // typeOverride lets that path force "goal" regardless of the picked type.
+  const applyTriage = useCallback(
+    (p: Planner, isReady: boolean, typeOverride?: TriageType): Planner => {
+      const type = typeOverride ?? draft.type;
+      const isGoal = type === "goal";
+      return {
+        ...p,
+        plannerType: type,
+        duration: isGoal ? 0 : Math.max(1, draft.duration),
+        deadline: draft.deadline
+          ? new Date(draft.deadline).toISOString()
+          : null,
+        starts:
+          type === "plan" && draft.starts
+            ? new Date(draft.starts).toISOString()
+            : null,
+        categoryId: draft.categoryId || null,
+        isReady,
+        isTriaged: true,
+        updatedAt: new Date().toISOString(),
+      };
+    },
+    [draft],
+  );
+
   const commitSelected = useCallback(
     (markReady: boolean) => {
       if (!selected) return;
       const id = selected.id;
-      const isGoal = draft.type === "goal";
       // A goal can never be readied here (it needs subtasks, enforced on the
       // item detail). Tasks and plans are freely readyable — readiness is just
       // the scheduling gate, so "Save as draft" leaves a triaged item unready
       // rather than encoding draftness.
-      const nextReady = isGoal ? false : markReady;
-      const nowIso = new Date().toISOString();
-      const deadlineIso = draft.deadline
-        ? new Date(draft.deadline).toISOString()
-        : null;
-      const startsIso =
-        draft.type === "plan" && draft.starts
-          ? new Date(draft.starts).toISOString()
-          : null;
+      const nextReady = draft.type === "goal" ? false : markReady;
       updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                plannerType: draft.type,
-                duration: isGoal ? 0 : Math.max(1, draft.duration),
-                deadline: deadlineIso,
-                starts: startsIso,
-                categoryId: draft.categoryId || null,
-                isReady: nextReady,
-                isTriaged: true,
-                updatedAt: nowIso,
-              }
-            : p,
-        ),
+        prev.map((p) => (p.id === id ? applyTriage(p, nextReady) : p)),
       );
       advanceAfterSelectedId(id);
     },
-    [selected, draft, updatePlannerArray, advanceAfterSelectedId],
+    [
+      selected,
+      draft.type,
+      applyTriage,
+      updatePlannerArray,
+      advanceAfterSelectedId,
+    ],
   );
+
+  // File-under-goal path: turn the item into a goal (regardless of the type
+  // picked in the regular view) and triage it — stamping isTriaged so the
+  // demote helper, which never sets it, doesn't leave a scheduling-filtered
+  // orphan — then demote it under the chosen goal, which overrides categoryId
+  // and readiness with the goal's, exactly what filing under it means.
+  const commitNest = useCallback(() => {
+    if (!selected || !nestTargetId) return;
+    const id = selected.id;
+    const triaged = planner.map((p) =>
+      p.id === id ? applyTriage(p, p.isReady === true, "goal") : p,
+    );
+    const result = demoteRootIntoGoal(
+      triaged,
+      id,
+      nestTargetId,
+      queues,
+      dependencies,
+    );
+    if (!Array.isArray(result)) {
+      setNestError(result.error);
+      return;
+    }
+    setNestError(null);
+    updatePlannerArray(result);
+    closeNest();
+    advanceAfterSelectedId(id);
+  }, [
+    selected,
+    nestTargetId,
+    planner,
+    queues,
+    dependencies,
+    applyTriage,
+    updatePlannerArray,
+    closeNest,
+    advanceAfterSelectedId,
+  ]);
 
   const skipSelected = useCallback(() => {
     if (!selected) return;
@@ -273,6 +360,9 @@ export default function CapturePage() {
   );
 
   useCaptureKeyboard({
+    // The nest modal traps focus and owns Enter/Escape; pausing the global
+    // triage keys keeps them from leaking to the card underneath.
+    paused: nestOpen,
     selected,
     queue,
     setSelectedId,
@@ -288,6 +378,10 @@ export default function CapturePage() {
     if (!draft.categoryId) return null;
     return categories.find((c) => c.id === draft.categoryId) ?? null;
   }, [categories, draft.categoryId]);
+
+  const nestTargetTitle = nestTargetId
+    ? targetGoals.find((g) => g.id === nestTargetId)?.title || "Untitled"
+    : null;
 
   return (
     <div className={page}>
@@ -357,7 +451,9 @@ export default function CapturePage() {
                     onClick={() => setSelectedId(item.id)}
                   >
                     <span className={queueRowTitle}>{item.title}</span>
-                    <span className={queueRowAge}>{ageLabel(item.createdAt)}</span>
+                    <span className={queueRowAge}>
+                      {ageLabel(item.createdAt)}
+                    </span>
                   </button>
                 );
               })
@@ -383,7 +479,10 @@ export default function CapturePage() {
             <>
               <div className={breadcrumb}>
                 <span>
-                  {Math.max(0, queue.findIndex((q) => q.id === selected.id)) + 1}{" "}
+                  {Math.max(
+                    0,
+                    queue.findIndex((q) => q.id === selected.id),
+                  ) + 1}{" "}
                   of {queue.length}
                 </span>
                 <span>·</span>
@@ -509,6 +608,15 @@ export default function CapturePage() {
                     Save, not ready
                   </Button>
                   <span className={spacer} />
+                  {targetGoals.length > 0 && (
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => setNestOpen(true)}
+                    >
+                      File under existing goal
+                    </Button>
+                  )}
                   <Button
                     variant="solid"
                     size="sm"
@@ -517,6 +625,8 @@ export default function CapturePage() {
                     {draft.type === "goal" ? "Save" : "Save & mark ready"}
                   </Button>
                 </div>
+
+                {nestError && <div className={errorText}>{nestError}</div>}
               </div>
 
               <div className={footerHint}>
@@ -537,9 +647,46 @@ export default function CapturePage() {
                   onClick={() => router.push("/library")}
                   style={{ cursor: "pointer", textDecoration: "underline" }}
                 >
-                  open Library
+                  Open Library
                 </span>
               </div>
+
+              <ConfirmModal
+                open={nestOpen}
+                title="File under existing goal"
+                body={
+                  <div className={nestModalBody}>
+                    <GoalPickerList
+                      goals={targetGoals}
+                      onSelect={setNestTargetId}
+                      onSubmit={commitNest}
+                    />
+                    <div className={nestNote}>
+                      {nestTargetTitle ? (
+                        <>
+                          Confirming turns{" "}
+                          <strong>{selected.title || "this item"}</strong> into
+                          a goal filed under{" "}
+                          <strong>{nestTargetTitle}</strong>. It leaves the
+                          triage queue; add subtasks to schedule its work.
+                        </>
+                      ) : (
+                        <>
+                          Select a goal to file{" "}
+                          <strong>{selected.title || "this item"}</strong>{" "}
+                          under. Whatever type it is now, it becomes a goal
+                          nested inside the one you pick.
+                        </>
+                      )}
+                    </div>
+                  </div>
+                }
+                confirmLabel="File under goal"
+                cancelLabel="Cancel"
+                confirmDisabled={!nestTargetId}
+                onCancel={closeNest}
+                onConfirm={commitNest}
+              />
             </>
           )}
         </section>

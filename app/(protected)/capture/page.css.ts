@@ -2,7 +2,11 @@
 import { vars } from "@/lib/theme/tokens.css";
 import { space, media, radii, zIndex } from "@/lib/theme/scales";
 import { glass } from "@/lib/theme/recipes.css";
-import { display, text, fieldLabel as fieldLabelPreset } from "@/lib/theme/typography.css";
+import {
+  display,
+  text,
+  fieldLabel as fieldLabelPreset,
+} from "@/lib/theme/typography.css";
 import { themeTransition } from "@/lib/theme/transitions";
 
 export const page = style({
@@ -30,7 +34,7 @@ export const mainGrid = style({
       minHeight: "auto",
     },
     [media.mobile]: {
-      padding: "0 0 24px",
+      padding: `0 ${space["4"]}px`,
       gap: space["3.5"],
     },
   },
@@ -382,6 +386,28 @@ export const actionRow = style({
   alignItems: "center",
   gap: space["2.5"],
   flexWrap: "wrap",
+});
+
+export const errorText = style([
+  text.bodySm,
+  {
+    color: vars.status.error,
+    padding: "0 4px",
+    transition: themeTransition,
+  },
+]);
+
+export const nestModalBody = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: space["3"],
+});
+
+// Reserves room for the prompt/confirmation so swapping between them (or
+// selecting a goal) never resizes the modal. ~3 lines at the modal's 13px
+// body font.
+export const nestNote = style({
+  minHeight: 58,
 });
 
 export const footerHint = style([

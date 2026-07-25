@@ -39,7 +39,9 @@ export const dialog = style([
     marginLeft: "auto",
     marginRight: "auto",
     width: "min(640px, calc(100vw - 32px))",
-    maxHeight: "min(560px, calc(100vh - 24%))",
+    // Fixed height (not just a max) so the palette holds one size instead of
+    // growing as results appear.
+    height: "min(560px, calc(100vh - 24%))",
     padding: 0,
     display: "flex",
     flexDirection: "column",

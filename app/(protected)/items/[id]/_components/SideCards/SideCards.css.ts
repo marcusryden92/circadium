@@ -1,14 +1,10 @@
 import { style, keyframes } from "@vanilla-extract/css";
 import { vars } from "@/lib/theme/tokens.css";
-import { space, radii, zIndex } from "@/lib/theme/scales";
+import { space, zIndex } from "@/lib/theme/scales";
 import { display, text } from "@/lib/theme/typography.css";
 import { popover } from "@/lib/theme/recipes.css";
 import { backdropFilters } from "@/lib/theme/effects";
-import {
-  themeTransition,
-  interactiveTransition,
-  DURATIONS,
-} from "@/lib/theme/transitions";
+import { themeTransition, DURATIONS } from "@/lib/theme/transitions";
 
 export const card = style({
   padding: "12px 0",
@@ -165,59 +161,6 @@ export const nestModalBody = style({
   flexDirection: "column",
   gap: space["3"],
 });
-
-// Inline goal picker inside the nest modal — a nested popover would fight the
-// alert dialog's focus trap, so the options render as a plain bounded list.
-export const nestList = style({
-  display: "flex",
-  flexDirection: "column",
-  gap: space["0.5"],
-  maxHeight: 240,
-  overflowY: "auto",
-  scrollbarGutter: "stable",
-  border: `1px solid ${vars.rule}`,
-  borderRadius: radii.sm,
-  padding: space["1"],
-});
-
-export const nestOption = style([
-  text.bodySm,
-  {
-    display: "flex",
-    alignItems: "center",
-    gap: space["2"],
-    width: "100%",
-    padding: "6px 8px",
-    borderRadius: radii.xs,
-    border: "none",
-    background: "transparent",
-    color: vars.ink,
-    cursor: "pointer",
-    textAlign: "left",
-    transition: interactiveTransition("background-color", "color"),
-    selectors: {
-      "&:hover": { background: vars.interactive.hoverFill },
-      "&[aria-selected='true']": { background: vars.interactive.selectedFill },
-    },
-  },
-]);
-
-export const nestOptionTitle = style({
-  flex: 1,
-  minWidth: 0,
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textOverflow: "ellipsis",
-});
-
-export const nestEmpty = style([
-  text.bodySm,
-  {
-    color: vars.muted,
-    padding: "10px 8px",
-    textAlign: "center",
-  },
-]);
 
 // The resting card is a single count row; the full relation lists live in
 // the connections modal, which scrolls as a whole.

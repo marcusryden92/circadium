@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronRight, CornerDownRight, Plus, X } from "lucide-react";
+import { ChevronRight, CornerDownRight, Plus, X } from "lucide-react";
 import {
   BottomSheet,
   Caption,
   ConfirmModal,
-  Input,
   TypeBadge,
 } from "@/components/ui";
+import { GoalPickerList } from "@/components/GoalPickerList";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import {
@@ -55,10 +55,6 @@ import {
   connBody,
   nestActionRow,
   nestModalBody,
-  nestList,
-  nestOption,
-  nestOptionTitle,
-  nestEmpty,
 } from "./SideCards.css";
 
 export function NextOnCalendarCard() {
@@ -424,7 +420,6 @@ export function NestIntoGoalCard() {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [targetId, setTargetId] = useState<string | null>(null);
-  const [goalQuery, setGoalQuery] = useState("");
   const [demoteError, setDemoteError] = useState<string | null>(null);
 
   const eligible =
@@ -458,17 +453,9 @@ export function NestIntoGoalCard() {
     !!manifest &&
     (manifest.queueTitle !== null || manifest.inboundHostTitles.length > 0);
 
-  const query = goalQuery.trim().toLowerCase();
-  const visibleGoals = query
-    ? targetGoals.filter((g) =>
-        (g.title || "Untitled").toLowerCase().includes(query),
-      )
-    : targetGoals;
-
   const closeModal = () => {
     setPickerOpen(false);
     setTargetId(null);
-    setGoalQuery("");
   };
 
   const confirmDemote = () => {
@@ -511,43 +498,11 @@ export function NestIntoGoalCard() {
               the goal you pick, adopting its category and readiness. It stops
               being its own top-level item.
             </div>
-            <Input
-              variant="boxed"
-              type="text"
-              placeholder="Search goals…"
-              value={goalQuery}
-              onChange={(e) => setGoalQuery(e.target.value)}
-              aria-label="Search goals"
+            <GoalPickerList
+              goals={targetGoals}
+              onSelect={setTargetId}
+              onSubmit={confirmDemote}
             />
-            <div
-              className={nestList}
-              role="listbox"
-              aria-label="Choose a goal"
-            >
-              {visibleGoals.length === 0 ? (
-                <div className={nestEmpty}>
-                  No goals match &quot;{goalQuery.trim()}&quot;
-                </div>
-              ) : (
-                visibleGoals.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    role="option"
-                    aria-selected={targetId === g.id}
-                    className={nestOption}
-                    onClick={() => setTargetId(g.id)}
-                  >
-                    <span className={nestOptionTitle}>
-                      {g.title || "Untitled"}
-                    </span>
-                    {targetId === g.id && (
-                      <Check size={13} strokeWidth={2.4} />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
             {targetId && manifest && (
               <div>
                 {manifest.queueTitle && (
