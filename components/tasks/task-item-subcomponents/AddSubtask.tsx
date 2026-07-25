@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { AddSubtaskProps } from "@/lib/taskItem";
 import type { Planner } from "@/types/prisma";
 
-import { Input } from "@/components/ui";
+import { Input, DurationField } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { addSubtask } from "@/utils/goalPageHandlers";
 import { iconBtn as iconBtnRecipe } from "@/lib/theme";
@@ -15,7 +15,6 @@ import {
   addRowInline,
   addRowForm,
   editInput,
-  editDurationInput,
   iconBtn,
   iconBtnVisible,
 } from "@/components/tasks/lumenTasks.css";
@@ -40,8 +39,6 @@ const AddSubtask: React.FC<AddSubtaskProps> = ({
     }
     return refs.current.get(parentId);
   };
-
-  const durationRef = useRef<HTMLInputElement>(null);
 
   const resetTaskState = () => {
     setTaskDuration(undefined);
@@ -81,18 +78,14 @@ const AddSubtask: React.FC<AddSubtaskProps> = ({
           className={editInput}
           value={taskTitle}
           onChange={(e) => setTaskTitle(e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, task)}
           placeholder="New subtask name"
           style={isMainParent ? undefined : { maxWidth: 180 }}
         />
-        <Input
-          ref={durationRef}
-          className={editDurationInput}
-          value={taskDuration || ""}
-          onChange={(e) => setTaskDuration(Number(e.target.value))}
-          placeholder="min"
-          type="number"
-          pattern="[0-9]*"
-          onKeyDown={(e) => handleKeyDown(e, task)}
+        <DurationField
+          minutes={taskDuration ?? 0}
+          ariaLabel="Subtask duration"
+          onCommit={setTaskDuration}
         />
         <button
           type="button"

@@ -26,7 +26,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "k") {
+      if (mod && e.key.toLowerCase() === "j") {
         e.preventDefault();
         setOpen((o) => !o);
       }

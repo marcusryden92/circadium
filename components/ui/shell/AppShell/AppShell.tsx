@@ -55,7 +55,7 @@ export function AppShell({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.shiftKey && e.key.toLowerCase() === "l") {
+      if (mod && e.key.toLowerCase() === "m") {
         e.preventDefault();
         toggleTheme();
       }

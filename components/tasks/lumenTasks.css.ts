@@ -389,13 +389,6 @@ export const editInput = style({
   minWidth: 0,
 });
 
-export const editDurationInput = style({
-  fontVariantNumeric: "tabular-nums",
-  selectors: {
-    "&&": { width: 72 },
-  },
-});
-
 export const addSubtaskTrigger = style([
   text.bodySm,
   {

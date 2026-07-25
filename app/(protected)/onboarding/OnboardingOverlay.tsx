@@ -5,8 +5,8 @@ import { Grain } from "@/components/ui";
 import { OnboardingFlow } from "./OnboardingFlow";
 import { overlayRoot, overlayScroll } from "./onboarding.css";
 
-// The shell's global palette shortcuts (assistant mod+I, capture mod+K,
-// search mod+J) stay registered while the overlay covers the app; swallowing
+// The shell's global palette shortcuts (assistant mod+I, capture mod+J,
+// search mod+K) stay registered while the overlay covers the app; swallowing
 // them here (capture phase beats the providers' bubble-phase window
 // listeners) keeps a palette or a second assistant from opening over the
 // setup flow.

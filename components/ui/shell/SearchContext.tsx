@@ -26,7 +26,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "j") {
+      if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((o) => !o);
       }

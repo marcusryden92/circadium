@@ -25,7 +25,7 @@ export function CornerActions() {
         type="button"
         className={searchButton}
         onClick={() => setSearchOpen(true)}
-        title="Search (Ctrl/Cmd+J)"
+        title="Search (Ctrl/Cmd+K)"
         aria-label="Search"
       >
         <Search size={19} strokeWidth={2} aria-hidden />

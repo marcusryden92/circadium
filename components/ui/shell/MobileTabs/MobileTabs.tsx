@@ -62,7 +62,7 @@ export function MobileTabs() {
           type="button"
           className={searchEndCap}
           onClick={() => setSearchOpen(true)}
-          title="Search (Ctrl/Cmd+J)"
+          title="Search (Ctrl/Cmd+K)"
           aria-label="Search"
         >
           <Search size={18} strokeWidth={2} aria-hidden />
