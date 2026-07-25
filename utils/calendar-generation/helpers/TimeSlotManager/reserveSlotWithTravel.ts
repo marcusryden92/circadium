@@ -102,6 +102,7 @@ export function reserveSlotWithTravel(
   absorbableTravel?: TravelShardSpan | null,
   reclaimPrecedingGapTravel?: TravelShardSpan | null,
   recorder?: SchedulerRecorder | null,
+  removableFollowingInbound?: TravelShardSpan | null,
 ): { success: boolean } {
   // Operate on local typed views of the unified slots array. Items are shared
   // by reference, so in-place mutations propagate; only structural changes
@@ -363,6 +364,34 @@ export function reserveSlotWithTravel(
     }
   }
 
+  // Forward reclaim: selectBestSlot found an inbound to THIS task's location
+  // abutting the slot end (the travel-before of a following same-location
+  // placement whose origin leaked in as the slot's phantom nextLocationId).
+  // The task already delivers the user to the shared location, so that leg is
+  // redundant — remove it and let the free tail extend over it, carrying the
+  // leg's true DESTINATION (our location) as the tail's nextLocation so the
+  // phantom doesn't resurface for the next placement here.
+  let removedFollowingInboundEnd: Date | null = null;
+  let removedFollowingInboundDest: string | null = null;
+  if (removableFollowingInbound) {
+    const removed = removeTravelShards(
+      occupiedSlots,
+      removableFollowingInbound.travelId,
+    );
+    if (removed) {
+      removedFollowingInboundEnd = removed.spanEnd;
+      removedFollowingInboundDest =
+        removableFollowingInbound.travelToLocationId ?? null;
+      recorder?.action(
+        SM.reserveSlotWithTravel.reclaimedTrailingTravel(
+          removableFollowingInbound.travelId,
+          recorder.fmtDate(removed.spanStart),
+          recorder.fmtDate(removed.spanEnd),
+        ),
+      );
+    }
+  }
+
   // Buffer is enforced per-placement relative to slot boundaries (leading
   // via offsetToTaskStart, trailing via taskReserveEnd). The leftover-tail
   // starts flush with the unit's end; the next placement landing here will
@@ -374,6 +403,8 @@ export function reserveSlotWithTravel(
   let freeSlotEnd: Date;
   if (reclaimedTravelEnd) {
     freeSlotEnd = reclaimedTravelEnd;
+  } else if (removedFollowingInboundEnd) {
+    freeSlotEnd = removedFollowingInboundEnd;
   } else if (removedTravelAfterEnd) {
     freeSlotEnd = removedTravelAfterEnd;
   } else if (reusableTravelStart) {
@@ -393,7 +424,7 @@ export function reserveSlotWithTravel(
         freeSlotStart,
         freeSlotEnd,
         freeSlotPrevLocation,
-        slot.nextLocationId ?? null,
+        removedFollowingInboundDest ?? slot.nextLocationId ?? null,
       ),
     );
     if (recorder) {

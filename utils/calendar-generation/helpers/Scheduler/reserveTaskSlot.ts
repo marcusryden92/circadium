@@ -34,6 +34,7 @@ export function reserveTaskSlot(
   reclaimPrecedingGapTravel: TravelShardSpan | null = null,
   slideIntoFreedTravel: boolean = true,
   durationMinutes?: number,
+  removableFollowingInbound: TravelShardSpan | null = null,
 ): ReservationResult | { failure: SchedulingFailure } {
   const recorder = context.schedulerRecorder;
   const bufferMinutes = slotManager.bufferTimeMinutes;
@@ -156,6 +157,7 @@ export function reserveTaskSlot(
     absorbableTravel,
     reclaimPrecedingGapTravel,
     recorder,
+    removableFollowingInbound,
   );
 
   if (!result.success) {

@@ -110,6 +110,7 @@ export function selectBestSlot(
   let selectedReusableTravelStart: Date | null = null;
   let selectedAbsorbableTravel: TravelShardSpan | null = null;
   let selectedReclaimPrecedingGapTravel: TravelShardSpan | null = null;
+  let selectedRemovableFollowingInbound: TravelShardSpan | null = null;
   let selectedSlideIntoFreedTravel = true;
   let selectedGrantedMinutes = task.duration;
 
@@ -143,6 +144,7 @@ export function selectBestSlot(
     let canAbsorbPrevTravel = false;
     let absorbableTravel: TravelShardSpan | null = null;
     let reclaimPrecedingGapTravel: TravelShardSpan | null = null;
+    let removableFollowingInbound: TravelShardSpan | null = null;
     let slideIntoFreedTravel = true;
 
     // For a CategorySlot, the task lands inside the category interior, so
@@ -205,32 +207,45 @@ export function selectBestSlot(
             }
           }
         } else {
-          // Check if there is a pre-carved gap travel (e.g. a return trip Gamla Stan → Home)
-          // immediately before this slot. If so, we can bypass the intermediate stop and
-          // travel direct from the real origin (Gamla Stan) to the task location.
+          // Check if there is a pre-carved gap travel immediately before this
+          // slot. Two reclaimable shapes:
+          //  - origin ≠ task location (e.g. a return trip Gamla Stan → Home):
+          //    bypass the intermediate stop, travel direct from the real
+          //    origin to the task location.
+          //  - origin === task location (e.g. the Work → Home return leg the
+          //    static pass carves after a Work plan): the leg leaves from where
+          //    we already are. Staying put needs no travel at all — remove the
+          //    leg, occupy the freed span, and let the return trip re-derive
+          //    after the task. Without this the fallback below adds a fresh
+          //    Home → Work inbound, stranding a pointless Work → Home → Work.
           const precedingGapTravel = travelManager.findPrecedingGapTravel(
             slot.start,
           );
-          if (
-            precedingGapTravel?.travelFromLocationId &&
-            precedingGapTravel.travelFromLocationId !== taskLocationId
-          ) {
-            const directTravel = travelManager.getTravelTime(
-              precedingGapTravel.travelFromLocationId,
-              taskLocationId,
-              precedingGapTravel.travelStart,
-            );
-            if (directTravel > 0) {
+          const gapOrigin = precedingGapTravel?.travelFromLocationId;
+          if (gapOrigin) {
+            const stayingPut = gapOrigin === taskLocationId;
+            const directTravel = stayingPut
+              ? 0
+              : travelManager.getTravelTime(
+                  gapOrigin,
+                  taskLocationId,
+                  precedingGapTravel.travelStart,
+                );
+            // origin ≠ taskLocation returning 0 means the matrix had no route —
+            // not reclaimable. Staying put is a genuine zero-travel reclaim.
+            if (directTravel > 0 || stayingPut) {
               needTravelBefore = directTravel;
               reclaimPrecedingGapTravel = precedingGapTravel;
-              // Mirror reserveTaskSlot's layout: with a standalone-outside
-              // travel-before the slid task starts at the span start; with
-              // travel inside, buffer + travel precede it.
-              const slideOffsetMinutes =
-                travelManager.canPlaceStandaloneTravelBefore(
-                  new Date(slot.start.getTime()),
-                  directTravel,
-                )
+              // Mirror reserveTaskSlot's layout: a standalone-outside
+              // travel-before puts the slid task at the span start; travel
+              // inside prepends buffer + travel; staying put (no travel-before)
+              // prepends only the leading buffer.
+              const slideOffsetMinutes = stayingPut
+                ? bufferMinutes
+                : travelManager.canPlaceStandaloneTravelBefore(
+                      new Date(slot.start.getTime()),
+                      directTravel,
+                    )
                   ? 0
                   : bufferMinutes + directTravel;
               slideIntoFreedTravel = canSlideTaskTo(
@@ -251,7 +266,7 @@ export function selectBestSlot(
                 );
                 recorder.decision(
                   SM.selectBestSlot.reclaimPrecedingGapTravel(
-                    recorder.locName(precedingGapTravel.travelFromLocationId),
+                    recorder.locName(gapOrigin),
                     directTravel,
                     recorder.fmtDate(precedingGapTravel.travelStart),
                     recorder.fmtDate(precedingGapTravel.travelEnd),
@@ -288,23 +303,51 @@ export function selectBestSlot(
       // slot.start — a long task can cross into a different rush-hour bucket,
       // and the reservation path prices the leg at its actual position.
       if (slotNextLoc && slotNextLoc !== taskLocationId) {
-        const travelAfterDeparture = new Date(
-          slot.start.getTime() +
-            (needTravelBefore + fitMinutes) * 60 * 1000,
-        );
-        needTravelAfter = travelManager.getTravelTime(
+        // The slot's nextLocation can be a phantom: a same-location task placed
+        // later in the schedule but earlier in time leaves its inbound travel
+        // right after this slot, and the free fragment inherited that leg's
+        // ORIGIN as nextLocationId (reserveStandaloneTravelBefore). Travelling
+        // there and straight back is the redundant round trip. If the leg
+        // abutting the slot end is an inbound to OUR location whose origin is
+        // exactly this phantom, the next placement is at taskLocationId: emit
+        // no travel-after and remove that inbound at reservation.
+        const followingInbound = travelManager.findAdjacentTravelTo(
+          slot.end,
           taskLocationId,
-          slotNextLoc,
-          travelAfterDeparture,
         );
-        recorder?.decision(
-          SM.selectBestSlot.travelAfterRequired(
-            recorder.locName(taskLocationId),
-            recorder.locName(slotNextLoc),
-            needTravelAfter,
-          ),
-          3,
-        );
+        if (
+          followingInbound &&
+          followingInbound.travelStart.getTime() >= slot.end.getTime() &&
+          followingInbound.travelFromLocationId === slotNextLoc
+        ) {
+          removableFollowingInbound = followingInbound;
+          needTravelAfter = 0;
+          recorder?.decision(
+            SM.selectBestSlot.dropRedundantFollowingInbound(
+              recorder.locName(slotNextLoc),
+              recorder.locName(taskLocationId),
+            ),
+            3,
+          );
+        } else {
+          const travelAfterDeparture = new Date(
+            slot.start.getTime() +
+              (needTravelBefore + fitMinutes) * 60 * 1000,
+          );
+          needTravelAfter = travelManager.getTravelTime(
+            taskLocationId,
+            slotNextLoc,
+            travelAfterDeparture,
+          );
+          recorder?.decision(
+            SM.selectBestSlot.travelAfterRequired(
+              recorder.locName(taskLocationId),
+              recorder.locName(slotNextLoc),
+              needTravelAfter,
+            ),
+            3,
+          );
+        }
       } else if (taskLocationId && slotNextLoc) {
         recorder?.decision(SM.selectBestSlot.travelAfterNotNeeded, 3);
       }
@@ -457,6 +500,7 @@ export function selectBestSlot(
       selectedReusableTravelStart = reusableTravelStart;
       selectedAbsorbableTravel = canAbsorbPrevTravel ? absorbableTravel : null;
       selectedReclaimPrecedingGapTravel = reclaimPrecedingGapTravel;
+      selectedRemovableFollowingInbound = removableFollowingInbound;
       selectedSlideIntoFreedTravel = slideIntoFreedTravel;
       selectedGrantedMinutes = grantedMinutes;
       break;
@@ -487,6 +531,7 @@ export function selectBestSlot(
     taskLocationId,
     absorbableTravel: selectedAbsorbableTravel,
     reclaimPrecedingGapTravel: selectedReclaimPrecedingGapTravel,
+    removableFollowingInbound: selectedRemovableFollowingInbound,
     slideIntoFreedTravel: selectedSlideIntoFreedTravel,
     grantedDurationMinutes: selectedGrantedMinutes,
   };

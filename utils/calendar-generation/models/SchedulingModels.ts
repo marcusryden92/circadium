@@ -421,6 +421,15 @@ export interface SlotSelectionResult {
   absorbableTravel: TravelShardSpan | null;
   reclaimPrecedingGapTravel: TravelShardSpan | null;
   /**
+   * An inbound travel to this task's own location sitting immediately after
+   * the slot — the travel-before of a following same-location placement whose
+   * origin (the slot's phantom nextLocationId) is only there because that leg
+   * exists. The task delivers the user to the shared location, so the leg is
+   * redundant: no travel-after is emitted and this span is removed at
+   * reservation, collapsing an otherwise pointless L -> X -> L round trip.
+   */
+  removableFollowingInbound: TravelShardSpan | null;
+  /**
    * Whether the placement back-extends into the freed travel span (the
    * historical absorb/reclaim behavior). False when a constraint boundary
    * (allowed times / earliest start / chain bound) sits inside the freed

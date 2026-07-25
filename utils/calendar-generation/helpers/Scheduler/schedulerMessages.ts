@@ -70,6 +70,8 @@ export const SM = {
       `Travel-before required ${prevLoc}→${taskLoc} = ${T}min`,
     travelAfterRequired: (taskLoc: string, nextLoc: string, T: number) =>
       `Travel-after required ${taskLoc}→${nextLoc} = ${T}min`,
+    dropRedundantFollowingInbound: (phantomLoc: string, taskLoc: string) =>
+      `Next placement is at ${taskLoc}; slot's next=${phantomLoc} is only the origin of a following inbound to ${taskLoc}. No travel-after; that inbound is removed (collapses the round trip)`,
     travelAfterReusable: (spanStart: string, T: number) =>
       `Travel-after reuses existing inbound span starting at ${spanStart} (saves ${T}min inside slot)`,
     travelBeforeOutsideOK: (T: number) =>
