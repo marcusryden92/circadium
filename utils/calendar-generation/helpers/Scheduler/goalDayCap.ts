@@ -120,6 +120,25 @@ export function wholeBlockSizing(
   };
 }
 
+// Flexible single-block sizing for a habit occurrence: one block sized to the
+// selected slot's headroom, clamped to [min, max]. Unlike split tasks this
+// never loops into a second chunk — it grants the largest block that fits, so
+// an occurrence fills its slot up to max and fails (skips the slot) below min.
+// maxMinutes <= 0 means no upper bound.
+export function flexibleBlockSizing(
+  minMinutes: number,
+  maxMinutes: number,
+): ChunkSizing {
+  return {
+    minMinutes,
+    grant: (headroom, dayBudget) => {
+      const cap = maxMinutes > 0 ? maxMinutes : headroom;
+      const granted = Math.min(headroom, cap, dayBudget);
+      return granted >= minMinutes ? granted : 0;
+    },
+  };
+}
+
 function ledgerFor(goalId: string, state: GoalCapState): Map<string, number> {
   let dayMap = state.dayMinutes.get(goalId);
   if (!dayMap) {

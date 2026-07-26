@@ -202,8 +202,12 @@ const EventPopover: React.FC<EventPopoverProps> = ({
   const isTemplate = !!event.extendedProps.isTemplateItem;
   const showStatusActions =
     !isTemplate &&
-    (plannerType === PlannerType.task || plannerType === PlannerType.goal);
-  const isPlan = plannerType !== PlannerType.task && plannerType !== PlannerType.goal;
+    (plannerType === PlannerType.task ||
+      plannerType === PlannerType.goal ||
+      plannerType === PlannerType.habit);
+  // Only a real plan gets the plan-specific affordances (Duplicate). A habit is
+  // engine-placed like a task/goal, not a fixed anchor.
+  const isPlan = plannerType === PlannerType.plan;
 
   const durationMinutes = Math.max(
     0,

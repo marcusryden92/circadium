@@ -23,6 +23,12 @@ import {
 // start/end/durationMinutes — the same virtual-candidate shape the afterDate
 // clip already produces — so the whole placement unit lands inside the
 // allowed window.
+//
+// placementWindowEnd is an optional upper bound on where a candidate may END
+// (habit occurrences pass their period end). Slots starting at/after it are
+// skipped (start-sorted, so we break); a candidate straddling it is clipped so
+// the placement unit — task + trailing buffer/travel that selectBestSlot folds
+// into its capacity check — cannot land past the window.
 export function findAllFittingSlots(
   slots: Slot[],
   bufferTimeMinutes: number,
@@ -32,6 +38,7 @@ export function findAllFittingSlots(
   eligibleCategoryIds?: Set<string>,
   placementCutoffDate?: Date | null,
   allowedTimes?: AllowedTimesSettings[],
+  placementWindowEnd?: Date | null,
 ): PlaceableSlot[] {
   const fittingSlots: PlaceableSlot[] = [];
   const searchEndDate = dateTimeService.shiftDays(afterDate, maxDaysToSearch);
@@ -41,6 +48,7 @@ export function findAllFittingSlots(
   // capacity check happens per-candidate in selectBestSlot.
   const baseRequiredMinutes = durationMinutes + bufferTimeMinutes;
   const cutoffMs = placementCutoffDate?.getTime();
+  const windowEndMs = placementWindowEnd?.getTime();
 
   for (const slot of slots) {
     if (slot.type !== "available" && slot.type !== "category") continue;
@@ -50,6 +58,9 @@ export function findAllFittingSlots(
     // cutoff is "(last placeable slot end) - PLACEMENT_BUFFER_DAYS", computed
     // per-iteration by scheduleTasksAndGoals.
     if (cutoffMs !== undefined && slot.start.getTime() >= cutoffMs) break;
+    // Placement-window upper bound: a slot starting at/after the window end
+    // can hold nothing for this candidate, and slots are start-sorted.
+    if (windowEndMs !== undefined && slot.start.getTime() >= windowEndMs) break;
 
     if (eligibleCategoryIds) {
       if (
@@ -62,11 +73,15 @@ export function findAllFittingSlots(
     }
 
     const effectiveStart = slot.start < afterDate ? afterDate : slot.start;
+    const slotEnd =
+      windowEndMs !== undefined && slot.end.getTime() > windowEndMs
+        ? placementWindowEnd!
+        : slot.end;
 
     if (allowedTimes?.length) {
       const fragments = intersectIntervalWithAllowed(
         effectiveStart,
-        slot.end,
+        slotEnd,
         allowedTimes,
       );
       for (const fragment of fragments) {
@@ -88,13 +103,14 @@ export function findAllFittingSlots(
 
     const effectiveMinutes = dateTimeService.getMinutesDifference(
       effectiveStart,
-      slot.end,
+      slotEnd,
     );
 
     if (effectiveMinutes >= baseRequiredMinutes) {
       fittingSlots.push({
         ...slot,
         start: effectiveStart,
+        end: slotEnd,
         durationMinutes: effectiveMinutes,
       });
     }

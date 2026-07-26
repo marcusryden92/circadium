@@ -66,6 +66,7 @@ export function findValidSlots(
     hasWindowConstraint ? eligibleCategoryIds : undefined,
     context.placementCutoffDate,
     constraints?.allowedTimes,
+    constraints?.placementWindowEnd,
   );
 
   if (fittingSlots.length === 0) {

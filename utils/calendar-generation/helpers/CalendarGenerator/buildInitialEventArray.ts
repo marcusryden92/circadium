@@ -9,14 +9,17 @@ import {
   buildMemoizedEvents,
   buildPlanEvents,
   buildCompletedEvents,
+  buildHabitCompletedEvents,
 } from "../EventAssembler";
 import { taskIsSplittable } from "../../../taskSplitting";
+import { HabitCompletionInput } from "../../models/SchedulingModels";
 
 export function buildInitialEventArray(
   userId: string,
   planners: Planner[],
   previousCalendar: SimpleEvent[],
   currentDate: Date,
+  habitCompletions: HabitCompletionInput[],
 ): {
   eventArray: SimpleEvent[];
   memoizedEventIds: Set<string>;
@@ -55,6 +58,14 @@ export function buildInitialEventArray(
     previousById,
   );
   eventArray.push(...completedEvents);
+
+  const habitCompletedEvents = buildHabitCompletedEvents(
+    userId,
+    planners,
+    habitCompletions,
+    previousById,
+  );
+  eventArray.push(...habitCompletedEvents);
 
   return { eventArray, memoizedEventIds, previousById };
 }

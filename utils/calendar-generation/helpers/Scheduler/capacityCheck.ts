@@ -1,4 +1,4 @@
-import { Planner, Category, PlannerType } from "@/types/prisma";
+import { Planner, Category } from "@/types/prisma";
 import { PerTemplateMask } from "../../models/TemplateModels";
 import { Slot } from "../../models/TimeSlot";
 import { gapIntervalsForDay } from "../TemplateExpander/gapIntervalsForDay";
@@ -8,16 +8,19 @@ import {
   parseTaskSplitting,
   minChunkRequired,
   splitRemainingMinutes,
+  taskIsSplittable,
 } from "../../../taskSplitting";
 
 // The flat scheduler sizes the watermark per leaf. A split leaf is placed one
 // chunk at a time, so its fit size is the required minimum chunk (the whole
 // remainder once it drops below 2*min), never the full duration — the
 // aggregate would pin `biggestFit < biggestRemaining` permanently true and
-// burn the whole expansion budget. Plans never split.
+// burn the whole expansion budget. taskIsSplittable already excludes plans AND
+// habits (a habit's `splitting` is reinterpreted as flexible-block bounds, not
+// the multi-chunk loop), so a habit sizes on its full duration here.
 export function placementBlockMinutes(item: Planner): number {
-  const settings = parseTaskSplitting(item.splitting);
-  if (settings && item.plannerType !== PlannerType.plan) {
+  if (taskIsSplittable(item)) {
+    const settings = parseTaskSplitting(item.splitting)!;
     return minChunkRequired(splitRemainingMinutes(item), settings);
   }
   return item.duration;

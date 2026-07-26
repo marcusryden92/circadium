@@ -12,10 +12,16 @@ import {
  * settings the placement sites intersect interval-wise (intersecting the
  * settings objects themselves would need day-set x range-set algebra for no
  * gain). Plans are excluded — they are fixed anchors, never dynamically placed.
+ *
+ * placementWindowEnd is an upper bound on where the placement unit may END. It
+ * is null for every column-derived row (there is no column for it); habit
+ * occurrences supply a real value (their period end) via expandHabits, merged
+ * into the map after this pass, so a weekly occurrence stays inside its week.
  */
 export interface PlannerSchedulingConstraints {
   earliestStart: Date | null;
   allowedTimes: AllowedTimesSettings[];
+  placementWindowEnd: Date | null;
 }
 
 export function buildPlannerConstraintsMap(
@@ -55,6 +61,7 @@ export function buildPlannerConstraintsMap(
       allowedTimes: ownAllowed
         ? [...(inherited?.allowedTimes ?? []), ownAllowed]
         : (inherited?.allowedTimes ?? []),
+      placementWindowEnd: null,
     };
     resolved.set(id, constraints);
     return constraints;

@@ -143,12 +143,19 @@ export function serializeCompletedSegments(
     : null;
 }
 
-// Splitting never applies to plans (fixed anchors). Goal-typed rows are
-// allowed because goal subtree leaves are goal-typed (see addSubtask) and
-// leaves are exactly what scheduleGoal places — a parent container with
+// Splitting never applies to plans (fixed anchors) or habits (which reuse the
+// splitting column to store min/max bounds for a single flexible occurrence
+// block, placed by the habit path — never the multi-chunk loop). Goal-typed
+// rows are allowed because goal subtree leaves are goal-typed (see addSubtask)
+// and leaves are exactly what scheduleGoal places — a parent container with
 // splitting set is inert since only bottom-layer leaves ever schedule.
 export function taskIsSplittable(item: Planner): boolean {
-  if (item.plannerType === PlannerType.plan) return false;
+  if (
+    item.plannerType === PlannerType.plan ||
+    item.plannerType === PlannerType.habit
+  ) {
+    return false;
+  }
   return parseTaskSplitting(item.splitting) !== null;
 }
 

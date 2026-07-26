@@ -22,11 +22,13 @@ export function TypePickerSection() {
               ? "0"
               : item.plannerType === "task"
                 ? "1"
-                : "2"
+                : item.plannerType === "goal"
+                  ? "2"
+                  : "3"
           }
           aria-hidden="true"
         />
-        {(["plan", "task", "goal"] as const).map((t) => (
+        {(["plan", "task", "goal", "habit"] as const).map((t) => (
           <button
             key={t}
             type="button"

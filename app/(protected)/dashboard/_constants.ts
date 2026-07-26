@@ -9,6 +9,7 @@ export const TYPE_COLOR: Record<AgendaItem["kind"], string> = {
   goal: vars.accent.done,
   plan: vars.status.info,
   task: vars.swatches.blue,
+  habit: vars.swatches.teal,
   template: vars.swatches.violet,
   travel: vars.muted,
 };

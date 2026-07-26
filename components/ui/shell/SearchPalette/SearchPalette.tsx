@@ -15,6 +15,7 @@ import {
   Target,
   CheckSquare,
   Calendar as CalendarIcon,
+  Repeat,
   Layers,
   MapPin,
   CornerDownLeft,
@@ -64,6 +65,7 @@ const PLANNER_ICONS: Record<Planner["plannerType"], LucideIcon> = {
   task: CheckSquare,
   goal: Target,
   plan: CalendarIcon,
+  habit: Repeat,
 };
 
 function plannerSub(p: Planner): string {

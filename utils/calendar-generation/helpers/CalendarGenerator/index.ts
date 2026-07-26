@@ -1,5 +1,7 @@
 export { validateInput } from "./validateInput";
 export { buildInitialEventArray } from "./buildInitialEventArray";
+export { expandHabits } from "./expandHabits";
+export type { HabitExpansion } from "./expandHabits";
 export { expandTemplates } from "./expandTemplates";
 export { buildLocationMap } from "./buildLocationMap";
 export { buildPlannerCategoryMap } from "./buildPlannerCategoryMap";

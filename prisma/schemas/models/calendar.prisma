@@ -40,13 +40,13 @@ model Planner {
   duration           Int
   deadline           String?
   starts             String?
-  recurrence           String? // JSON PlanRecurrenceRule ({freq, interval, until}); plans only — non-null makes the plan recurring, anchored on starts
+  recurrence           String? // JSON PlanRecurrenceRule ({freq, interval, until}); plans (anchored on starts) + habits (cadence over which one occurrence is scheduled) — non-null makes it recurring
   recurrenceExceptions String? // JSON PlanOccurrenceException[]; per-occurrence moved/deleted overrides keyed by the occurrence's original local start
-  splitting            String? // JSON TaskSplittingSettings ({minMinutes, maxMinutes, maxMinutesPerDay?, minSpacingMinutes?}); tasks only — non-null makes the engine place the item as dynamically sized chunks
+  splitting            String? // JSON TaskSplittingSettings ({minMinutes, maxMinutes, maxMinutesPerDay?, minSpacingMinutes?}); tasks (dynamically sized chunks) + habits (min/max bounds for a single flexible occurrence block)
   completedSegments    String? // JSON CompletedSegment[] ({start, end}); one entry per completed chunk of a split task — completed minutes are always derived by summing, never stored
   maxMinutesPerDay     Int? // Goals only — max minutes of this goal's subtree the engine may place on any single day
   earliestStartDate    String? // Tasks + goals — the engine never places the item (or its subtree) before this instant; inherits down the tree as the max over ancestors
-  allowedTimes         String? // JSON AllowedTimesSettings ({days, ranges}); tasks + goals — restricts dynamic placement to the given weekdays / time-of-day ranges, intersected down the tree
+  allowedTimes         String? // JSON AllowedTimesSettings ({days, ranges}); tasks + goals + habits — restricts dynamic placement to the given weekdays / time-of-day ranges, intersected down the tree
   linkedItemId         String? // Detour: on a subtask placeholder, points to a root goal/task whose leaves the engine splices in at this position (the placeholder's own duration/children are ignored while set). SetNull on target delete.
   notes                String? // Free-form user notes; never read by the engine
   sortOrder          Float       @default(0) // Fractional key ordering siblings within a parentId group; 0 on top-level roots (order non-semantic)
@@ -69,9 +69,31 @@ model Planner {
   queueMember        QueueMember?
   dependenciesAsPredecessor PlannerDependency[] @relation("DependencyPredecessor")
   dependenciesAsSuccessor   PlannerDependency[] @relation("DependencySuccessor")
+  habitCompletions   HabitCompletion[]
 
   @@index([userId])
   @@map("Planners")
+}
+
+// One row per completed habit occurrence, keyed by (planner, occurrenceKey).
+// The occurrenceKey is the occurrence's original local period start
+// ("yyyy-MM-dd'T'HH:mm"). Written by a direct action outside the OCC diff sync
+// (viewState / external-calendar pattern) — never bumps User.dataVersion.
+model HabitCompletion {
+  id            String  @id @default(uuid())
+  plannerId     String
+  userId        String
+  occurrenceKey String
+  start         String
+  end           String
+  createdAt     String
+  planner       Planner @relation(fields: [plannerId], references: [id], onDelete: Cascade)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([plannerId, occurrenceKey])
+  @@index([plannerId])
+  @@index([userId])
+  @@map("HabitCompletions")
 }
 
 model EventTemplate {
@@ -107,6 +129,7 @@ enum PlannerType {
   task
   plan
   goal
+  habit
 }
 
 enum EventType {

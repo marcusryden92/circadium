@@ -9,6 +9,9 @@ import { useItem } from "../../ItemContext";
 export function DateSection() {
   const { item, changeDate } = useItem();
   const { weekStartDay } = useCalendarProvider();
+  // Habits have no user-facing deadline — each occurrence is bounded to its own
+  // period internally; a "Deadline" field here would be meaningless.
+  if (item.plannerType === "habit") return null;
   const isPlan = item.plannerType === "plan";
   const isoValue = isPlan ? item.starts : item.deadline;
   const dateValue = formatDatetimeLocal(isoValue);

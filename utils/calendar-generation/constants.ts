@@ -93,6 +93,15 @@ export const SCHEDULING_CONFIG = {
    * seam without colliding with already-placed dynamic events.
    */
   PLACEMENT_BUFFER_DAYS: 3,
+  /**
+   * How far ahead habit occurrences are enumerated as scheduling candidates.
+   * Kept at or below the initial slot horizon (HORIZON_CHUNK_DAYS) so every
+   * occurrence's placement window is already materialized on the first slot
+   * build — a habit occurrence that can't place in an already-materialized
+   * window is a genuine "missed" window (a silent skip), never a trigger for
+   * horizon expansion it can't benefit from.
+   */
+  HABIT_HORIZON_DAYS: 14,
 } as const;
 
 /**

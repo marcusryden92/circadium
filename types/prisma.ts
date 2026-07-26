@@ -104,3 +104,5 @@ export type ExternalCalendarSource = Omit<
 };
 
 export type ExternalEvent = Prisma.ExternalEventGetPayload<undefined>;
+
+export type HabitCompletion = Prisma.HabitCompletionGetPayload<undefined>;

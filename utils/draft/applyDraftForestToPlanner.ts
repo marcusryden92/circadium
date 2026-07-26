@@ -107,12 +107,16 @@ export function applyDraftForestToPlanner({
   let current = planner;
 
   // 1. Deleted roots: every triaged top-level row (what plannerForestToJson
-  // sent out) whose id no longer appears in the working forest.
+  // sent out) whose id no longer appears in the working forest. Habits are
+  // never sent, so they must never be considered deleted here — the filter
+  // must mirror plannerForestToJson exactly.
   const workingIds = new Set(
     workingForest.goals.map((g) => g.id).filter((id) => id.length > 0),
   );
   const canonicalRootIds = planner
-    .filter((p) => !p.parentId && p.isTriaged)
+    .filter(
+      (p) => !p.parentId && p.isTriaged && p.plannerType !== PlannerType.habit,
+    )
     .map((p) => p.id);
   for (const rootId of canonicalRootIds) {
     if (!workingIds.has(rootId)) {

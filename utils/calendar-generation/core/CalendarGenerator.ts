@@ -16,11 +16,12 @@ import {
   CalendarGenerationResult,
   SchedulingMetrics,
 } from "../models/SchedulingModels";
-import { SCHEDULING_CONFIG } from "../constants";
+import { SCHEDULING_CONFIG, SchedulingFailureReason } from "../constants";
 import {
   validateInput,
   buildInitialEventArray,
   expandTemplates,
+  expandHabits,
   buildLocationMap,
   buildPlannerCategoryMap,
   buildCategoryEligibilityMap,
@@ -40,8 +41,10 @@ import {
 import { buildLeafGraph } from "../helpers/Scheduler/buildLeafGraph";
 import {
   scoreCandidatesAndRootGoals,
+  computeUrgencyScores,
   computeEffectiveScores,
 } from "../helpers/PrioritySorter";
+import { plannerIdFromEventId } from "@/utils/planRecurrence";
 import {
   buildAvailableSlots,
   dropPastAvailableSlots,
@@ -151,13 +154,42 @@ export class CalendarGenerator {
       currentDate,
     );
 
-    // Phase 2: Build initial event array (memoized, plans, completed)
+    // Phase 1b: Expand habits into per-period occurrence candidates and score
+    // them on the SAME urgency scale as tasks/goals (deadline = period end, so
+    // an occurrence competes harder as its window closes). Denominator stays
+    // the base planner durations so existing task/goal urgency is unchanged.
+    // From here `schedulingPlanners` (base + occurrences) is what every
+    // scheduling-phase tree walk reads; the occurrences never touch the fabric
+    // (Phase 2), precedence, or the persisted planner rows.
+    const habitExpansion = expandHabits({
+      planners: input.planners,
+      completions: input.habitCompletions ?? [],
+      currentDate,
+      horizonDays: SCHEDULING_CONFIG.HABIT_HORIZON_DAYS,
+    });
+    const hasHabitOccurrences = habitExpansion.occurrences.length > 0;
+    if (hasHabitOccurrences) {
+      const occurrenceScores = computeUrgencyScores(
+        input.planners,
+        habitExpansion.occurrences,
+        currentDate,
+      );
+      for (const [id, score] of occurrenceScores) urgencyScores.set(id, score);
+    }
+    const schedulingPlanners = hasHabitOccurrences
+      ? [...input.planners, ...habitExpansion.occurrences]
+      : input.planners;
+
+    // Phase 2: Build initial event array (memoized, plans, completed,
+    // completed-habit occurrences). Occurrence CANDIDATES are not fabric; only
+    // COMPLETED occurrences (frozen tiles) join the event array here.
     const { eventArray, memoizedEventIds, previousById } =
       buildInitialEventArray(
         input.userId,
         input.planners,
         input.previousCalendar,
         currentDate,
+        input.habitCompletions ?? [],
       );
 
     // Phase 3: Expand templates
@@ -196,11 +228,11 @@ export class CalendarGenerator {
     // or the travel pass — they belong here, next to each other, before the
     // slot pipeline kicks in.
     const plannerLocationMap = buildLocationMap(
-      input.planners,
+      schedulingPlanners,
       input.templates,
       input.categories || [],
     );
-    const plannerCategoryMap = buildPlannerCategoryMap(input.planners);
+    const plannerCategoryMap = buildPlannerCategoryMap(schedulingPlanners);
     // Eligibility uses the FULL category list (not just scheduledCategories) so
     // the parent chain can be walked through classification-only ancestors.
     const categoryEligibilityMap = buildCategoryEligibilityMap(
@@ -208,7 +240,12 @@ export class CalendarGenerator {
     );
     // Per-planner scheduling constraints (earliest start + allowed times),
     // resolved down the tree so goal leaves inherit their ancestors' bounds.
+    // Habit occurrences supply their own entry (with placementWindowEnd, which
+    // is not column-derivable) — merged in after the column-derived pass.
     const plannerConstraintsMap = buildPlannerConstraintsMap(input.planners);
+    for (const [id, constraints] of habitExpansion.occurrenceConstraints) {
+      plannerConstraintsMap.set(id, constraints);
+    }
     // Precedence edges (queue order + dependency prerequisites), transparency
     // already applied — the third sibling map. The placement gate reads the
     // predecessor grouping off the scheduling context.
@@ -300,7 +337,7 @@ export class CalendarGenerator {
       input.userId,
       currentDate,
       weekStartDay,
-      input.planners,
+      schedulingPlanners,
       fabricEvents,
       this.metrics,
       this.scheduledCategories,
@@ -317,7 +354,7 @@ export class CalendarGenerator {
     // priority). Sorts on the inheritance-adjusted scores so a prerequisite
     // rides its dependents' urgency.
     const candidates = prepareCandidates(
-      input.planners,
+      schedulingPlanners,
       memoizedEventIds,
       effectiveScores,
       plannerCategoryMap,
@@ -327,7 +364,7 @@ export class CalendarGenerator {
     // queue/dependency edges + leaf-level inheritance) and schedule.
     const leafGraph = buildLeafGraph(
       candidates,
-      input.planners,
+      schedulingPlanners,
       memoizedEventIds,
       precedenceEdges,
       urgencyScores,
@@ -341,7 +378,7 @@ export class CalendarGenerator {
     );
 
     const schedulingResult = scheduler.scheduleTasksAndGoals(
-      input.planners,
+      schedulingPlanners,
       candidates,
       memoizedEventIds,
       perTemplateMasks,
@@ -398,13 +435,39 @@ export class CalendarGenerator {
       });
     }
 
+    // Habit-occurrence failures never surface as-is: a NO_SLOTS "miss" is
+    // expected (the absence of a completion for an elapsed period is a "missed"
+    // window in the stats, not an error), and a structural failure (TOO_LARGE /
+    // IMPOSSIBLE_CONSTRAINTS — a window smaller than the duration, or allowed
+    // times that never meet the category windows) is remapped to the habit row
+    // so it coalesces to ONE message per habit, not one per occurrence.
+    const occurrenceIds = habitExpansion.occurrenceIds;
+    const habitsById = new Map(input.planners.map((p) => [p.id, p] as const));
+    const failures = schedulingResult.failures
+      .filter(
+        (f) =>
+          !(
+            occurrenceIds.has(f.taskId) &&
+            f.reason === SchedulingFailureReason.NO_SLOTS
+          ),
+      )
+      .map((f) => {
+        if (!occurrenceIds.has(f.taskId)) return f;
+        const habitId = plannerIdFromEventId(f.taskId);
+        return {
+          ...f,
+          taskId: habitId,
+          taskTitle: habitsById.get(habitId)?.title ?? f.taskTitle,
+        };
+      });
+
     // Phase 12: Emit engine messages. Per-type emit functions produce
     // already-coalesced rows (one per unique identity tuple), and the prior
     // messages array is consulted to carry forward the user-owned
     // `dismissed` flag by id.
     const messages = buildEngineMessages(
       input.userId,
-      schedulingResult.failures,
+      failures,
       travelEvents,
       input.planners,
       allEvents,
@@ -416,13 +479,15 @@ export class CalendarGenerator {
     );
 
     return {
-      success: schedulingResult.failures.length === 0,
+      success: failures.length === 0,
       events: allEvents,
       categoryEvents,
       travelEvents,
-      plannerScores: Object.fromEntries(urgencyScores),
+      plannerScores: Object.fromEntries(
+        [...urgencyScores].filter(([id]) => !occurrenceIds.has(id)),
+      ),
       messages,
-      failures: [...schedulingResult.failures],
+      failures,
       metrics: this.metrics,
     };
   }

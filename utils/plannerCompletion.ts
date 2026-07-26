@@ -1,18 +1,27 @@
 import { Planner, PlannerType } from "@/types/prisma";
 import { parseCompletedSegments, splitIsExhausted } from "./taskSplitting";
 
-// Completion never applies to plans. The item-detail type picker can retype
-// a completed item to plan, leaving stale completion times on the row, so
-// completion checks must gate on type rather than the timestamps alone.
-// Split tasks auto-complete when their completed segments cover the duration.
+// Completion never applies to plans or habits. The item-detail type picker can
+// retype a completed item to plan/habit, leaving stale completion times on the
+// row, so completion checks must gate on type rather than the timestamps alone.
+// (A habit is never wholesale-completed — completion lives per-occurrence in
+// HabitCompletion.) Split tasks auto-complete when their segments cover the
+// duration.
+function completionApplies(item: Planner): boolean {
+  return (
+    item.plannerType !== PlannerType.plan &&
+    item.plannerType !== PlannerType.habit
+  );
+}
+
 export function plannerIsCompleted(item: Planner): boolean {
-  if (item.plannerType === PlannerType.plan) return false;
+  if (!completionApplies(item)) return false;
   if (item.completedStartTime && item.completedEndTime) return true;
   return splitIsExhausted(item);
 }
 
 export function plannerCompletedEnd(item: Planner): string | null {
-  if (item.plannerType === PlannerType.plan) return null;
+  if (!completionApplies(item)) return null;
   if (item.completedEndTime) return item.completedEndTime;
   if (!splitIsExhausted(item)) return null;
   const segments = parseCompletedSegments(item.completedSegments);

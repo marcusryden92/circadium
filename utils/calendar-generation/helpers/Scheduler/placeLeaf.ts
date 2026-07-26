@@ -1,4 +1,4 @@
-import { Planner, SimpleEvent, Category } from "@/types/prisma";
+import { Planner, SimpleEvent, Category, PlannerType } from "@/types/prisma";
 import { Scheduler } from "../../core/Scheduler";
 import { SchedulingFailure } from "../../models/SchedulingModels";
 import { SchedulingFailureReason } from "../../constants";
@@ -15,7 +15,11 @@ import {
   scheduleSplitTask,
   splitRemainingForRun,
 } from "./scheduleSplitTask";
-import { GoalCapContext, wholeBlockSizing } from "./goalDayCap";
+import {
+  GoalCapContext,
+  wholeBlockSizing,
+  flexibleBlockSizing,
+} from "./goalDayCap";
 
 // Unified placement of ONE schedulable leaf — the primitive the flat-order
 // loop drives. It merges what scheduleSingleTask (standalone tasks) and
@@ -117,7 +121,11 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
     return { scheduled: true, permanentFailure: false, events: [] };
   }
 
-  const splitSettings = parseTaskSplitting(leaf.splitting);
+  // A habit occurrence reuses the `splitting` JSON to store min/max bounds for
+  // a SINGLE flexible block, so it must never enter the multi-chunk split loop.
+  const isHabit = leaf.plannerType === PlannerType.habit;
+  const splitSettings = isHabit ? null : parseTaskSplitting(leaf.splitting);
+  const habitBounds = isHabit ? parseTaskSplitting(leaf.splitting) : null;
 
   const allowedChain =
     scheduler.context.plannerConstraintsMap?.get(leaf.id)?.allowedTimes ?? [];
@@ -169,7 +177,9 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
 
   const requiredBlockMinutes = splitSettings
     ? minChunkRequired(splitRemainingForRun(leaf, splitState), splitSettings)
-    : leaf.duration;
+    : habitBounds
+      ? habitBounds.minMinutes
+      : leaf.duration;
 
   if (requiredBlockMinutes > maxCapacity) {
     failures.push({
@@ -211,6 +221,36 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
       events: result.events,
       lastEnd,
     };
+  }
+
+  // Habit occurrence: one flexible block sized to the slot's headroom, clamped
+  // to [min, max] (or the fixed duration when no bounds). Habits are roots, so
+  // there are never goal caps here — the placement-window upper bound in the
+  // occurrence's constraints keeps it inside its period.
+  if (isHabit) {
+    const res = habitBounds
+      ? scheduler.scheduleTask(
+          leaf,
+          afterTime,
+          flexibleBlockSizing(habitBounds.minMinutes, habitBounds.maxMinutes),
+        )
+      : scheduler.scheduleTask(leaf, afterTime);
+    if (res.success && res.event) {
+      scheduledTaskIds.add(leaf.id);
+      return {
+        scheduled: true,
+        permanentFailure: false,
+        events: [res.event],
+        lastEnd: new Date(res.event.end),
+      };
+    }
+    if (res.failure) {
+      failures.push(res.failure);
+      if (res.failure.reason !== SchedulingFailureReason.NO_SLOTS) {
+        return { scheduled: false, permanentFailure: true, events: [] };
+      }
+    }
+    return { scheduled: false, permanentFailure: false, events: [] };
   }
 
   // A leaf bigger than a goal's daily cap can never place under that cap —

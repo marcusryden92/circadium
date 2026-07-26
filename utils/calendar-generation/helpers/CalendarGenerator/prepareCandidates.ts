@@ -8,6 +8,7 @@ import { Planner, PlannerType } from "@/types/prisma";
 import { sortByPriorityAndConstraints } from "../PrioritySorter";
 import { taskIsCompleted } from "../../../taskHelpers";
 import { getScheduledLeafSequence } from "../../../goalPageHandlers";
+import { isOccurrenceEventId } from "../../../planRecurrence";
 
 export function prepareCandidates(
   planners: Planner[],
@@ -39,6 +40,12 @@ export function prepareCandidates(
   // readiness via the cascade).
   const preCandidates = planners.filter((item) => {
     if (taskIsCompleted(item) || memoizedEventIds.has(item.id)) return false;
+    // Habit occurrences (synthetic `${habitId}|${periodKey}` rows injected by
+    // expandHabits) are first-class candidates; a bare habit row is not — it is
+    // only a template for its occurrences.
+    if (item.plannerType === PlannerType.habit) {
+      return isOccurrenceEventId(item.id) && item.isReady !== false;
+    }
     if (item.plannerType === PlannerType.goal) {
       return !item.parentId && item.isReady === true;
     }

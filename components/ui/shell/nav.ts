@@ -8,6 +8,7 @@ import {
   Waypoints,
   Orbit,
   MapPin,
+  Repeat,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -47,6 +48,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Library",
     icon: Library,
     href: "/library",
+    kind: "route",
+  },
+  {
+    key: "habits",
+    label: "Habits",
+    icon: Repeat,
+    href: "/habits",
     kind: "route",
   },
   {

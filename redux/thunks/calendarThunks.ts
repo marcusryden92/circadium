@@ -27,6 +27,7 @@ import {
   prunePlannerDetours,
 } from "@/utils/precedence/prunePrecedenceInputs";
 import { deriveExternalBusyEvents } from "@/utils/external-calendar/deriveExternalBusyEvents";
+import { deriveHabitCompletions } from "@/utils/habits/deriveHabitCompletions";
 
 type CalendarPayload = {
   planner?: Planner[] | ((prev: Planner[]) => Planner[]);
@@ -127,6 +128,12 @@ export const updateAllCalendarStates =
       state.externalCalendar.events,
     );
 
+    // Logged habit completions, derived fresh so a just-completed occurrence is
+    // skipped (and rendered frozen) on the next regen. Outside the OCC sync.
+    const habitCompletions = deriveHabitCompletions(
+      state.habitCompletions.rows,
+    );
+
     // Source state lands immediately (optimistic UI); engine output follows
     // when the worker replies. These dispatches must stay BEFORE the await so
     // functional updates from rapid consecutive calls chain off fresh state.
@@ -172,6 +179,7 @@ export const updateAllCalendarStates =
             queues: newQueues,
             dependencies: newDependencies,
             externalBusyEvents,
+            habitCompletions,
             previousEngineMessages,
           },
         },

@@ -2,6 +2,7 @@ export { buildMemoizedEvents } from "./buildMemoizedEvents";
 export { stabilizeEvent } from "./stabilizeEvent";
 export { buildPlanEvents } from "./buildPlanEvents";
 export { buildCompletedEvents } from "./buildCompletedEvents";
+export { buildHabitCompletedEvents } from "./buildHabitCompletedEvents";
 export { buildCategoryEvents } from "./buildCategoryEvents";
 export { markTrespassingEvents } from "./markTrespassingEvents";
 export { stampCategoryEventBorders } from "./stampCategoryEventBorders";

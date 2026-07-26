@@ -58,6 +58,8 @@ import {
   refreshExternalCalendarSource,
 } from "@/actions/externalCalendars";
 import { externalSourceNeedsRefresh } from "@/utils/external-calendar/refreshPolicy";
+import { hydrateHabitCompletions } from "@/redux/slices/habitCompletionsSlice";
+import { getHabitCompletions } from "@/actions/habitCompletions";
 import type {
   ExternalCalendarSource,
   ExternalEvent,
@@ -388,6 +390,24 @@ export default function CalendarProvider({
         if (result.sources.length > 0) updateAll();
       } catch {
         // The calendar works without external feeds until the next load.
+      }
+    })();
+  }, [isCalendarLoaded, userId, dispatch, updateAll]);
+
+  // Habit-completion bootstrap, once per app load: hydrate the log from the DB,
+  // then regen once so completed occurrences render frozen (and are skipped for
+  // rescheduling) this session. Out-of-band, like the external-calendar boot.
+  const habitBootstrapFired = useRef(false);
+  useEffect(() => {
+    if (!isCalendarLoaded || !userId || habitBootstrapFired.current) return;
+    habitBootstrapFired.current = true;
+    void (async () => {
+      try {
+        const rows = await getHabitCompletions();
+        dispatch(hydrateHabitCompletions(rows));
+        if (rows.length > 0) updateAll();
+      } catch {
+        // Habits degrade gracefully; completions load on the next visit.
       }
     })();
   }, [isCalendarLoaded, userId, dispatch, updateAll]);

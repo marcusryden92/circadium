@@ -33,6 +33,16 @@ import {
 } from "@/utils/taskSplitting";
 import { RecurrenceScopeModal } from "../RecurrenceScopeModal";
 import { PlannerType } from "@/types/prisma";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/redux/store";
+import {
+  logHabitCompletion,
+  unlogHabitCompletion,
+} from "@/actions/habitCompletions";
+import {
+  upsertHabitCompletion,
+  removeHabitCompletion,
+} from "@/redux/slices/habitCompletionsSlice";
 import { hoverActions, actionGroup, iconButton } from "./EventContent.css";
 
 interface EventContentProps {
@@ -42,10 +52,14 @@ interface EventContentProps {
 const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const { planner, updateAll, updatePlannerArray, calendar } =
     useCalendarProvider();
+  const dispatch = useDispatch<AppDispatch>();
   const isMobile = useIsMobile();
   const { plannerType, completedStartTime, completedEndTime } =
     event.extendedProps;
   const elementRef = useRef<HTMLDivElement>(null);
+  // Serializes habit complete/uncomplete writes so a rapid double-click can't
+  // leave the DB reflecting the earlier click via out-of-order network writes.
+  const habitWriteChainRef = useRef<Promise<unknown>>(Promise.resolve());
   const [elementHeight, setElementHeight] = useState<number>(0);
   const [elementWidth, setElementWidth] = useState<number>(0);
   const [showPopover, setShowPopover] = useState<boolean>(false);
@@ -127,6 +141,40 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   };
 
   const onComplete = () => {
+    // Habit occurrences complete to the out-of-band completion log, not to
+    // Planner.completedStartTime — the row is a template, not a single task.
+    if (event.extendedProps.plannerType === PlannerType.habit) {
+      const plannerId = plannerIdFromEventId(event.id);
+      const occurrenceKey = occurrenceKeyFromEventId(event.id);
+      if (!occurrenceKey) return;
+      const nextCompleted = !isCompleted;
+      // A not-yet-started occurrence can't be completed — logging it would
+      // freeze a phantom tile at a future window (carving a real slot) that the
+      // stats layer can't count until the period elapses.
+      if (nextCompleted && startTime > currentTime) return;
+      setOptimisticCompleted(nextCompleted);
+      habitWriteChainRef.current = habitWriteChainRef.current
+        .catch(() => {})
+        .then(() =>
+          nextCompleted
+            ? logHabitCompletion({
+                plannerId,
+                occurrenceKey,
+                start: startTime.toISOString(),
+                end: endTime.toISOString(),
+              }).then((row) => {
+                dispatch(upsertHabitCompletion(row));
+                updateAll();
+              })
+            : unlogHabitCompletion({ plannerId, occurrenceKey }).then(() => {
+                dispatch(removeHabitCompletion({ plannerId, occurrenceKey }));
+                updateAll();
+              }),
+        )
+        .catch(() => setOptimisticCompleted(null));
+      return;
+    }
+
     handleClickCompleteTask(
       event,
       isCompleted,

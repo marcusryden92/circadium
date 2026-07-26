@@ -24,6 +24,7 @@ import type {
   TravelTimeEntry,
   LocationGroupingScoresConfig,
   LocationGroupingPenaltiesConfig,
+  HabitCompletionInput,
 } from "./models/SchedulingModels";
 
 /**
@@ -46,6 +47,8 @@ export interface GenerateCalendarOptions {
   dependencies?: PlannerDependency[];
   /** Imported external-calendar busy blocks (see CalendarGenerationInput) */
   externalBusyEvents?: SimpleEvent[];
+  /** Logged habit-occurrence completions (see CalendarGenerationInput) */
+  habitCompletions?: HabitCompletionInput[];
   /**
    * Prior engine messages array, consulted at emit time to carry forward
    * the user-owned `dismissed` flag by id. Callers pass the current Redux
@@ -140,6 +143,7 @@ export function generateCalendar(
     queues: opts.queues,
     dependencies: opts.dependencies,
     externalBusyEvents: opts.externalBusyEvents,
+    habitCompletions: opts.habitCompletions,
     config: {
       maxDaysAhead: SCHEDULING_CONFIG.MAX_DAYS_TO_SEARCH,
       enableLogging,

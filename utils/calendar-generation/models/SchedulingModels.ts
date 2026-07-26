@@ -357,6 +357,25 @@ export interface CalendarGenerationInput {
    * final assembly — never memoized, never synced.
    */
   externalBusyEvents?: SimpleEvent[];
+  /**
+   * Logged habit-occurrence completions. Each row marks one period of a habit
+   * as done: expandHabits skips that period (never re-schedules it) and
+   * buildHabitCompletedEvents freezes it at its logged window. Derived fresh
+   * per run from the habitCompletions Redux slice, outside the OCC diff sync.
+   */
+  habitCompletions?: HabitCompletionInput[];
+}
+
+/**
+ * One logged completion of a habit occurrence, keyed by (plannerId,
+ * occurrenceKey) — the composite that also forms its event id
+ * `${plannerId}|${occurrenceKey}`. start/end are the window it was done in.
+ */
+export interface HabitCompletionInput {
+  plannerId: string;
+  occurrenceKey: string;
+  start: string;
+  end: string;
 }
 
 export interface StrategyConfig {

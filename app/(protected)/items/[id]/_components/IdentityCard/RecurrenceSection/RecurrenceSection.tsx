@@ -65,7 +65,9 @@ export function RecurrenceSection() {
 
   const rule = parsePlanRecurrence(item.recurrence);
 
-  if (item.plannerType !== "plan") return null;
+  // Plans repeat by anchoring on `starts`; habits use the same rule as their
+  // cadence (one occurrence per period). Both edit `recurrence` here.
+  if (item.plannerType !== "plan" && item.plannerType !== "habit") return null;
 
   const preset = presetFromRule(rule);
 

@@ -82,6 +82,20 @@ export function scheduleTasksAndGoals(
   const schedulableCategoryIds = new Set(categories.map((c) => c.id));
   const plannersById = new Map(allPlanners.map((p) => [p.id, p]));
 
+  // Latest end among currently-materialized placeable slots. Drives the habit
+  // "missed window" rule: an occurrence bounded to a window the horizon already
+  // covers, that still didn't place, has lost the contest — not slot scarcity.
+  const maxPlaceableEndOf = (slots: Slot[]): number => {
+    let max = 0;
+    for (const s of slots) {
+      if (s.type !== "available" && s.type !== "category") continue;
+      const endMs = s.end.getTime();
+      if (endMs > max) max = endMs;
+    }
+    return max;
+  };
+  let maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
+
   const {
     nodes,
     chainPreds,
@@ -290,6 +304,19 @@ export function scheduleTasksAndGoals(
       resolveRoots(leafId, false);
       return true;
     }
+    // Habit occurrence "missed" window: a placement-window-bounded leaf whose
+    // window the horizon already fully covers, that still didn't place, has
+    // lost the contest for every slot in its window (not slot scarcity — no
+    // expansion can add room past its window end). Drop it silently; the
+    // NO_SLOTS placeLeaf pushed for it is filtered downstream (a miss is not an
+    // error, it is the absence of a completion for that period in the stats).
+    const windowEnd =
+      context.plannerConstraintsMap?.get(leafId)?.placementWindowEnd;
+    if (windowEnd && maxPlaceableEndMs >= windowEnd.getTime()) {
+      permFailedIds.add(leafId);
+      resolveRoots(leafId, false);
+      return true;
+    }
     return false;
   };
 
@@ -313,6 +340,7 @@ export function scheduleTasksAndGoals(
   while (remaining.length > 0 && expansionsDone < SCHEDULING_CONFIG.MAX_WEEKS_TO_SEARCH) {
     resolveZeroLeafCandidates();
     context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
+    maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
 
     let availableCount = 0;
     for (const s of slotManager.slots) {
@@ -424,6 +452,7 @@ export function scheduleTasksAndGoals(
 
   if (remaining.length > 0) {
     context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
+    maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
     const resolvedIds = new Set<string>();
     for (const node of remaining) {
       if (attemptLeaf(node, true)) resolvedIds.add(node.leaf.id);
