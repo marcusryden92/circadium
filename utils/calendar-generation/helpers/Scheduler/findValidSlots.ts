@@ -11,7 +11,7 @@ import {
   SchedulingFailure,
   FindValidSlotsResult,
 } from "../../models/SchedulingModels";
-import { SchedulingFailureReason } from "../../constants";
+import { SCHEDULING_CONFIG, SchedulingFailureReason } from "../../constants";
 import { findAllFittingSlots } from "../TimeSlotManager/findAllFittingSlots";
 
 export function findValidSlots(
@@ -56,21 +56,30 @@ export function findValidSlots(
       ? context.categories.get(effectiveCategoryId) || undefined
       : undefined;
 
-  // Find all slots that can fit the base requirement (duration + buffer).
-  // maxDaysToSearch is omitted (undefined): the search runs to the end of the
-  // built fabric, bounded by the placement cutoff. Horizon expansion grows the
-  // fabric on demand, so there is no fixed per-item look-ahead ceiling.
-  const fittingSlots = findAllFittingSlots(
-    slotManager.slots,
-    slotManager.bufferTimeMinutes,
-    fitMinutes,
-    effectiveAfter,
-    undefined,
-    hasWindowConstraint ? eligibleCategoryIds : undefined,
-    context.placementCutoffDate,
-    constraints?.allowedTimes,
-    constraints?.placementWindowEnd,
-  );
+  // Two-tier slot search. Try a bounded near window first
+  // (SLOT_SEARCH_NEAR_WINDOW_DAYS from the effective earliest start): when it
+  // yields any fitting slot the task places there, so a nearer slot always wins
+  // over a farther one even after the fabric has expanded years out (otherwise
+  // a far slot could beat a near one on location-grouping score once the
+  // earliest-slot score saturates). Only when the near window is empty do we
+  // fall back to the uncapped scan of the whole built fabric — the far reach
+  // that lets an item find slots horizon expansion has materialized past the
+  // window. The placement cutoff bounds the scan either way.
+  const findSlots = (maxDaysToSearch?: number) =>
+    findAllFittingSlots(
+      slotManager.slots,
+      slotManager.bufferTimeMinutes,
+      fitMinutes,
+      effectiveAfter,
+      maxDaysToSearch,
+      hasWindowConstraint ? eligibleCategoryIds : undefined,
+      context.placementCutoffDate,
+      constraints?.allowedTimes,
+      constraints?.placementWindowEnd,
+    );
+
+  const nearSlots = findSlots(SCHEDULING_CONFIG.SLOT_SEARCH_NEAR_WINDOW_DAYS);
+  const fittingSlots = nearSlots.length > 0 ? nearSlots : findSlots(undefined);
 
   if (fittingSlots.length === 0) {
     const constraintNote = constraints?.allowedTimes.length

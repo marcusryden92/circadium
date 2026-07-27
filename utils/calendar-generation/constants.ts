@@ -77,12 +77,17 @@ export const SCHEDULING_CONFIG = {
    */
   MAX_HORIZON_EXPANSIONS: 30,
   /**
-   * Stop expanding after this many consecutive expansions that place nothing and
-   * are not marching the horizon toward a still-unreached earliest-start bound —
-   * the remaining items are constraint-stuck, and more empty future room can't
-   * help them.
+   * Preference window (days from a task's effective earliest start) that the
+   * per-item slot finder tries FIRST. When the near window yields any fitting
+   * slot the task places there, so a nearer slot is always preferred over a
+   * farther one even after the fabric has expanded years out — otherwise a far
+   * slot could win on location-grouping score alone once the earliest-slot
+   * score saturates. Only when the near window is empty does the finder fall
+   * back to scanning the whole built fabric, the uncapped reach that lets an
+   * item find slots horizon expansion materialized past this window. It is a
+   * soft preference, never a hard cap: no slot is ever hidden.
    */
-  UNPRODUCTIVE_EXPANSION_LIMIT: 3,
+  SLOT_SEARCH_NEAR_WINDOW_DAYS: 90,
   /** Minimum slot size in minutes to consider */
   MIN_SLOT_SIZE: 5,
   /** Buffer time between events in minutes */

@@ -1,6 +1,11 @@
 import { generateCalendar } from "@/utils/calendar-generation/calendarGeneration";
 import { plannerIdFromEventId } from "@/utils/planRecurrence";
-import type { EventTemplate, Planner, SimpleEvent } from "@/types/prisma";
+import type {
+  EventTemplate,
+  Planner,
+  PlannerDependency,
+  SimpleEvent,
+} from "@/types/prisma";
 
 // The horizon expands on demand until every placeable item is scheduled, and
 // the per-item slot finder can reach any slot expansion builds. Regressions for
@@ -72,6 +77,21 @@ function fullDayPlan(dayOffset: number): Planner {
     starts: start.toISOString(),
     duration: 16 * 60,
   });
+}
+
+function makeDependency(
+  predecessorId: string,
+  successorId: string,
+): PlannerDependency {
+  const ts = FAKE_TODAY.toISOString();
+  return {
+    id: `dep-${predecessorId}-${successorId}`,
+    predecessorId,
+    successorId,
+    userId: USER_ID,
+    createdAt: ts,
+    updatedAt: ts,
+  };
 }
 
 let consoleSpies: jest.SpyInstance[] = [];
@@ -163,6 +183,86 @@ describe("horizon overflow — finder reaches expanded fabric", () => {
     expect(farEvent).toBeDefined();
     expect(new Date(farEvent!.start).getTime()).toBeGreaterThanOrEqual(
       target.getTime(),
+    );
+  });
+
+  it("keeps expanding past a full region to place a successor bounded by a far predecessor", () => {
+    // Regression: the outer loop must not abandon a placeable precedence
+    // successor. PRED is bounded far out (earliest start day 130) so it places
+    // only after the horizon marches to it; a fully-occupied region wider than
+    // several expansion chunks then sits between PRED's placement and the next
+    // free space. SUCC depends on PRED, so its only bound is PRED's placed end
+    // (no earliestStart of its own). The loop must keep expanding PAST the full
+    // region until SUCC lands — the removed "unproductive" early-stop would
+    // have dropped SUCC after a few no-placement expansions even though its
+    // slot is well within the ~2-year budget. The large free area BEFORE the
+    // predecessor bound (days 0-129) keeps availableCount above the watermark,
+    // so the expansions are reactive fallbacks (the path the stop governed),
+    // not neutral proactive ones.
+    const PRED_START_DAY = 130;
+    const FULL_UNTIL_DAY = 260;
+    const predStart = new Date(FAKE_TODAY.getTime() + PRED_START_DAY * DAY);
+    predStart.setHours(0, 0, 0, 0);
+
+    // Day 130 is free only 06:00-08:00; PRED (60min) takes part of it, leaving
+    // under SUCC's 120min so SUCC cannot slip in on PRED's own day. Days
+    // 131..259 are fully occupied; day 260+ is free.
+    const predDayPlanStart = new Date(predStart.getTime());
+    predDayPlanStart.setHours(8, 0, 0, 0);
+    const predDayFiller = makePlanner("fill-pred-day", {
+      plannerType: "plan",
+      starts: predDayPlanStart.toISOString(),
+      duration: 14 * 60,
+    });
+    const fillers: Planner[] = [predDayFiller];
+    for (let d = PRED_START_DAY + 1; d < FULL_UNTIL_DAY; d++) {
+      fillers.push(fullDayPlan(d));
+    }
+
+    const pred = makePlanner("pred", {
+      duration: 60,
+      earliestStartDate: predStart.toISOString(),
+    });
+    const succ = makePlanner("succ", { duration: 120 });
+    const planner = [...fillers, pred, succ];
+
+    const { events, messages } = generateCalendar(
+      USER_ID,
+      1,
+      SLEEP_TEMPLATES,
+      planner,
+      [],
+      {
+        injectTravelEvents: false,
+        dependencies: [makeDependency("pred", "succ")],
+      },
+    );
+
+    const predEvent = events.find(
+      (e: SimpleEvent) => plannerIdFromEventId(e.id) === "pred",
+    );
+    const succEvent = events.find(
+      (e: SimpleEvent) => plannerIdFromEventId(e.id) === "succ",
+    );
+    const succUnschedulable = messages.filter(
+      (m) =>
+        m.type === "TASK_UNSCHEDULABLE" &&
+        (m.payload as { plannerId?: string })?.plannerId === "succ",
+    );
+
+    expect(predEvent).toBeDefined();
+    expect(succUnschedulable).toEqual([]);
+    expect(succEvent).toBeDefined();
+    expect(new Date(succEvent!.start).getTime()).toBeGreaterThanOrEqual(
+      new Date(predEvent!.end).getTime(),
+    );
+    // Placed in the free space beyond the full region (past the old early-stop).
+    const lastRegionEnd = new Date(
+      FAKE_TODAY.getTime() + (FULL_UNTIL_DAY - 1) * DAY,
+    );
+    lastRegionEnd.setHours(22, 0, 0, 0);
+    expect(new Date(succEvent!.start).getTime()).toBeGreaterThanOrEqual(
+      lastRegionEnd.getTime(),
     );
   });
 });

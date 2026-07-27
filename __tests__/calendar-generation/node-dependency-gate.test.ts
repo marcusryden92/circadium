@@ -356,6 +356,38 @@ describe("node-level dependency gate", () => {
     ).toEqual([]);
   });
 
+  it("emits SEQUENCE_PAST_HORIZON for a node predecessor beyond the max horizon", () => {
+    // The predecessor NODE (an interior goal leaf) is bounded beyond
+    // MAX_HORIZON_EXPANSIONS x HORIZON_CHUNK_DAYS (~2 years). The loop expands
+    // to its ceiling without reaching it, gives up, and the node successor
+    // schedules unbounded with the "past the horizon" flavor — carrying the
+    // NODE id, not a root id.
+    const goalARows = makeGoal("goal-a", 2).map((p) =>
+      p.id === "goal-a-leaf-1"
+        ? { ...p, earliestStartDate: "2029-08-01T00:00:00.000Z" }
+        : p,
+    );
+    const goalBRows = makeGoal("goal-b", 2);
+    const planner = [...FIXTURE.planner, ...goalARows, ...goalBRows];
+
+    const { events, messages } = run(planner, [
+      makeDependency("goal-a-leaf-1", "goal-b-leaf-2"),
+    ]);
+
+    expect(events.find((e) => e.id === "goal-b-leaf-2")).toBeDefined();
+    expect(events.find((e) => e.id === "goal-a-leaf-1")).toBeUndefined();
+    const pastHorizon = messages.filter(
+      (m) => m.type === "SEQUENCE_PAST_HORIZON",
+    );
+    expect(pastHorizon).toHaveLength(1);
+    expect(pastHorizon[0].payload).toMatchObject({
+      predecessorId: "goal-a-leaf-1",
+      successorId: "goal-b-leaf-2",
+      source: "dependency",
+    });
+    expect(messages.filter((m) => m.type === "DEPENDENCY_BROKEN")).toEqual([]);
+  });
+
   it("re-emits identical events on an idle regen", () => {
     const planner = [
       ...FIXTURE.planner,

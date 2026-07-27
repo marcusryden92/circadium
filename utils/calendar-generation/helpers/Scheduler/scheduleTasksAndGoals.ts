@@ -335,35 +335,24 @@ export function scheduleTasksAndGoals(
     return a.scheduleIndex - b.scheduleIndex;
   });
 
-  // The horizon expands on demand until every placeable item is scheduled;
-  // there is no fixed ceiling. Two guards keep a genuinely unplaceable item from
-  // looping forever: `unproductiveExpansions` stops once consecutive expansions
-  // stop helping (no placement AND no remaining item is still waiting for a
-  // future window the horizon hasn't reached), and MAX_HORIZON_EXPANSIONS is an
-  // absolute runaway backstop.
+  // The horizon expands on demand until every placeable item is scheduled,
+  // bounded only by MAX_HORIZON_EXPANSIONS (~2 years). There is deliberately no
+  // earlier "unproductive" heuristic stop: an item blocked by a currently-full
+  // stretch only places once expansion reaches PAST that stretch, and no cheap
+  // local signal distinguishes that from a permanent stall (its bound may sit
+  // well inside the built fabric while the free slot lies chunks beyond it).
+  // Items that can genuinely never place already leave the pool as permanent
+  // failures (TOO_LARGE / IMPOSSIBLE_CONSTRAINTS); anything still remaining is
+  // worth expanding for until the ceiling, where it fails loudly.
   let expansionsDone = 0;
-  let unproductiveExpansions = 0;
 
   while (
     remaining.length > 0 &&
-    expansionsDone < SCHEDULING_CONFIG.MAX_HORIZON_EXPANSIONS &&
-    unproductiveExpansions < SCHEDULING_CONFIG.UNPRODUCTIVE_EXPANSION_LIMIT
+    expansionsDone < SCHEDULING_CONFIG.MAX_HORIZON_EXPANSIONS
   ) {
     resolveZeroLeafCandidates();
     context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
     maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
-
-    // A remaining leaf whose earliest-start bound is past the currently
-    // placeable horizon can only place once expansion marches out to it, so an
-    // expansion that adds no placement is still productive while any such leaf
-    // exists — don't count it toward the unproductive-stop.
-    const frontierCutoffMs =
-      context.placementCutoffDate?.getTime() ?? maxPlaceableEndMs;
-    const frontierPending = remaining.some((n) => {
-      const earliest =
-        context.plannerConstraintsMap?.get(n.leaf.id)?.earliestStart;
-      return earliest != null && earliest.getTime() >= frontierCutoffMs;
-    });
 
     let availableCount = 0;
     for (const s of slotManager.slots) {
@@ -404,9 +393,8 @@ export function scheduleTasksAndGoals(
       biggestFit < biggestRemaining
     ) {
       // Watermark expansions build room proactively before any placement is
-      // attempted, so they are neutral to the unproductive-stop (which measures
-      // "attempted placement, nothing landed"). MAX_HORIZON_EXPANSIONS is the
-      // backstop if the watermark ever spun.
+      // attempted. MAX_HORIZON_EXPANSIONS is the backstop if the watermark ever
+      // spun without progress.
       expansionsDone++;
       expandSlots(
         context,
@@ -421,20 +409,13 @@ export function scheduleTasksAndGoals(
       continue;
     }
 
-    // Placement counts as progress at the EVENT level, not just full
-    // resolution: a split leaf that lands a chunk but isn't done yet returns
-    // unresolved, and that partial placement must still reset the
-    // unproductive-stop or a chunk-at-a-time task would be abandoned mid-way.
-    const eventsBefore = events.length;
     attemptedThisPass = 0;
     const resolvedIds = new Set<string>();
     for (const node of remaining) {
       if (attemptLeaf(node, false)) resolvedIds.add(node.leaf.id);
     }
-    const placedSomething = events.length > eventsBefore;
 
     if (resolvedIds.size > 0) {
-      unproductiveExpansions = 0;
       remaining = remaining.filter((n) => !resolvedIds.has(n.leaf.id));
       if (remaining.length > 0) continue;
     }
@@ -463,8 +444,6 @@ export function scheduleTasksAndGoals(
         if (stamped) continue;
       }
       expansionsDone++;
-      unproductiveExpansions =
-        frontierPending || placedSomething ? 0 : unproductiveExpansions + 1;
       expandSlots(
         context,
         perTemplateMasks,
