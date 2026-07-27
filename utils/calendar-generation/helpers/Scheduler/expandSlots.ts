@@ -65,16 +65,18 @@ export function expandSlots(
       ? slotManager.slots[pickupIdx].end
       : dateTimeService.startOfDay(context.currentDate);
 
-  // Growth target. With a marker, grow from the pickup (it sits near the
-  // horizon tail). Without one, pickupTime is today — growing from it would
-  // rebuild the SAME chunk and the horizon would never extend (the scheduler
-  // then burns its whole expansion budget on no-ops and fails NO_SLOTS on
-  // anything that needed room past the initial chunk). Grow from the current
-  // horizon end instead; the resume/preserve semantics above are unaffected.
-  const chunkBase =
-    pickupIdx >= 0
-      ? pickupTime
-      : deriveSchedulingHorizon(slotManager.slots, pickupTime);
+  // Growth target: always grow the new chunk forward from the CURRENT horizon
+  // end. When category slots run throughout the fabric the marker sits at the
+  // tail and the horizon end coincides with the pickup. But an expanded region
+  // with no category slot to mark leaves the marker stranded back in the
+  // preserved region (markLastCategoryAsFinal marks the last category slot by
+  // array position), and anchoring the chunk to that stale pickup would rebuild
+  // the same region every expansion — the horizon never advances and expansion
+  // burns on no-ops (the marker-less path already guarded this; windowed fabrics
+  // with a category-free stretch hit the same trap). The new region still starts
+  // at pickupTime (preserve/resume key off the marker), so only the chunk's
+  // forward reach changes — a stranded marker no longer stalls the horizon.
+  const chunkBase = deriveSchedulingHorizon(slotManager.slots, pickupTime);
 
   const chunkEnd = dateTimeService.endOfDay(
     dateTimeService.shiftDays(

@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 import { generateCalendar } from "@/utils/calendar-generation/calendarGeneration";
+import { serializeTaskSplitting } from "@/utils/taskSplitting";
+import { plannerIdFromEventId } from "@/utils/planRecurrence";
 import type {
   Planner,
   SimpleEvent,
@@ -275,6 +277,69 @@ describe("queue sequence scheduling", () => {
           m.type === "SEQUENCE_PAST_HORIZON",
       ),
     ).toEqual([]);
+  });
+
+  it("bounds a (split) successor after the placed work of a partially-schedulable predecessor", () => {
+    // A goal predecessor whose leaves spread across weeks, plus one leaf that
+    // can never be placed (too large for any daily gap). The goal resolves with
+    // only its placeable leaves, but the split successor must still land after
+    // the predecessor's actually-placed work — not slot into the early gaps
+    // between the goal's leaves. A split successor makes the regression obvious:
+    // without the bound it scatters small chunks across every gap.
+    const goalRows: Planner[] = [
+      makeTask("launch", {
+        plannerType: "goal",
+        deadline: "2027-06-30T00:00:00.000Z",
+        duration: 60 * 4,
+      }),
+      makeTask("launch-leaf-0", {
+        parentId: "launch",
+        sortOrder: 1024,
+        earliestStartDate: "2026-07-06T00:00:00.000Z",
+        duration: 60,
+      }),
+      makeTask("launch-leaf-1", {
+        parentId: "launch",
+        sortOrder: 2048,
+        earliestStartDate: "2026-07-20T00:00:00.000Z",
+        duration: 60,
+      }),
+      makeTask("launch-leaf-2", {
+        parentId: "launch",
+        sortOrder: 3072,
+        earliestStartDate: "2026-08-03T00:00:00.000Z",
+        duration: 60,
+      }),
+      makeTask("launch-leaf-3", {
+        parentId: "launch",
+        sortOrder: 4096,
+        duration: 60 * 20, // too large for any daily gap -> never placeable
+      }),
+    ];
+    const split = makeTask("dotnet", {
+      duration: 240,
+      splitting: serializeTaskSplitting({
+        minMinutes: 30,
+        maxMinutes: 60,
+        maxMinutesPerDay: 60,
+      }),
+    });
+    const planner = [...FIXTURE.planner, ...goalRows, split];
+
+    const { events } = run(planner, [makeQueue("q", ["launch", "dotnet"])]);
+
+    const placedGoalLeaves = events.filter(
+      (e) => e.id.startsWith("launch-leaf-") && e.id !== "launch-leaf-3",
+    );
+    const chunks = events.filter(
+      (e) => plannerIdFromEventId(e.id) === "dotnet",
+    );
+    expect(placedGoalLeaves.length).toBeGreaterThan(0);
+    expect(chunks.length).toBeGreaterThan(0);
+
+    const lastPlacedGoalEnd = Math.max(...placedGoalLeaves.map(endMs));
+    const firstChunkStart = Math.min(...chunks.map(startMs));
+    expect(firstChunkStart).toBeGreaterThanOrEqual(lastPlacedGoalEnd);
   });
 
   it("re-emits identical events on an idle regen", () => {

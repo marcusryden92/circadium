@@ -21,7 +21,6 @@ export function expandTemplates(
   templates: EventTemplate[],
   weekStartDay: WeekDayIntegers,
   currentDate: Date,
-  _maxDaysAhead: number,
   logTemplateInfo: boolean,
   metrics: SchedulingMetrics,
 ): {

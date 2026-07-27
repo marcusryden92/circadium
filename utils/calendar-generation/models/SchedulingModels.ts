@@ -297,8 +297,6 @@ export interface LocationGroupingPenaltiesConfig {
  * Configuration for calendar generation
  */
 export interface CalendarGenerationConfig {
-  /** Maximum number of days to look ahead */
-  maxDaysAhead?: number;
   /** Maximum iterations per task */
   maxIterationsPerTask?: number;
   /** Whether to enable detailed logging (master switch) */

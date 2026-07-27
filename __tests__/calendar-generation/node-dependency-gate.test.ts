@@ -325,10 +325,12 @@ describe("node-level dependency gate", () => {
     );
   });
 
-  it("survives a blocked node successor through horizon exhaustion without starving", () => {
-    const farOut = makeTask("far-out", {
-      earliestStartDate: "2028-01-01T00:00:00.000Z",
-    });
+  it("expands on demand to a far-future node predecessor and bounds the successor after it", () => {
+    // ~13 months out — past the old fixed expansion ceiling, within the ~2-year
+    // horizon. The horizon expands on demand to reach the far predecessor rather
+    // than giving up "past the horizon"; the node successor waits for it.
+    const farStart = "2027-08-15T00:00:00.000Z";
+    const farOut = makeTask("far-out", { earliestStartDate: farStart });
     const goalRows = makeGoal("goal-b", 2);
     const planner = [...FIXTURE.planner, farOut, ...goalRows];
 
@@ -336,18 +338,22 @@ describe("node-level dependency gate", () => {
       makeDependency("far-out", "goal-b-leaf-2"),
     ]);
 
-    expect(events.find((e) => e.id === "goal-b-leaf-1")).toBeDefined();
-    expect(events.find((e) => e.id === "goal-b-leaf-2")).toBeDefined();
-    const pastHorizon = messages.filter(
-      (m) => m.type === "SEQUENCE_PAST_HORIZON",
+    const farEvent = events.find((e) => e.id === "far-out");
+    const successor = events.find((e) => e.id === "goal-b-leaf-2");
+    expect(farEvent).toBeDefined();
+    expect(new Date(farEvent!.start).getTime()).toBeGreaterThanOrEqual(
+      new Date(farStart).getTime(),
     );
-    expect(pastHorizon).toHaveLength(1);
-    expect(pastHorizon[0].payload).toMatchObject({
-      predecessorId: "far-out",
-      successorId: "goal-b-leaf-2",
-      source: "dependency",
-    });
-    expect(messages.filter((m) => m.type === "DEPENDENCY_BROKEN")).toEqual([]);
+    expect(successor).toBeDefined();
+    expect(new Date(successor!.start).getTime()).toBeGreaterThanOrEqual(
+      new Date(farEvent!.end).getTime(),
+    );
+    expect(
+      messages.filter(
+        (m) =>
+          m.type === "SEQUENCE_PAST_HORIZON" || m.type === "DEPENDENCY_BROKEN",
+      ),
+    ).toEqual([]);
   });
 
   it("re-emits identical events on an idle regen", () => {

@@ -19,7 +19,6 @@ import {
 } from "@/types/prisma";
 import { CalendarGenerator } from "./core/CalendarGenerator";
 import { applyQueueCategoryInheritance } from "./helpers/CalendarGenerator";
-import { SCHEDULING_CONFIG } from "./constants";
 import type {
   TravelTimeEntry,
   LocationGroupingScoresConfig,
@@ -145,7 +144,6 @@ export function generateCalendar(
     externalBusyEvents: opts.externalBusyEvents,
     habitCompletions: opts.habitCompletions,
     config: {
-      maxDaysAhead: SCHEDULING_CONFIG.MAX_DAYS_TO_SEARCH,
       enableLogging,
       logging,
       bufferTimeMinutes,

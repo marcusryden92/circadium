@@ -14,7 +14,12 @@ export type ChainFailCause = "failed" | "unready" | "horizon";
 
 export type ChainOutcome =
   | { status: "placed"; lastEnd?: Date }
-  | { status: "failed"; failCause: ChainFailCause };
+  // A failed predecessor still carries the max end of whatever it DID place
+  // (its scheduled leaves) so the successor is bounded after that work rather
+  // than scheduling unbounded — a broken sequence must not let the successor
+  // slot in BEFORE the predecessor's placed events. Absent when it placed
+  // nothing (then the successor is genuinely unbounded).
+  | { status: "failed"; failCause: ChainFailCause; lastEnd?: Date };
 
 export type SequenceBreak = {
   source: "queue" | "dependency";
@@ -154,11 +159,12 @@ export function gateCandidate(
   for (const edge of incoming) {
     const outcome = chainOutcome.get(edge.fromId);
     if (!outcome) return { blocked: true };
-    if (outcome.status === "placed") {
-      if (outcome.lastEnd && (!afterTime || outcome.lastEnd > afterTime)) {
-        afterTime = outcome.lastEnd;
-      }
-    } else {
+    // Both placed and failed outcomes bound the successor after the
+    // predecessor's placed work; a failed one additionally records the break.
+    if (outcome.lastEnd && (!afterTime || outcome.lastEnd > afterTime)) {
+      afterTime = outcome.lastEnd;
+    }
+    if (outcome.status === "failed") {
       failedEdges.push({ edge, cause: outcome.failCause });
     }
   }

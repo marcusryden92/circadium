@@ -1,6 +1,5 @@
 import { PlaceableSlot, Slot } from "../../models/TimeSlot";
 import { dateTimeService } from "../../utils/dateTimeService";
-import { SCHEDULING_CONFIG } from "../../constants";
 import {
   AllowedTimesSettings,
   intersectIntervalWithAllowed,
@@ -34,14 +33,22 @@ export function findAllFittingSlots(
   bufferTimeMinutes: number,
   durationMinutes: number,
   afterDate: Date,
-  maxDaysToSearch: number = SCHEDULING_CONFIG.MAX_DAYS_TO_SEARCH,
+  maxDaysToSearch?: number,
   eligibleCategoryIds?: Set<string>,
   placementCutoffDate?: Date | null,
   allowedTimes?: AllowedTimesSettings[],
   placementWindowEnd?: Date | null,
 ): PlaceableSlot[] {
   const fittingSlots: PlaceableSlot[] = [];
-  const searchEndDate = dateTimeService.shiftDays(afterDate, maxDaysToSearch);
+  // Omit maxDaysToSearch (the normal scheduling path does) to scan the whole
+  // built fabric: horizon expansion grows it on demand until every placeable
+  // item fits, and the placement cutoff (fabric tail) plus slot exhaustion bound
+  // the scan. A fixed per-item day cap would re-introduce the bug where an item
+  // can't see slots expansion has already materialized past the cap.
+  const searchEndMs =
+    maxDaysToSearch !== undefined
+      ? dateTimeService.shiftDays(afterDate, maxDaysToSearch).getTime()
+      : undefined;
   // Lenient pre-filter: slots need room for the task plus at minimum one
   // trailing buffer. The leading buffer may not be needed (when travel-
   // before is placed standalone in an earlier slot), so the precise
@@ -53,7 +60,7 @@ export function findAllFittingSlots(
   for (const slot of slots) {
     if (slot.type !== "available" && slot.type !== "category") continue;
     if (slot.end <= afterDate) continue;
-    if (slot.start >= searchEndDate) break;
+    if (searchEndMs !== undefined && slot.start.getTime() >= searchEndMs) break;
     // Tail buffer: skip slots whose start is past the placement cutoff. The
     // cutoff is "(last placeable slot end) - PLACEMENT_BUFFER_DAYS", computed
     // per-iteration by scheduleTasksAndGoals.

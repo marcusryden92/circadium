@@ -68,7 +68,7 @@ export function buildEngineMessages(
   // Dedupe by id (keep-first) — id is the DB primary key, so duplicate ids in
   // one emit array become a double-create in the sync transaction. The known
   // producer: a never-scheduled task fails once per expansion pass in the
-  // retry loop, pushing up to MAX_WEEKS_TO_SEARCH identical NO_SLOTS failures.
+  // retry loop, pushing one identical NO_SLOTS failure per pass.
   const seenIds = new Set<string>();
   const uniqueEmits = emits.filter((m) => {
     if (seenIds.has(m.id)) return false;

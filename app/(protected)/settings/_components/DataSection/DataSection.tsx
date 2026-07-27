@@ -63,7 +63,10 @@ export function DataSection() {
     try {
       parsed = JSON.parse(await file.text());
     } catch {
-      setImportStatus({ kind: "error", message: "That file isn't valid JSON." });
+      setImportStatus({
+        kind: "error",
+        message: "That file isn't valid JSON.",
+      });
       return;
     }
     if (importMode === "replace") {
@@ -119,9 +122,9 @@ export function DataSection() {
         <span className={cardTitle}>Import data</span>
         <span className={fieldNote}>
           Load a Circadium export file (.json). Choose whether to{" "}
-          <strong>replace everything</strong> in this account (a full restore —
-          use this when moving to a new database) or <strong>add a copy</strong>{" "}
-          of the file&apos;s items alongside what you already have.
+          <strong>replace everything</strong> in this account (a full restore)
+          or <strong>add a copy</strong> of the file&apos;s items alongside what
+          you already have.
         </span>
         <div className={importControls}>
           <SegmentedControl
@@ -184,7 +187,8 @@ export function DataSection() {
           <p style={{ margin: 0 }}>
             This permanently deletes everything currently in your account —
             tasks, goals, categories, templates, locations, and settings — and
-            replaces it with the contents of the file. This can&apos;t be undone.
+            replaces it with the contents of the file. This can&apos;t be
+            undone.
           </p>
         }
         onCancel={() => setPendingFile(null)}

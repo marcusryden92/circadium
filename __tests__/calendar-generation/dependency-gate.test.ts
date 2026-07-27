@@ -241,12 +241,13 @@ describe("dependency gate", () => {
     ).toEqual([]);
   });
 
-  it("emits SEQUENCE_PAST_HORIZON, not broken, on pure budget exhaustion", () => {
-    // The predecessor fits any day but can't start until far beyond the
-    // total expansion budget — its only failure is the horizon.
-    const farOut = makeTask("dep-far-out", {
-      earliestStartDate: "2028-01-01T00:00:00.000Z",
-    });
+  it("expands on demand to a far-future predecessor and bounds the successor after it", () => {
+    // ~13 months out — past the old fixed expansion ceiling (~336 days), well
+    // within the ~2-year horizon. The loop expands on demand until the far
+    // predecessor places instead of giving up "past the horizon"; the successor
+    // waits for it.
+    const farStart = "2027-08-15T00:00:00.000Z";
+    const farOut = makeTask("dep-far-out", { earliestStartDate: farStart });
     const b = makeTask("dep-b");
     const planner = [...FIXTURE.planner, farOut, b];
 
@@ -254,13 +255,46 @@ describe("dependency gate", () => {
       makeDependency("dep-far-out", "dep-b"),
     ]);
 
+    const farEvent = events.find((e) => e.id === "dep-far-out");
+    const bEvent = events.find((e) => e.id === "dep-b");
+    expect(farEvent).toBeDefined();
+    expect(new Date(farEvent!.start).getTime()).toBeGreaterThanOrEqual(
+      new Date(farStart).getTime(),
+    );
+    expect(bEvent).toBeDefined();
+    expect(new Date(bEvent!.start).getTime()).toBeGreaterThanOrEqual(
+      new Date(farEvent!.end).getTime(),
+    );
+    expect(
+      messages.filter(
+        (m) =>
+          m.type === "SEQUENCE_PAST_HORIZON" || m.type === "DEPENDENCY_BROKEN",
+      ),
+    ).toEqual([]);
+  });
+
+  it("emits SEQUENCE_PAST_HORIZON when a predecessor sits beyond the max horizon", () => {
+    // Beyond MAX_HORIZON_EXPANSIONS x HORIZON_CHUNK_DAYS (~2 years): the loop
+    // expands to its ceiling without reaching the predecessor, then gives up —
+    // the successor schedules unbounded with the "past the horizon" flavor.
+    const farOut = makeTask("dep-unreachable", {
+      earliestStartDate: "2029-08-01T00:00:00.000Z",
+    });
+    const b = makeTask("dep-b");
+    const planner = [...FIXTURE.planner, farOut, b];
+
+    const { events, messages } = run(planner, [
+      makeDependency("dep-unreachable", "dep-b"),
+    ]);
+
     expect(events.find((e) => e.id === "dep-b")).toBeDefined();
+    expect(events.find((e) => e.id === "dep-unreachable")).toBeUndefined();
     const pastHorizon = messages.filter(
       (m) => m.type === "SEQUENCE_PAST_HORIZON",
     );
     expect(pastHorizon).toHaveLength(1);
     expect(pastHorizon[0].payload).toMatchObject({
-      predecessorId: "dep-far-out",
+      predecessorId: "dep-unreachable",
       successorId: "dep-b",
       source: "dependency",
     });

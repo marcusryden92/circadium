@@ -52,16 +52,37 @@ export const TIME_CONSTANTS = {
   SECONDS_PER_MINUTE: 60,
 } as const;
 
+// The slot fabric is built in fixed HORIZON_CHUNK_DAYS chunks: an initial chunk
+// from today, then one more chunk per expansion. Expansion continues on demand
+// until every placeable item is scheduled (see scheduleTasksAndGoals). The
+// per-item slot finder scans the whole materialized fabric (bounded only by the
+// placement cutoff), so it can never fail to see slots expansion has already
+// built — that is the fix for items silently failing at a fixed look-ahead cap.
+const HORIZON_CHUNK_DAYS = 28;
+
 /**
  * Scheduling algorithm configuration
  */
 export const SCHEDULING_CONFIG = {
   /** Maximum number of iterations to prevent infinite loops */
   MAX_ITERATIONS: 10000,
-  /** Maximum number of days to search ahead for available slots */
-  MAX_DAYS_TO_SEARCH: 90,
-  /** Maximum number of weeks to search ahead */
-  MAX_WEEKS_TO_SEARCH: 12,
+  /**
+   * The maximum scheduling horizon, expressed as expansion iterations: the loop
+   * expands on demand up to MAX_HORIZON_EXPANSIONS x HORIZON_CHUNK_DAYS (~2
+   * years) before giving up. This is a real ceiling, not just a runaway guard —
+   * scheduling something years out would march the horizon over many O(fabric)
+   * passes AND materialize years of background/travel events, so an item that
+   * can't be reached within it (e.g. an earliestStartDate far out) fails loudly
+   * instead. Per-run worst case stays a few hundred ms in the worker.
+   */
+  MAX_HORIZON_EXPANSIONS: 30,
+  /**
+   * Stop expanding after this many consecutive expansions that place nothing and
+   * are not marching the horizon toward a still-unreached earliest-start bound —
+   * the remaining items are constraint-stuck, and more empty future room can't
+   * help them.
+   */
+  UNPRODUCTIVE_EXPANSION_LIMIT: 3,
   /** Minimum slot size in minutes to consider */
   MIN_SLOT_SIZE: 5,
   /** Buffer time between events in minutes */
@@ -77,7 +98,7 @@ export const SCHEDULING_CONFIG = {
    * are deliberately ignored until expansion reaches them, so a single
    * Plan a year away doesn't balloon the initial slot array.
    */
-  HORIZON_CHUNK_DAYS: 28,
+  HORIZON_CHUNK_DAYS,
   /**
    * Available-slot count threshold for proactive expansion. When the slot
    * array drops below this many Available slots, scheduleTasksAndGoals

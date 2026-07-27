@@ -66,7 +66,6 @@ export class CalendarGenerator {
 
   // Config derived from input
   private readonly currentDate: Date;
-  private readonly maxDaysAhead: number;
   private readonly bufferTimeMinutes: number;
   private readonly enableLogging: boolean;
   private readonly scheduledCategories: Category[];
@@ -81,8 +80,6 @@ export class CalendarGenerator {
     private readonly input: CalendarGenerationInput,
   ) {
     this.currentDate = new Date();
-    this.maxDaysAhead =
-      input.config?.maxDaysAhead || SCHEDULING_CONFIG.MAX_DAYS_TO_SEARCH;
     this.bufferTimeMinutes = input.config?.bufferTimeMinutes ?? 0;
     this.enableLogging = input.config?.enableLogging ?? false;
     // A category enters the scheduler only when it both opts into windows
@@ -125,7 +122,6 @@ export class CalendarGenerator {
       strategy,
       currentDate,
       weekStartDay,
-      maxDaysAhead,
       enableLogging,
     } = this;
 
@@ -205,7 +201,6 @@ export class CalendarGenerator {
       input.templates,
       weekStartDay,
       currentDate,
-      maxDaysAhead,
       enableLogging && !!input.config?.logging?.templateInfo,
       this.metrics,
     );

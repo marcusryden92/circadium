@@ -56,7 +56,10 @@ export function findValidSlots(
       ? context.categories.get(effectiveCategoryId) || undefined
       : undefined;
 
-  // Find all slots that can fit the base requirement (duration + buffer)
+  // Find all slots that can fit the base requirement (duration + buffer).
+  // maxDaysToSearch is omitted (undefined): the search runs to the end of the
+  // built fabric, bounded by the placement cutoff. Horizon expansion grows the
+  // fabric on demand, so there is no fixed per-item look-ahead ceiling.
   const fittingSlots = findAllFittingSlots(
     slotManager.slots,
     slotManager.bufferTimeMinutes,
