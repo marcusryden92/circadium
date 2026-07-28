@@ -1,6 +1,6 @@
 import { generateCalendar } from "@/utils/calendar-generation/calendarGeneration";
 import { serializeTaskSplitting } from "@/utils/taskSplitting";
-import type { Category, EventTemplate, Planner, SimpleEvent } from "@/types/prisma";
+import type { Category, EventTemplate, Planner } from "@/types/prisma";
 
 // Location resolution for tasks that carry an own locationId while
 // useParentLocation is true. Historically resolveLocation dropped straight to

@@ -560,7 +560,7 @@ describe("allowed times x template structure", () => {
             ]),
           }
         : t,
-    ) as EventTemplate[];
+    );
     const victim = makePlanner("task-guarded", {
       duration: 300,
       allowedTimes: mondayOnly,

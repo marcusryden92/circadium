@@ -43,6 +43,7 @@ model User {
   externalCalendarSources ExternalCalendarSource[]
   externalEvents          ExternalEvent[]
   googleCalendarConnection GoogleCalendarConnection?
+  microsoftCalendarConnection MicrosoftCalendarConnection?
   habitCompletions        HabitCompletion[]
 
   @@map("users")

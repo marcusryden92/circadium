@@ -22,7 +22,14 @@ import {
   addGoogleCalendarSource,
   disconnectGoogleCalendar,
 } from "@/actions/googleCalendar";
+import {
+  getMicrosoftCalendarStatus,
+  listMicrosoftCalendars,
+  addMicrosoftCalendarSource,
+  disconnectMicrosoftCalendar,
+} from "@/actions/microsoftCalendar";
 import type { GoogleCalendarListEntry } from "@/utils/external-calendar/googleCalendarApi";
+import type { MicrosoftCalendarListEntry } from "@/utils/external-calendar/microsoftGraphApi";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useServerAction } from "@/hooks/useServerAction";
 import {
@@ -102,19 +109,49 @@ export function IntegrationsSection() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [addingCalendarId, setAddingCalendarId] = useState<string | null>(null);
 
+  const [microsoft, setMicrosoft] = useState<{
+    connected: boolean;
+    email?: string | null;
+  } | null>(null);
+  const [microsoftNotice, setMicrosoftNotice] = useState<string | null>(null);
+  const [confirmDisconnectMicrosoft, setConfirmDisconnectMicrosoft] =
+    useState(false);
+  const [msPickerOpen, setMsPickerOpen] = useState(false);
+  const [msPickerCalendars, setMsPickerCalendars] = useState<
+    MicrosoftCalendarListEntry[] | null
+  >(null);
+  const [msPickerError, setMsPickerError] = useState<string | null>(null);
+  const [msAddingCalendarId, setMsAddingCalendarId] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     void getGoogleCalendarStatus().then(setGoogle);
+    void getMicrosoftCalendarStatus().then(setMicrosoft);
   }, []);
 
-  // The OAuth callback lands back here with ?google=connected|error.
+  // The OAuth callbacks land back here with ?google=connected|error or
+  // ?microsoft=connected|error. One effect handles both: the URL cleanup is
+  // synchronous, so a second param-reading effect would see an empty search.
   useEffect(() => {
-    const flag = new URLSearchParams(window.location.search).get("google");
-    if (!flag) return;
-    setGoogleNotice(
-      flag === "connected"
-        ? "Google account connected."
-        : "Google connection failed — try again.",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const googleFlag = params.get("google");
+    const microsoftFlag = params.get("microsoft");
+    if (!googleFlag && !microsoftFlag) return;
+    if (googleFlag) {
+      setGoogleNotice(
+        googleFlag === "connected"
+          ? "Google account connected."
+          : "Google connection failed — try again.",
+      );
+    }
+    if (microsoftFlag) {
+      setMicrosoftNotice(
+        microsoftFlag === "connected"
+          ? "Microsoft account connected."
+          : "Microsoft connection failed — try again.",
+      );
+    }
     window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
@@ -128,6 +165,18 @@ export function IntegrationsSection() {
   const connectedGoogleCalendarIds = useMemo(
     () => new Set(googleSources.map((s) => s.url)),
     [googleSources],
+  );
+
+  const microsoftSources = useMemo(
+    () =>
+      externalSources.filter((s) => s.kind === ExternalCalendarKind.MICROSOFT),
+    [externalSources],
+  );
+  const microsoftSourceCount = microsoftSources.length;
+
+  const connectedMicrosoftCalendarIds = useMemo(
+    () => new Set(microsoftSources.map((s) => s.url)),
+    [microsoftSources],
   );
 
   const eventCountBySource = useMemo(() => {
@@ -247,6 +296,63 @@ export function IntegrationsSection() {
     },
     [dispatch, updateAll],
   );
+
+  const openMsPicker = useCallback(async () => {
+    setMsPickerOpen(true);
+    setMsPickerError(null);
+    setMsPickerCalendars(null);
+    const result = await listMicrosoftCalendars();
+    if (result.success) {
+      setMsPickerCalendars(result.calendars);
+    } else {
+      setMsPickerCalendars([]);
+      setMsPickerError(result.error);
+    }
+  }, []);
+
+  const handleAddMicrosoft = useCallback(
+    async (calendar: MicrosoftCalendarListEntry) => {
+      setMsAddingCalendarId(calendar.id);
+      setMsPickerError(null);
+      try {
+        const result = await addMicrosoftCalendarSource({
+          calendarId: calendar.id,
+          name: calendar.name,
+          color: calendar.hexColor,
+        });
+        if (result.success) {
+          dispatch(
+            applyExternalRefresh({
+              source: result.source,
+              events: result.events,
+            }),
+          );
+          updateAll();
+        } else {
+          setMsPickerError(result.error);
+        }
+      } finally {
+        setMsAddingCalendarId(null);
+      }
+    },
+    [dispatch, updateAll],
+  );
+
+  const handleDisconnectMicrosoft = useCallback(async () => {
+    setConfirmDisconnectMicrosoft(false);
+    const result = await disconnectMicrosoftCalendar();
+    if (!result.success) return;
+    setMicrosoft({ connected: false });
+    setMsPickerOpen(false);
+    setMsPickerCalendars(null);
+    for (const id of result.removedSourceIds) {
+      dispatch(removeExternalSource(id));
+    }
+    if (result.removedSourceIds.length > 0) updateAll();
+    setMicrosoftNotice(
+      "Microsoft account disconnected. Microsoft doesn't let apps revoke their own access, so to fully revoke it, remove Circadium under your Microsoft account's privacy settings (App access).",
+    );
+  }, [dispatch, updateAll]);
 
   const handleDisconnect = useCallback(async () => {
     setConfirmDisconnect(false);
@@ -426,6 +532,94 @@ export function IntegrationsSection() {
           </div>
         )}
 
+        <div className={googleRow}>
+          <div className={googleLabel}>
+            <span className={googleTitle}>
+              {microsoft?.connected
+                ? `Microsoft account · ${microsoft.email ?? "connected"}`
+                : "Microsoft account"}
+            </span>
+            <span className={googleHint}>
+              {microsoftNotice ??
+                (microsoft?.connected
+                  ? "Import Outlook calendars this account can see."
+                  : "Connect to import your Outlook calendars without hunting for feed URLs.")}
+            </span>
+          </div>
+          {microsoft?.connected ? (
+            <>
+              <Button
+                variant="glass"
+                size="sm"
+                onClick={() =>
+                  msPickerOpen ? setMsPickerOpen(false) : void openMsPicker()
+                }
+              >
+                <CalendarPlus size={12} strokeWidth={2.2} />
+                {msPickerOpen ? "Hide calendars" : "Add from Microsoft"}
+              </Button>
+              <Button
+                variant="glass"
+                size="sm"
+                className={removeBtnDanger}
+                onClick={() => setConfirmDisconnectMicrosoft(true)}
+              >
+                Disconnect
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="glass"
+              size="sm"
+              disabled={microsoft === null}
+              onClick={() => {
+                window.location.href = "/api/integrations/microsoft/connect";
+              }}
+            >
+              Connect Microsoft
+            </Button>
+          )}
+        </div>
+
+        {msPickerOpen && (
+          <div className={calendarPickerList}>
+            {msPickerError && (
+              <span className={sourceError}>{msPickerError}</span>
+            )}
+            {msPickerCalendars === null ? (
+              <span className={emptyNote}>Loading calendars…</span>
+            ) : (
+              msPickerCalendars.map((calendar) => {
+                const already = connectedMicrosoftCalendarIds.has(calendar.id);
+                const adding = msAddingCalendarId === calendar.id;
+                return (
+                  <div key={calendar.id} className={calendarPickerRow}>
+                    <span
+                      aria-hidden
+                      className={calendarDot}
+                      style={{
+                        background: calendar.hexColor ?? FALLBACK_DOT_COLOR,
+                      }}
+                    />
+                    <span className={calendarPickerName}>{calendar.name}</span>
+                    <span className={calendarPickerRole}>
+                      {calendar.isDefault ? "primary" : ""}
+                    </span>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      disabled={already || adding}
+                      onClick={() => void handleAddMicrosoft(calendar)}
+                    >
+                      {already ? "Added" : adding ? "Adding…" : "Add"}
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
         {externalSources.length === 0 ? (
           <span className={emptyNote}>No calendars connected yet.</span>
         ) : (
@@ -443,7 +637,9 @@ export function IntegrationsSection() {
                     <span className={sourceUrl}>
                       {source.kind === ExternalCalendarKind.GOOGLE
                         ? `Google · ${source.url}`
-                        : source.url}
+                        : source.kind === ExternalCalendarKind.MICROSOFT
+                          ? "Microsoft account calendar"
+                          : source.url}
                     </span>
                   </div>
                   <div className={sourceControls}>
@@ -522,10 +718,10 @@ export function IntegrationsSection() {
       <div className={card}>
         <span className={cardTitle}>Provider sync</span>
         <span className={fieldNote}>
-          Google calendars added through your connected account refresh via the
-          Google Calendar API; ICS feeds re-fetch their URL. Both refresh about
-          once an hour when you use the app, or manually with Refresh. Direct
-          Outlook account sync and two-way sync are on the roadmap.
+          Google and Microsoft calendars added through a connected account
+          refresh via their provider APIs; ICS feeds re-fetch their URL. All
+          refresh about once an hour when you use the app, or manually with
+          Refresh. Two-way sync is on the roadmap.
         </span>
       </div>
 
@@ -560,6 +756,27 @@ export function IntegrationsSection() {
         }
         onCancel={() => setConfirmDisconnect(false)}
         onConfirm={() => void handleDisconnect()}
+      />
+
+      <ConfirmModal
+        open={confirmDisconnectMicrosoft}
+        tone="danger"
+        title="Disconnect Microsoft account?"
+        confirmLabel="Disconnect"
+        body={
+          <p style={{ margin: 0 }}>
+            Circadium&apos;s saved access to your Microsoft account is deleted
+            and every calendar imported through it
+            {microsoftSourceCount > 0 ? ` (${microsoftSourceCount})` : ""},
+            along with their events, is removed from your calendar. Your
+            Outlook calendar itself is untouched, and you can reconnect at any
+            time. Microsoft doesn&apos;t let apps revoke their own access — to
+            fully revoke it, also remove Circadium under your Microsoft
+            account&apos;s privacy settings.
+          </p>
+        }
+        onCancel={() => setConfirmDisconnectMicrosoft(false)}
+        onConfirm={() => void handleDisconnectMicrosoft()}
       />
     </>
   );

@@ -19,11 +19,13 @@ import {
   serializeSource,
   expansionWindow,
   createGoogleCalendarSource,
+  getMicrosoftAccessTokenForUser,
 } from "@/utils/external-calendar/externalSourceServer";
 import {
   getGoogleAccessToken,
   fetchGoogleCalendarEvents,
 } from "@/utils/external-calendar/googleCalendarApi";
+import { fetchMicrosoftCalendarEvents } from "@/utils/external-calendar/microsoftGraphApi";
 
 async function fetchIcsText(url: string): Promise<string> {
   const controller = new AbortController();
@@ -226,6 +228,16 @@ export async function refreshExternalCalendarSource(sourceId: string): Promise<
         }
         const accessToken = await getGoogleAccessToken(connection.refreshToken);
         events = await fetchGoogleCalendarEvents({
+          accessToken,
+          calendarId: existing.url,
+          sourceId: existing.id,
+          userId,
+          windowStart,
+          windowEnd,
+        });
+      } else if (existing.kind === ExternalCalendarKind.MICROSOFT) {
+        const accessToken = await getMicrosoftAccessTokenForUser(userId);
+        events = await fetchMicrosoftCalendarEvents({
           accessToken,
           calendarId: existing.url,
           sourceId: existing.id,

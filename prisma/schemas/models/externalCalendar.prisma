@@ -52,6 +52,24 @@ model GoogleCalendarConnection {
   @@map("GoogleCalendarConnections")
 }
 
+// One per user: the offline grant for Microsoft Graph calendar access (BYO
+// Microsoft account, independent of the login provider). Unlike Google,
+// Microsoft ROTATES refresh tokens — every token refresh returns a new one,
+// which must be persisted immediately. There is also no programmatic revoke
+// for consumer grants: disconnect deletes the local copy and points the user
+// at their Microsoft account's app permissions.
+model MicrosoftCalendarConnection {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  email        String? // Microsoft account email, display only
+  refreshToken String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("MicrosoftCalendarConnections")
+}
+
 enum ExternalCalendarKind {
   ICS
   GOOGLE
