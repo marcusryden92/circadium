@@ -11,8 +11,9 @@ import {
   SchedulingFailure,
   FindValidSlotsResult,
 } from "../../models/SchedulingModels";
-import { SCHEDULING_CONFIG, SchedulingFailureReason } from "../../constants";
+import { SchedulingFailureReason } from "../../constants";
 import { findAllFittingSlots } from "../TimeSlotManager/findAllFittingSlots";
+import { dateTimeService } from "../../utils/dateTimeService";
 
 export function findValidSlots(
   task: Planner,
@@ -20,7 +21,8 @@ export function findValidSlots(
   context: SchedulingContext,
   afterTime?: Date,
   fitDurationMinutes?: number,
-): FindValidSlotsResult | { failure: SchedulingFailure } {
+  searchWindowDays?: number | null,
+): FindValidSlotsResult | { failure: SchedulingFailure; windowCoversFabric: boolean } {
   const taskLocationId = context.plannerLocationMap?.get(task.id) ?? null;
   // Chunked placements fit-test at the chunk minimum, not the full duration.
   const fitMinutes = fitDurationMinutes ?? task.duration;
@@ -56,30 +58,37 @@ export function findValidSlots(
       ? context.categories.get(effectiveCategoryId) || undefined
       : undefined;
 
-  // Two-tier slot search. Try a bounded near window first
-  // (SLOT_SEARCH_NEAR_WINDOW_DAYS from the effective earliest start): when it
-  // yields any fitting slot the task places there, so a nearer slot always wins
-  // over a farther one even after the fabric has expanded years out (otherwise
-  // a far slot could beat a near one on location-grouping score once the
-  // earliest-slot score saturates). Only when the near window is empty do we
-  // fall back to the uncapped scan of the whole built fabric — the far reach
-  // that lets an item find slots horizon expansion has materialized past the
-  // window. The placement cutoff bounds the scan either way.
-  const findSlots = (maxDaysToSearch?: number) =>
-    findAllFittingSlots(
-      slotManager.slots,
-      slotManager.bufferTimeMinutes,
-      fitMinutes,
-      effectiveAfter,
-      maxDaysToSearch,
-      hasWindowConstraint ? eligibleCategoryIds : undefined,
-      context.placementCutoffDate,
-      constraints?.allowedTimes,
-      constraints?.placementWindowEnd,
-    );
+  // One rung of the slot-search window ladder (see scheduleTask): a bounded
+  // scan of `searchWindowDays` days from the effective earliest start, or the
+  // whole built fabric when null. The caller escalates NEAR -> WIDE ->
+  // uncapped so a nearer usable slot always wins over a farther one (past ~two
+  // weeks the earliest-slot score saturates and location-grouping alone would
+  // pick the winner), and escalates on SELECTION failure too — a non-empty
+  // window can still be entirely unusable (capacity + travel, day budgets),
+  // and horizon expansion never changes an inner window's content, so failing
+  // NO_SLOTS there would starve forever. windowCoversFabric reports when this
+  // rung already reached past the last built slot — a wider rung would return
+  // a byte-identical set, so the caller stops escalating. The placement
+  // cutoff bounds the scan either way.
+  const days = searchWindowDays === undefined ? null : searchWindowDays;
+  const fittingSlots = findAllFittingSlots(
+    slotManager.slots,
+    slotManager.bufferTimeMinutes,
+    fitMinutes,
+    effectiveAfter,
+    days ?? undefined,
+    hasWindowConstraint ? eligibleCategoryIds : undefined,
+    context.placementCutoffDate,
+    constraints?.allowedTimes,
+    constraints?.placementWindowEnd,
+  );
 
-  const nearSlots = findSlots(SCHEDULING_CONFIG.SLOT_SEARCH_NEAR_WINDOW_DAYS);
-  const fittingSlots = nearSlots.length > 0 ? nearSlots : findSlots(undefined);
+  const slots = slotManager.slots;
+  const lastSlotStartMs =
+    slots.length > 0 ? slots[slots.length - 1].start.getTime() : 0;
+  const windowCoversFabric =
+    days === null ||
+    dateTimeService.shiftDays(effectiveAfter, days).getTime() > lastSlotStartMs;
 
   if (fittingSlots.length === 0) {
     const constraintNote = constraints?.allowedTimes.length
@@ -92,6 +101,7 @@ export function findValidSlots(
         reason: SchedulingFailureReason.NO_SLOTS,
         details: `No available time slots found for ${fitMinutes} minutes${constraintNote}`,
       },
+      windowCoversFabric,
     };
   }
 
@@ -104,5 +114,6 @@ export function findValidSlots(
     taskLocationId,
     constraintForTask,
     effectiveAfter,
+    windowCoversFabric,
   };
 }

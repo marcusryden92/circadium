@@ -103,9 +103,20 @@ const engineOutputSlice = createSlice({
       const target = state.engineMessages.find((m) => m.id === action.payload);
       if (target) target.dismissed = true;
     },
+    // Restore path: the engine never flips dismissed back on its own (a
+    // re-emit of the same id keeps the flag), so an accidental dismiss needs
+    // this user-driven undo. Rides the same diff sync as dismissal.
+    undismissEngineMessage: (state, action: PayloadAction<string>) => {
+      const target = state.engineMessages.find((m) => m.id === action.payload);
+      if (target) target.dismissed = false;
+    },
   },
 });
 
-export const { applyEngineRun, hydrateEngineOutput, dismissEngineMessage } =
-  engineOutputSlice.actions;
+export const {
+  applyEngineRun,
+  hydrateEngineOutput,
+  dismissEngineMessage,
+  undismissEngineMessage,
+} = engineOutputSlice.actions;
 export default engineOutputSlice;

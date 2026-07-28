@@ -48,6 +48,14 @@ function rangeBoundsMinutes(
   return { startMin, endMin };
 }
 
+// A range wrapping past midnight (endTime <= startTime; "23:59" excepted —
+// the end-of-day sentinel). Per-day-sampled capacity ceilings must drop the
+// axis carrying one: its fragments chain across midnight at placement time,
+// which per-day sampling truncates into a false-TOO_LARGE risk.
+export function rangeIsOvernight(range: AllowedTimeRange): boolean {
+  return rangeBoundsMinutes(range).endMin > MINUTES_PER_DAY;
+}
+
 function isValidRange(value: unknown): value is AllowedTimeRange {
   if (!value || typeof value !== "object") return false;
   const candidate = value as { startTime?: unknown; endTime?: unknown };
@@ -153,19 +161,19 @@ function atLocalMinutes(dayStart: Date, minutes: number): Date {
   return d;
 }
 
-function mergeIntervals(intervals: DateInterval[]): DateInterval[] {
+export function mergeIntervals(intervals: DateInterval[]): DateInterval[] {
   if (intervals.length <= 1) return intervals;
   const sorted = [...intervals].sort(
     (a, b) => a.start.getTime() - b.start.getTime(),
   );
-  const merged: DateInterval[] = [sorted[0]];
+  const merged: DateInterval[] = [{ ...sorted[0] }];
   for (let i = 1; i < sorted.length; i++) {
     const last = merged[merged.length - 1];
     const next = sorted[i];
     if (next.start.getTime() <= last.end.getTime()) {
       if (next.end.getTime() > last.end.getTime()) last.end = next.end;
     } else {
-      merged.push(next);
+      merged.push({ ...next });
     }
   }
   return merged;
@@ -207,7 +215,8 @@ function intervalsForSettings(
   return mergeIntervals(clipped);
 }
 
-function intersectIntervalLists(
+// Both lists must be sorted by start and internally non-overlapping.
+export function intersectIntervalLists(
   a: DateInterval[],
   b: DateInterval[],
 ): DateInterval[] {

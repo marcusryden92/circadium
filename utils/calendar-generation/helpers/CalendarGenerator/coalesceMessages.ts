@@ -28,6 +28,8 @@ import type { SplitRelaxation } from "../Scheduler/scheduleSplitTask";
 import type { GoalCapRelaxation } from "../Scheduler/goalDayCap";
 import type { SequenceBreak } from "../Scheduler/precedenceGate";
 import {
+  CAPACITY_LIMITING_AXES,
+  type CapacityLimitingAxis,
   EngineMessageEmit,
   dependencyBrokenId,
   goalDayCapRelaxedId,
@@ -115,6 +117,12 @@ function emitSchedulerFailureMessages(
     if (f.reason === SchedulingFailureReason.TOO_LARGE) {
       const maxCapacity = numberFromContext(f.context, "maxCapacity") ?? 0;
       const duration = numberFromContext(f.context, "duration") ?? 0;
+      const axisRaw = f.context?.["limitingAxis"];
+      const limitingAxis =
+        typeof axisRaw === "string" &&
+        (CAPACITY_LIMITING_AXES as readonly string[]).includes(axisRaw)
+          ? (axisRaw as CapacityLimitingAxis)
+          : undefined;
       emits.push({
         id: taskTooLargeId(f.taskId),
         type: "TASK_TOO_LARGE",
@@ -125,6 +133,7 @@ function emitSchedulerFailureMessages(
           plannerId: f.taskId,
           duration,
           maxCapacity,
+          ...(limitingAxis ? { limitingAxis } : {}),
         },
       });
       continue;

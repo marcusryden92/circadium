@@ -68,6 +68,29 @@ export const engineList = style({
   paddingRight: space["1"],
 });
 
+// Divider-row toggle for the dismissed-messages section at the tail of the
+// list; the dismissed cards render dimmed beneath it with a restore action.
+export const engineDismissedToggle = style([
+  text.microLabel,
+  {
+    alignSelf: "flex-start",
+    marginTop: space["1"],
+    padding: "4px 0",
+    border: "none",
+    background: "transparent",
+    color: vars.muted,
+    cursor: "pointer",
+    transition: themeTransition,
+    ":hover": {
+      color: vars.inkSoft,
+    },
+  },
+]);
+
+export const engineCardDismissed = style({
+  opacity: 0.55,
+});
+
 export const engineCard = style({
   position: "relative",
   padding: "10px 12px",

@@ -266,3 +266,75 @@ describe("horizon overflow — finder reaches expanded fabric", () => {
     );
   });
 });
+
+describe("near-window fallback when selection rejects every near candidate", () => {
+  it("retries the full fabric instead of starving on unusable near slots", () => {
+    // Every day in (and well past) the 90-day near window has exactly one
+    // 80-minute gap (20:40-22:00) — enough for the 60-minute task plus its
+    // 10-minute buffer, so the geometric pre-filter accepts it and the near
+    // window is never empty. But the task sits at GYM and the user is at
+    // HOME, so selection also needs the 30-minute travel leg and rejects
+    // every near candidate. Horizon expansion never changes the near
+    // window's content: without the full-scan retry the task starves through
+    // the whole expansion budget while a roomy slot sits on day 120.
+    const HOME = "loc-home";
+    const GYM = "loc-gym";
+    const TIGHT_DAYS = 120;
+
+    const homeSleep = SLEEP_TEMPLATES.map((t) => ({
+      ...t,
+      locationId: HOME,
+    })) as EventTemplate[];
+
+    const fillers: Planner[] = [];
+    for (let d = 0; d < TIGHT_DAYS; d++) {
+      const start = new Date(FAKE_TODAY.getTime() + d * DAY);
+      start.setHours(6, 0, 0, 0);
+      fillers.push(
+        makePlanner(`fill-${d}`, {
+          plannerType: "plan",
+          starts: start.toISOString(),
+          duration: 14 * 60 + 40,
+          locationId: HOME,
+        }),
+      );
+    }
+    const victim = makePlanner("victim", { duration: 60, locationId: GYM });
+
+    const travelEntry = (from: string, to: string) => ({
+      fromLocationId: from,
+      toLocationId: to,
+      rushHourMinutes: 30,
+      regularMinutes: 30,
+      nightMinutes: 30,
+    });
+    const travelTimeMatrix = new Map([
+      [`${HOME}->${GYM}`, travelEntry(HOME, GYM)],
+      [`${GYM}->${HOME}`, travelEntry(GYM, HOME)],
+    ]);
+
+    const { events, messages } = generateCalendar(
+      USER_ID,
+      1,
+      homeSleep,
+      [...fillers, victim],
+      [],
+      { injectTravelEvents: true, travelTimeMatrix },
+    );
+
+    const victimEvent = events.find(
+      (e: SimpleEvent) => plannerIdFromEventId(e.id) === "victim",
+    );
+    const unschedulable = messages.filter(
+      (m) =>
+        m.type === "TASK_UNSCHEDULABLE" &&
+        (m.payload as { plannerId?: string })?.plannerId === "victim",
+    );
+
+    expect(unschedulable).toEqual([]);
+    expect(victimEvent).toBeDefined();
+    const startOffsetDays =
+      (new Date(victimEvent!.start).getTime() - FAKE_TODAY.getTime()) / DAY;
+    expect(startOffsetDays).toBeGreaterThanOrEqual(TIGHT_DAYS - 1);
+  });
+});

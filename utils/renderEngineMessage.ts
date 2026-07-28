@@ -10,13 +10,18 @@
  *     re-parsing prose.
  */
 
-import type { Planner, EngineMessage, Queue } from "@/types/prisma";
+import type { Category, Planner, EngineMessage, Queue } from "@/types/prisma";
 import type { SerializedLocation } from "@/redux/slices/schedulingSettingsSlice";
 import type {
   EngineMessagePayload,
   EngineMessageTone,
 } from "./calendar-generation/models/EngineMessage";
 import { SchedulingFailureReason } from "./calendar-generation/constants";
+import { buildCategoryEligibilityMap } from "./calendar-generation/helpers/CalendarGenerator/buildCategoryEligibilityMap";
+import {
+  type AllowedTimesSettings,
+  parseAllowedTimes,
+} from "./allowedTimes";
 
 export type RenderedEngineMessage = {
   id: string;
@@ -34,17 +39,20 @@ export type EngineMessageLookups = {
   plannerById: Map<string, Planner>;
   locationById: Map<string, SerializedLocation>;
   queueById: Map<string, Queue>;
+  categoryById: Map<string, Category>;
 };
 
 export function buildEngineMessageLookups(
   planners: Planner[],
   locations: SerializedLocation[],
   queues: Queue[] = [],
+  categories: Category[] = [],
 ): EngineMessageLookups {
   return {
     plannerById: new Map(planners.map((p) => [p.id, p])),
     locationById: new Map(locations.map((l) => [l.id, l])),
     queueById: new Map(queues.map((q) => [q.id, q])),
+    categoryById: new Map(categories.map((c) => [c.id, c])),
   };
 }
 
@@ -105,13 +113,12 @@ export function renderEngineMessage(
       const title = planner
         ? `Couldn't place: "${planner.title}"`
         : `Couldn't place task`;
-      const body = `Needs ${formatMinutes(payload.duration)}. Largest available gap is ${formatMinutes(payload.maxCapacity)} given current templates and category constraints.`;
       return {
         id: message.id,
         tag: "TOO LARGE",
         tone,
         title,
-        body,
+        body: tooLargeBody(payload, planner, lookups),
         goToDate: null,
       };
     }
@@ -134,12 +141,17 @@ export function renderEngineMessage(
               : ""
           }.`
         : "";
+      const body =
+        payload.reason === SchedulingFailureReason.IMPOSSIBLE_CONSTRAINTS &&
+        planner
+          ? impossibleConstraintsBody(planner, lookups)
+          : unschedulableBody(payload.reason);
       return {
         id: message.id,
         tag: "UNPLACED",
         tone,
         title,
-        body: `${unschedulableBody(payload.reason)}${partialNote}`,
+        body: `${body}${partialNote}`,
         goToDate: null,
       };
     }
@@ -339,6 +351,224 @@ function locationLabel(
 ): string {
   if (!id) return "Anywhere";
   return lookups.locationById.get(id)?.name ?? "Unknown";
+}
+
+// ---- Constraint attribution (TASK_TOO_LARGE / IMPOSSIBLE_CONSTRAINTS) ----
+// Derived from the CURRENT entity tree, house-style: the payload carries ids
+// and the emit-time limitingAxis fact; which rows contribute allowed times
+// and which categories' windows apply are re-resolved here so a rename or
+// re-filing never rots the prose.
+
+function describeDayList(days: number[] | null): string | null {
+  if (!days || days.length === 0 || days.length >= 7) return null;
+  const sorted = [...days].sort((a, b) => a - b);
+  const parts: string[] = [];
+  let runStart = sorted[0];
+  let prev = sorted[0];
+  const flush = () => {
+    if (runStart === prev) parts.push(WEEKDAY_LABELS[runStart]);
+    else if (prev === runStart + 1)
+      parts.push(`${WEEKDAY_LABELS[runStart]}, ${WEEKDAY_LABELS[prev]}`);
+    else parts.push(`${WEEKDAY_LABELS[runStart]}–${WEEKDAY_LABELS[prev]}`);
+  };
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === prev + 1) {
+      prev = sorted[i];
+      continue;
+    }
+    flush();
+    runStart = sorted[i];
+    prev = sorted[i];
+  }
+  flush();
+  return parts.join(", ");
+}
+
+function describeAllowedSettings(settings: AllowedTimesSettings): string {
+  const days = describeDayList(settings.days);
+  const ranges = settings.ranges
+    ?.map((r) => `${r.startTime}–${r.endTime}`)
+    .join(", ");
+  if (days && ranges) return `${days} ${ranges}`;
+  return days ?? ranges ?? "any time";
+}
+
+type AllowedSource = { title: string; own: boolean; text: string };
+
+// The rows whose allowed times bind this planner: its own plus every
+// ancestor's (constraints inherit down the tree). Leaf-first order.
+function collectAllowedSources(
+  planner: Planner,
+  lookups: EngineMessageLookups,
+): AllowedSource[] {
+  const sources: AllowedSource[] = [];
+  const seen = new Set<string>();
+  let current: Planner | undefined = planner;
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    const parsed = parseAllowedTimes(current.allowedTimes);
+    if (parsed) {
+      sources.push({
+        title: current.title,
+        own: current.id === planner.id,
+        text: describeAllowedSettings(parsed),
+      });
+    }
+    current = current.parentId
+      ? lookups.plannerById.get(current.parentId)
+      : undefined;
+  }
+  return sources;
+}
+
+function allowedTimesPhrase(sources: AllowedSource[]): string | null {
+  if (sources.length === 0) return null;
+  return sources
+    .map((s) =>
+      s.own
+        ? `its allowed times (${s.text})`
+        : `the allowed times it inherits from "${s.title}" (${s.text})`,
+    )
+    .join(" and ");
+}
+
+// Mirrors the engine's category resolution: own parent-chain value first,
+// then the queue-lent category for categoryless root members
+// (applyQueueCategoryInheritance).
+function effectiveCategoryFor(
+  planner: Planner,
+  lookups: EngineMessageLookups,
+): Category | null {
+  const seen = new Set<string>();
+  let current: Planner | undefined = planner;
+  let root: Planner = planner;
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    root = current;
+    if (current.categoryId) {
+      return lookups.categoryById.get(current.categoryId) ?? null;
+    }
+    current = current.parentId
+      ? lookups.plannerById.get(current.parentId)
+      : undefined;
+  }
+  for (const queue of lookups.queueById.values()) {
+    if (!queue.categoryId) continue;
+    if (queue.members?.some((m) => m.plannerId === root.id)) {
+      return lookups.categoryById.get(queue.categoryId) ?? null;
+    }
+  }
+  return null;
+}
+
+// Window-bearing categories whose windows the planner may occupy — the
+// engine's eligibility walk (own effective category + non-confined
+// ancestors), filtered to those that actually constrain geometry.
+function eligibleWindowCategoriesFor(
+  planner: Planner,
+  lookups: EngineMessageLookups,
+): Category[] {
+  const effective = effectiveCategoryFor(planner, lookups);
+  if (!effective) return [];
+  const categories = [...lookups.categoryById.values()];
+  const eligibleIds = buildCategoryEligibilityMap(categories).get(effective.id);
+  if (!eligibleIds) return [];
+  return categories.filter(
+    (c) => eligibleIds.has(c.id) && c.useTimeWindows && c.timeSlots.length > 0,
+  );
+}
+
+function largestWindowCategoryName(eligible: Category[]): string | null {
+  let best: { name: string; minutes: number } | null = null;
+  for (const category of eligible) {
+    for (const window of category.timeSlots) {
+      const [sh, sm] = window.startTime.split(":").map(Number);
+      const [eh, em] = window.endTime.split(":").map(Number);
+      const startMin = sh * 60 + sm;
+      let endMin = eh * 60 + em;
+      if (endMin <= startMin) endMin += 24 * 60;
+      const minutes = endMin - startMin;
+      if (!best || minutes > best.minutes) {
+        best = { name: category.name, minutes };
+      }
+    }
+  }
+  return best?.name ?? null;
+}
+
+function joinQuoted(names: string[]): string {
+  const quoted = names.map((n) => `"${n}"`);
+  if (quoted.length <= 1) return quoted[0] ?? "";
+  return `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function tooLargeBody(
+  payload: Extract<EngineMessagePayload, { type: "TASK_TOO_LARGE" }>,
+  planner: Planner | undefined,
+  lookups: EngineMessageLookups,
+): string {
+  const needs = `Needs ${formatMinutes(payload.duration)}.`;
+  const generic = `${needs} Largest available gap is ${formatMinutes(payload.maxCapacity)} given current templates and category constraints.`;
+  if (!planner || !payload.limitingAxis) return generic;
+
+  const cap = formatMinutes(payload.maxCapacity);
+  const allowed = allowedTimesPhrase(collectAllowedSources(planner, lookups));
+  const windowCategories = eligibleWindowCategoriesFor(planner, lookups);
+  const windowNames = joinQuoted(windowCategories.map((c) => c.name));
+
+  switch (payload.limitingAxis) {
+    case "templateGaps":
+      return payload.maxCapacity === 0
+        ? `Can never be scheduled: your weekly templates leave no free time at all.`
+        : `${needs} The longest free stretch between your weekly templates is ${cap}.`;
+    case "categoryWindow": {
+      const name = largestWindowCategoryName(windowCategories);
+      return name
+        ? `${needs} The largest "${name}" window is ${cap}.`
+        : generic;
+    }
+    case "allowedTimes":
+      return allowed
+        ? `${needs} ${capitalize(allowed)} never hold more than ${cap} in one stretch.`
+        : generic;
+    case "allowedTimesWindows":
+      return allowed && windowNames
+        ? `${needs} Where ${allowed} overlap the ${windowNames} windows, the longest stretch is ${cap}.`
+        : generic;
+    case "templateIntersection": {
+      const inside =
+        allowed && windowNames
+          ? `inside ${allowed} and the ${windowNames} windows`
+          : allowed
+            ? `inside ${allowed}`
+            : windowNames
+              ? `inside the ${windowNames} windows`
+              : null;
+      if (!inside) return generic;
+      return payload.maxCapacity === 0
+        ? `Can never be scheduled: your weekly templates cover every moment ${inside}.`
+        : `${needs} Around your weekly templates, the longest free stretch ${inside} is ${cap}.`;
+    }
+    default:
+      return generic;
+  }
+}
+
+function impossibleConstraintsBody(
+  planner: Planner,
+  lookups: EngineMessageLookups,
+): string {
+  const allowed = allowedTimesPhrase(collectAllowedSources(planner, lookups));
+  const windowCategories = eligibleWindowCategoriesFor(planner, lookups);
+  const windowNames = joinQuoted(windowCategories.map((c) => c.name));
+  if (!allowed || !windowNames) {
+    return unschedulableBody(SchedulingFailureReason.IMPOSSIBLE_CONSTRAINTS);
+  }
+  return `${capitalize(allowed)} and the ${windowNames} scheduled windows never overlap — no week has a moment where both permit it. Widen its allowed times or the ${windowNames} windows.`;
 }
 
 // Prose lives with the renderer, not the engine's SchedulingFailure — the

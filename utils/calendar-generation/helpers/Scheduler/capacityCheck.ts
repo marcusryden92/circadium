@@ -1,9 +1,21 @@
 import { Planner, Category } from "@/types/prisma";
 import { PerTemplateMask } from "../../models/TemplateModels";
+import type { CapacityLimitingAxis } from "../../models/EngineMessage";
 import { Slot } from "../../models/TimeSlot";
 import { gapIntervalsForDay } from "../TemplateExpander/gapIntervalsForDay";
 import { expandSlotForDay } from "../TimeSlotManager/expandSlotForDay";
 import { dateTimeService } from "../../utils/dateTimeService";
+import {
+  AllowedTimesSettings,
+  DateInterval,
+  intersectIntervalLists,
+  intersectIntervalWithAllowed,
+  maxAllowedBlockMinutes,
+  maxConstrainedBlockMinutes,
+  mergeIntervals,
+  rangeIsOvernight,
+  type WeeklyWindowOccurrence,
+} from "../../../allowedTimes";
 import {
   parseTaskSplitting,
   minChunkRequired,
@@ -72,13 +84,14 @@ function subtractIntervals(
   return pieces;
 }
 
-// Upper bound on the duration this specific task could ever occupy in a clean
-// week, accounting for:
-//   - templates carving the day into gap intervals,
-//   - strict categories the task is NOT eligible for — those subtract from any
-//     gap they overlap (the task can never use them),
-//   - if the task is window-constrained, the largest single window across the
-//     categories it is eligible for caps the result.
+// Upper bounds on the duration this specific task could ever occupy in a clean
+// week, kept as two separate facts so the composed gate can attribute which
+// one bound the leaf:
+//   - largestGap: templates carve the day into gap intervals, and strict
+//     categories the task is NOT eligible for subtract from any gap they
+//     overlap (the task can never use them),
+//   - categoryCeiling: if the task is window-constrained, the largest single
+//     window across the categories it is eligible for (Infinity otherwise).
 // Used to short-circuit TOO_LARGE at task entry before any slot-picking work.
 //
 // `eligibleCategoryIds` is the task's own effective category plus the
@@ -88,15 +101,20 @@ function subtractIntervals(
 // Cache is keyed by `categoryId ?? "anywhere"` because the calculation is
 // identical for all tasks that resolve to the same effective category (and thus
 // the same eligible set). Caller owns the cache (creates one per scheduling pass).
-export function maxEffectiveCapacityFor(
+export interface EffectiveCapacityBreakdown {
+  categoryCeiling: number;
+  largestGap: number;
+}
+
+export function effectiveCapacityBreakdown(
   task: Planner,
   perTemplateMasks: PerTemplateMask[],
   categories: Category[],
   plannerCategoryMap: Map<string, string | null>,
   currentDate: Date,
   categoryEligibilityMap?: Map<string, Set<string>>,
-  cache?: Map<string, number>,
-): number {
+  cache?: Map<string, EffectiveCapacityBreakdown>,
+): EffectiveCapacityBreakdown {
   const taskCategoryId = plannerCategoryMap.get(task.id) ?? null;
   const cacheKey = taskCategoryId ?? "anywhere";
   const cached = cache?.get(cacheKey);
@@ -118,10 +136,6 @@ export function maxEffectiveCapacityFor(
     for (const category of eligibleWindowCategories) {
       const w = largestWindowInCategory(category);
       if (w > categoryCeiling) categoryCeiling = w;
-    }
-    if (categoryCeiling === 0) {
-      cache?.set(cacheKey, 0);
-      return 0;
     }
   }
 
@@ -151,8 +165,246 @@ export function maxEffectiveCapacityFor(
     }
   }
 
-  const result = Math.min(categoryCeiling, largestGap);
+  const result = { categoryCeiling, largestGap };
   cache?.set(cacheKey, result);
+  return result;
+}
+
+// True weekly ceiling folding the week's template structure into the leaf's
+// placement constraints: the largest contiguous fragment of (template-free
+// gaps ∩ allowed times ∩ eligible category windows) over the sampled week.
+// The axes are gated independently elsewhere (maxAllowedBlockMinutes for the
+// allowed pattern alone, the template-gap largestGap and largest-window
+// ceiling in effectiveCapacityBreakdown, maxConstrainedBlockMinutes for the
+// exact allowed x windows pair), and every projection can look roomy while
+// the full intersection never hosts the block — an evening gap satisfies the
+// template axis, a wide daily range the allowed axis, a weekday window the
+// category axis — so the leaf would burn the whole expansion budget as
+// transient NO_SLOTS instead of failing loud as TOO_LARGE.
+//
+// Gaps are sampled per local day, so a fragment that chains across midnight
+// at placement time is invisible here. Every guard errs toward a LARGER
+// ceiling (a missed gate burns expansion budget; a false TOO_LARGE wrongly
+// fails the item):
+//   - an overnight allowed range drops the allowed axis,
+//   - an overnight eligible window drops the window axis (no axis left ⇒
+//     Infinity, check skipped),
+//   - a template whose per-occurrence exceptions can touch a day the
+//     remaining axes care about skips the check — a vacated occurrence can
+//     open room on a specific date the sampled week cannot see; exceptions on
+//     templates confined to irrelevant days cannot change the ceiling. The
+//     window axis's own exceptions guard lives in the caller
+//     (eligibleCategoryWindows returns [] when any eligible window carries
+//     exceptions).
+export function maxTemplateConstrainedBlockMinutes(
+  allowedChain: AllowedTimesSettings[],
+  eligibleWindows: WeeklyWindowOccurrence[],
+  perTemplateMasks: PerTemplateMask[],
+  currentDate: Date,
+): number {
+  const chain = allowedChain.some((s) => s.ranges?.some(rangeIsOvernight))
+    ? []
+    : allowedChain;
+  const windows = eligibleWindows.some(rangeIsOvernight)
+    ? []
+    : eligibleWindows;
+  if (chain.length === 0 && windows.length === 0) return Infinity;
+
+  const dayRelevant = (day: number): boolean =>
+    chain.every((s) => s.days === null || s.days.includes(day)) &&
+    (windows.length === 0 || windows.some((w) => w.day === day));
+  for (const mask of perTemplateMasks) {
+    const exceptions = mask.recurrenceExceptions;
+    if (!exceptions?.length) continue;
+    if (
+      dayRelevant(mask.dayOfWeek) ||
+      (mask.endMinutes > 1440 && dayRelevant((mask.dayOfWeek + 1) % 7))
+    ) {
+      return Infinity;
+    }
+    for (const exception of exceptions) {
+      if (
+        exception.type === "moved" &&
+        dayRelevant(new Date(exception.newStart).getDay())
+      ) {
+        return Infinity;
+      }
+    }
+  }
+
+  const weekStart = dateTimeService.startOfDay(currentDate);
+  let largest = 0;
+  for (let d = 0; d < 7; d++) {
+    const dayStart = dateTimeService.shiftDays(weekStart, d);
+    let dayWindows: DateInterval[] | null = null;
+    if (windows.length > 0) {
+      const occurrences: DateInterval[] = [];
+      for (const window of windows) {
+        const period = expandSlotForDay(window, dayStart);
+        if (period) occurrences.push(period);
+      }
+      if (occurrences.length === 0) continue;
+      dayWindows = mergeIntervals(occurrences);
+    }
+    for (const gap of gapIntervalsForDay(perTemplateMasks, dayStart)) {
+      let fragments: DateInterval[] = intersectIntervalWithAllowed(
+        gap.start,
+        gap.end,
+        chain,
+      );
+      if (dayWindows) {
+        fragments = intersectIntervalLists(fragments, dayWindows);
+      }
+      for (const fragment of fragments) {
+        const len =
+          (fragment.end.getTime() - fragment.start.getTime()) / 60000;
+        if (len > largest) largest = len;
+      }
+    }
+  }
+  return largest;
+}
+
+// Weekly occurrences of the window-bearing categories this leaf may occupy.
+// Returns [] (skipping the structural checks' window axis) when any eligible
+// window carries per-occurrence exceptions — a moved occurrence can land
+// inside the allowed times even when the weekly patterns never coincide.
+function eligibleCategoryWindows(
+  leaf: Planner,
+  categories: Category[],
+  plannerCategoryMap: Map<string, string | null>,
+  categoryEligibilityMap?: Map<string, Set<string>>,
+): WeeklyWindowOccurrence[] {
+  const effectiveCategoryId = plannerCategoryMap.get(leaf.id) ?? null;
+  if (!effectiveCategoryId) return [];
+  const eligibleIds = categoryEligibilityMap?.get(effectiveCategoryId);
+  if (!eligibleIds) return [];
+
+  const windows: WeeklyWindowOccurrence[] = [];
+  for (const category of categories) {
+    if (!eligibleIds.has(category.id)) continue;
+    if (!category.useTimeWindows || category.timeSlots.length === 0) continue;
+    for (const window of category.timeSlots) {
+      if (window.recurrenceExceptions) return [];
+      windows.push(window);
+    }
+  }
+  return windows;
+}
+
+export interface LeafStructuralCapacityArgs {
+  leaf: Planner;
+  allowedChain: AllowedTimesSettings[];
+  perTemplateMasks: PerTemplateMask[];
+  categories: Category[];
+  plannerCategoryMap: Map<string, string | null>;
+  currentDate: Date;
+  categoryEligibilityMap?: Map<string, Set<string>>;
+  capacityCache?: Map<string, EffectiveCapacityBreakdown>;
+  bufferTimeMinutes: number;
+  cache?: Map<string, LeafStructuralCapacity>;
+}
+
+export interface LeafStructuralCapacity {
+  maxCapacity: number;
+  // The allowed times and the eligible category windows never coincide in any
+  // week — structurally unplaceable no matter how far the horizon expands
+  // (surfaced as IMPOSSIBLE_CONSTRAINTS, distinct from TOO_LARGE).
+  impossibleConstraints: boolean;
+  // Which ceiling produced maxCapacity — rides the TOO_LARGE payload so the
+  // console can explain the failure specifically. Ties go to the earlier
+  // (simpler) axis: an intersection is only blamed when strictly tighter than
+  // its projections.
+  limitingAxis: CapacityLimitingAxis;
+}
+
+// The one structural ceiling for a leaf: every per-axis capacity bound plus
+// the true weekly intersections, composed exactly as the TOO_LARGE gate
+// enforces them. min() of independent per-axis ceilings misses the cases
+// where the constraint patterns never coincide — or coincide only where
+// templates sit — so the intersections are folded in here. placeLeaf AND the
+// proactive-expansion watermark must consult the SAME number: a leaf only an
+// intersection gate can fail would otherwise keep `biggestFit <
+// biggestRemaining` true forever (its compatible slots never materialize) and
+// burn the whole expansion budget before the gate ever fires. Every input is
+// run-static, so results cache per leaf id.
+export function leafStructuralCapacity(
+  args: LeafStructuralCapacityArgs,
+): LeafStructuralCapacity {
+  const {
+    leaf,
+    allowedChain,
+    perTemplateMasks,
+    categories,
+    plannerCategoryMap,
+    currentDate,
+    categoryEligibilityMap,
+    capacityCache,
+    bufferTimeMinutes,
+    cache,
+  } = args;
+  const cached = cache?.get(leaf.id);
+  if (cached !== undefined) return cached;
+
+  const breakdown = effectiveCapacityBreakdown(
+    leaf,
+    perTemplateMasks,
+    categories,
+    plannerCategoryMap,
+    currentDate,
+    categoryEligibilityMap,
+    capacityCache,
+  );
+  let maxCapacity = breakdown.largestGap;
+  let limitingAxis: CapacityLimitingAxis = "templateGaps";
+  const consider = (value: number, axis: CapacityLimitingAxis) => {
+    if (value < maxCapacity) {
+      maxCapacity = value;
+      limitingAxis = axis;
+    }
+  };
+  consider(breakdown.categoryCeiling, "categoryWindow");
+  consider(maxAllowedBlockMinutes(allowedChain), "allowedTimes");
+  let impossibleConstraints = false;
+
+  const eligibleWindows = eligibleCategoryWindows(
+    leaf,
+    categories,
+    plannerCategoryMap,
+    categoryEligibilityMap,
+  );
+  if (allowedChain.length > 0 && eligibleWindows.length > 0) {
+    const constrainedCeiling = maxConstrainedBlockMinutes(
+      allowedChain,
+      eligibleWindows,
+    );
+    if (constrainedCeiling === 0) impossibleConstraints = true;
+    consider(constrainedCeiling, "allowedTimesWindows");
+  }
+  if (
+    !impossibleConstraints &&
+    (allowedChain.length > 0 || eligibleWindows.length > 0)
+  ) {
+    // The fit-test requires the block PLUS its trailing buffer inside one
+    // fragment, so the usable ceiling is the largest intersection fragment
+    // minus the buffer — a block that exactly matches its largest fragment
+    // (or whose windows are template-covered) can never place.
+    const templateCeiling = maxTemplateConstrainedBlockMinutes(
+      allowedChain,
+      eligibleWindows,
+      perTemplateMasks,
+      currentDate,
+    );
+    if (templateCeiling !== Infinity) {
+      consider(
+        Math.max(0, templateCeiling - bufferTimeMinutes),
+        "templateIntersection",
+      );
+    }
+  }
+
+  const result = { maxCapacity, impossibleConstraints, limitingAxis };
+  cache?.set(leaf.id, result);
   return result;
 }
 

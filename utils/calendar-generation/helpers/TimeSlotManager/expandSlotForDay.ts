@@ -1,11 +1,11 @@
-import type { CategoryTimeWindow } from "@/types/prisma";
 import { hhmmToMinutes } from "../../utils/dateTimeService";
 
-// Resolve a recurring category time-slot rule into concrete bounds for a
+// Resolve a recurring category time-slot rule (CategoryTimeWindow, or any
+// weekly day/startTime/endTime occurrence) into concrete bounds for a
 // specific day. Returns null when the rule does not apply to that day-of-week.
 // Handles overnight slots (endTime <= startTime → period extends past midnight).
 export function expandSlotForDay(
-  timeSlot: CategoryTimeWindow,
+  timeSlot: { day: number; startTime: string; endTime: string },
   dayStart: Date,
 ): { start: Date; end: Date } | null {
   const dow = dayStart.getDay();

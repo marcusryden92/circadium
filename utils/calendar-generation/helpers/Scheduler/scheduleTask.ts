@@ -13,7 +13,9 @@ import {
   ChunkSizing,
   SchedulingContext,
   SchedulingFailure,
+  SlotSelectionResult,
 } from "../../models/SchedulingModels";
+import { SCHEDULING_CONFIG, SchedulingFailureReason } from "../../constants";
 import { validateTask } from "./validateTask";
 import { findValidSlots } from "./findValidSlots";
 import { selectBestSlot } from "./selectBestSlot";
@@ -62,51 +64,78 @@ export function scheduleTask(
     return { success: false, failure: validationError };
   }
 
-  // Phase 2: Find valid slots
-  const slotsResult = findValidSlots(
-    task,
-    slotManager,
-    context,
-    afterTime,
-    sizing?.minMinutes,
-  );
-  if ("failure" in slotsResult) {
-    recorder?.decision(SM.findValidSlots.noFittingSlots(task.duration), 1);
+  // Phases 2+3: find candidate slots, then select one, escalating through the
+  // search-window ladder. A rung whose candidates are geometrically absent OR
+  // all rejected at selection (capacity + travel, day budgets) hands off to
+  // the next wider rung — a non-empty inner window can still be entirely
+  // unusable, and horizon expansion never changes its content, so failing
+  // NO_SLOTS there would starve forever. The bounded rungs keep the fallback
+  // as near as possible (past ~two weeks the earliest-slot score saturates,
+  // and an uncapped scan would let location-grouping alone pick a slot months
+  // beyond the nearest fit). A rung whose window already covered the whole
+  // built fabric ends the ladder — wider scans would be byte-identical.
+  const windowLadder: (number | null)[] = [
+    SCHEDULING_CONFIG.SLOT_SEARCH_NEAR_WINDOW_DAYS,
+    SCHEDULING_CONFIG.SLOT_SEARCH_WIDE_WINDOW_DAYS,
+    null,
+  ];
+  let selection: SlotSelectionResult | undefined;
+  let lastFailure: SchedulingFailure | undefined;
+  for (const windowDays of windowLadder) {
+    const slotsResult = findValidSlots(
+      task,
+      slotManager,
+      context,
+      afterTime,
+      sizing?.minMinutes,
+      windowDays,
+    );
+    if ("failure" in slotsResult) {
+      recorder?.decision(SM.findValidSlots.noFittingSlots(task.duration), 1);
+      lastFailure = slotsResult.failure;
+      if (slotsResult.windowCoversFabric) break;
+      continue;
+    }
+
+    recorder?.decision(
+      SM.findValidSlots.foundFittingSlots(slotsResult.fittingSlots.length),
+      1,
+    );
+
+    const attempt = selectBestSlot(
+      task,
+      slotsResult.validSlots,
+      slotsResult.taskLocationId,
+      slotManager,
+      travelManager,
+      strategy,
+      context,
+      sizing,
+      slotsResult.effectiveAfter,
+    );
+    if (!("failure" in attempt)) {
+      selection = attempt;
+      break;
+    }
+    lastFailure = attempt.failure;
+    if (slotsResult.windowCoversFabric) break;
+  }
+  if (!selection) {
+    const failure = lastFailure ?? {
+      taskId: task.id,
+      taskTitle: task.title,
+      reason: SchedulingFailureReason.NO_SLOTS,
+      details: "No usable slot found",
+    };
     recorder?.setOutcome({
       kind: "failed",
-      reason: slotsResult.failure.reason,
-      details: slotsResult.failure.details,
+      reason: failure.reason,
+      details: failure.details,
     });
     recorder?.endTask(slotManager.slots);
-    return { success: false, failure: slotsResult.failure };
+    return { success: false, failure };
   }
-
-  recorder?.decision(
-    SM.findValidSlots.foundFittingSlots(slotsResult.fittingSlots.length),
-    1,
-  );
-
-  // Phase 3: Select best slot with travel calculation
-  const selectionResult = selectBestSlot(
-    task,
-    slotsResult.validSlots,
-    slotsResult.taskLocationId,
-    slotManager,
-    travelManager,
-    strategy,
-    context,
-    sizing,
-    slotsResult.effectiveAfter,
-  );
-  if ("failure" in selectionResult) {
-    recorder?.setOutcome({
-      kind: "failed",
-      reason: selectionResult.failure.reason,
-      details: selectionResult.failure.details,
-    });
-    recorder?.endTask(slotManager.slots);
-    return { success: false, failure: selectionResult.failure };
-  }
+  const selectionResult = selection;
 
   // Phase 4: Reserve the slot with travel
   const reservationResult = reserveTaskSlot(

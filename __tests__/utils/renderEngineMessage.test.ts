@@ -104,3 +104,192 @@ describe("renderEngineMessage precedence types", () => {
     expect(rendered!.body).toContain("Get a job");
   });
 });
+
+// Constraint attribution: TOO_LARGE / IMPOSSIBLE_CONSTRAINTS bodies name the
+// exact allowed times (with inheritance attribution) and window categories
+// involved, keyed by the emit-time limitingAxis fact — degrading to the
+// generic copy for legacy payloads or missing entities.
+describe("renderEngineMessage constraint attribution", () => {
+  const NINE_TO_FIVE = JSON.stringify({
+    days: [1, 2, 3, 4, 5],
+    ranges: [{ startTime: "09:00", endTime: "17:00" }],
+  });
+
+  const makePlanner = (
+    over: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    parentId: null,
+    categoryId: null,
+    allowedTimes: null,
+    ...over,
+  });
+
+  const professional = {
+    id: "cat-prof",
+    name: "Professional",
+    parentId: null,
+    confineToOwnWindows: false,
+    useTimeWindows: true,
+    timeSlots: [
+      { id: "w1", day: 1, startTime: "09:00", endTime: "12:00" },
+      { id: "w2", day: 2, startTime: "13:00", endTime: "17:00" },
+    ],
+  };
+
+  function tooLargeMessage(extra: Record<string, unknown>): EngineMessage {
+    return {
+      ...baseRow,
+      id: "TASK_TOO_LARGE::leaf",
+      type: "TASK_TOO_LARGE",
+      payload: {
+        type: "TASK_TOO_LARGE",
+        plannerId: "leaf",
+        duration: 360,
+        maxCapacity: 238,
+        ...extra,
+      },
+    } as unknown as EngineMessage;
+  }
+
+  it("renders the generic body for legacy payloads without a limitingAxis", () => {
+    const lookups = buildEngineMessageLookups(
+      [makePlanner({ id: "leaf", title: "Stripe" })] as never[],
+      [],
+    );
+    const rendered = renderEngineMessage(tooLargeMessage({}), lookups);
+    expect(rendered!.body).toContain("Largest available gap");
+  });
+
+  it("names the item's own allowed times with day and range detail", () => {
+    const lookups = buildEngineMessageLookups(
+      [
+        makePlanner({ id: "leaf", title: "Stripe", allowedTimes: NINE_TO_FIVE }),
+      ] as never[],
+      [],
+    );
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "allowedTimes" }),
+      lookups,
+    );
+    expect(rendered!.body).toContain("Its allowed times");
+    expect(rendered!.body).toContain("Mon–Fri 09:00–17:00");
+    expect(rendered!.body).toContain("3h58m");
+  });
+
+  it("attributes inherited allowed times to the ancestor that carries them", () => {
+    const lookups = buildEngineMessageLookups(
+      [
+        makePlanner({
+          id: "root",
+          title: "Launch Circadium",
+          allowedTimes: NINE_TO_FIVE,
+        }),
+        makePlanner({ id: "leaf", title: "Stripe", parentId: "root" }),
+      ] as never[],
+      [],
+    );
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "templateIntersection" }),
+      lookups,
+    );
+    expect(rendered!.body).toContain(
+      'the allowed times it inherits from "Launch Circadium"',
+    );
+    expect(rendered!.body).toContain("weekly templates");
+  });
+
+  it("names the category whose largest window bounds the item", () => {
+    const lookups = buildEngineMessageLookups(
+      [
+        makePlanner({ id: "leaf", title: "Stripe", categoryId: "cat-prof" }),
+      ] as never[],
+      [],
+      [],
+      [professional] as never[],
+    );
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "categoryWindow", maxCapacity: 240 }),
+      lookups,
+    );
+    expect(rendered!.body).toContain('The largest "Professional" window is 4h');
+  });
+
+  it("renders the never-fits copy when the template intersection is empty", () => {
+    const lookups = buildEngineMessageLookups(
+      [
+        makePlanner({ id: "leaf", title: "Stripe", categoryId: "cat-prof" }),
+      ] as never[],
+      [],
+      [],
+      [professional] as never[],
+    );
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "templateIntersection", maxCapacity: 0 }),
+      lookups,
+    );
+    expect(rendered!.body).toContain("Can never be scheduled");
+    expect(rendered!.body).toContain('the "Professional" windows');
+  });
+
+  it("resolves the queue-lent category for a categoryless root member", () => {
+    const lookups = buildEngineMessageLookups(
+      [makePlanner({ id: "leaf", title: "Stripe" })] as never[],
+      [],
+      [
+        {
+          id: "q1",
+          title: "Pipeline",
+          categoryId: "cat-prof",
+          members: [{ plannerId: "leaf" }],
+        },
+      ] as never[],
+      [professional] as never[],
+    );
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "templateIntersection", maxCapacity: 50 }),
+      lookups,
+    );
+    expect(rendered!.body).toContain('the "Professional" windows');
+  });
+
+  it("IMPOSSIBLE_CONSTRAINTS names both sides and keeps the generic fallback", () => {
+    const withEntities = buildEngineMessageLookups(
+      [
+        makePlanner({
+          id: "leaf",
+          title: "Stripe",
+          categoryId: "cat-prof",
+          allowedTimes: JSON.stringify({ days: [0], ranges: null }),
+        }),
+      ] as never[],
+      [],
+      [],
+      [professional] as never[],
+    );
+    const message: EngineMessage = {
+      ...baseRow,
+      id: "TASK_UNSCHEDULABLE::leaf|IMPOSSIBLE_CONSTRAINTS",
+      type: "TASK_UNSCHEDULABLE",
+      payload: {
+        type: "TASK_UNSCHEDULABLE",
+        plannerId: "leaf",
+        reason: "IMPOSSIBLE_CONSTRAINTS",
+      },
+    } as unknown as EngineMessage;
+
+    const specific = renderEngineMessage(message, withEntities);
+    expect(specific!.body).toContain("Its allowed times (Sun)");
+    expect(specific!.body).toContain('the "Professional" scheduled windows');
+
+    const generic = renderEngineMessage(message, emptyLookups);
+    expect(generic!.body).toContain("never overlap");
+  });
+
+  it("falls back to the generic body when the planner row is gone", () => {
+    const rendered = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "templateIntersection" }),
+      emptyLookups,
+    );
+    expect(rendered!.body).toContain("Largest available gap");
+  });
+});

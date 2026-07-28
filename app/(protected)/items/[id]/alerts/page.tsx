@@ -2,12 +2,19 @@
 
 import { RootState, AppDispatch } from "@/redux/store";
 import { useMemo, useCallback } from "react";
+import Link from "next/link";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useSelector, useDispatch } from "react-redux";
 import { useItem } from "../_components/ItemContext";
-import { dismissEngineMessage } from "@/redux/slices/engineOutputSlice";
+import {
+  dismissEngineMessage,
+  undismissEngineMessage,
+} from "@/redux/slices/engineOutputSlice";
 import { formatLastRun } from "@/utils/timeFormatting";
-import { toneColor } from "@/app/(protected)/calendar/_components/EngineConsole";
+import {
+  toneColor,
+  type ConsoleMessage,
+} from "@/app/(protected)/calendar/_components/EngineConsole";
 import {
   root,
   engineList,
@@ -17,34 +24,48 @@ import {
   engineSummary,
   engineCardLink,
   engineCard,
+  engineCardDismissed,
   engineDismissBtn,
+  engineDismissedToggle,
   engineCardHead,
   engineTag,
   engineCardTitle,
   engineCardBody,
 } from "./page.css";
-import { X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 
 import useRenderEngineMessages from "@/hooks/useRenderEngineMessage";
 
 export default function ItemAlertsPage() {
   const { item } = useItem();
   const dispatch = useDispatch<AppDispatch>();
-  const { planner, locations, queues, engineMessages, calendarEvents } =
-    useCalendarProvider();
-  const lastEngineRunAt = useSelector(
-    (state: RootState) => state.engineOutput.lastEngineRunAt,
-  );
-  const renderedMessages = useRenderEngineMessages(
+  const {
     planner,
     locations,
     queues,
+    categories,
     engineMessages,
-    item.id,
+    calendarEvents,
+  } = useCalendarProvider();
+  const lastEngineRunAt = useSelector(
+    (state: RootState) => state.engineOutput.lastEngineRunAt,
   );
+  const { messages: renderedMessages, dismissed: dismissedMessages } =
+    useRenderEngineMessages(
+      planner,
+      locations,
+      queues,
+      categories,
+      engineMessages,
+      item.id,
+    );
 
   const handleDismiss = useCallback(
     (id: string) => dispatch(dismissEngineMessage(id)),
+    [dispatch],
+  );
+  const handleRestore = useCallback(
+    (id: string) => dispatch(undismissEngineMessage(id)),
     [dispatch],
   );
 
@@ -62,6 +83,62 @@ export default function ItemAlertsPage() {
     [calendarEvents],
   );
 
+  const renderCard = (m: ConsoleMessage, dismissed: boolean) => {
+    const tc = toneColor(m.tone);
+    return (
+      <div
+        key={m.id}
+        className={
+          dismissed ? `${engineCard} ${engineCardDismissed}` : engineCard
+        }
+        style={{
+          borderColor: `color-mix(in srgb, ${tc} 60%, transparent)`,
+        }}
+      >
+        {m.drillHref && (
+          <Link
+            href={m.drillHref}
+            className={engineCardLink}
+            aria-label={`Open ${m.title}`}
+          >
+            {m.title}
+          </Link>
+        )}
+
+        {dismissed ? (
+          <button
+            type="button"
+            className={engineDismissBtn}
+            onClick={() => handleRestore(m.id)}
+            aria-label="Restore message"
+            title="Restore"
+          >
+            <RotateCcw size={13} strokeWidth={2.2} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={engineDismissBtn}
+            onClick={() => handleDismiss(m.id)}
+            aria-label="Dismiss message"
+            title="Dismiss"
+          >
+            <X size={13} strokeWidth={2.2} />
+          </button>
+        )}
+        <div className={engineCardContent}>
+          <div className={engineCardHead}>
+            <span className={engineTag} style={{ background: tc }}>
+              {m.tag}
+            </span>
+            <span className={engineCardTitle}>{m.title}</span>
+          </div>
+          <div className={engineCardBody}>{m.body}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={root}>
       <section>
@@ -74,43 +151,13 @@ export default function ItemAlertsPage() {
           </div>
         </div>
         <div className={engineList}>
-          {renderedMessages.map((m) => {
-            const tc = toneColor(m.tone);
-            return (
-              <div
-                key={m.id}
-                className={engineCard}
-                style={{
-                  borderColor: `color-mix(in srgb, ${tc} 60%, transparent)`,
-                }}
-              >
-                {m.drillTo && (
-                  <div className={engineCardLink} aria-label={`${m.title}`}>
-                    {m.title}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className={engineDismissBtn}
-                  onClick={() => handleDismiss(m.id)}
-                  aria-label="Dismiss message"
-                  title="Dismiss"
-                >
-                  <X size={13} strokeWidth={2.2} />
-                </button>
-                <div className={engineCardContent}>
-                  <div className={engineCardHead}>
-                    <span className={engineTag} style={{ background: tc }}>
-                      {m.tag}
-                    </span>
-                    <span className={engineCardTitle}>{m.title}</span>
-                  </div>
-                  <div className={engineCardBody}>{m.body}</div>
-                </div>
-              </div>
-            );
-          })}
+          {renderedMessages.map((m) => renderCard(m, false))}
+          {dismissedMessages.length > 0 && (
+            <div className={engineDismissedToggle}>
+              Dismissed ({dismissedMessages.length})
+            </div>
+          )}
+          {dismissedMessages.map((m) => renderCard(m, true))}
         </div>
       </section>
     </div>

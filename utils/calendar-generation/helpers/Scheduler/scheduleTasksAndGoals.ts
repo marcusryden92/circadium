@@ -8,7 +8,9 @@ import { expandSlots } from "./expandSlots";
 import { TravelPassRecorder } from "../TravelManager/TravelPassRecorder";
 import {
   largestCompatibleSlotForLargestTask,
-  maxEffectiveCapacityFor,
+  leafStructuralCapacity,
+  type EffectiveCapacityBreakdown,
+  type LeafStructuralCapacity,
   placementBlockMinutes,
 } from "./capacityCheck";
 import {
@@ -78,7 +80,8 @@ export function scheduleTasksAndGoals(
     context.plannerCategoryMap ?? new Map<string, string | null>();
   const categoryEligibilityMap =
     context.categoryEligibilityMap ?? new Map<string, Set<string>>();
-  const capacityCache = new Map<string, number>();
+  const capacityCache = new Map<string, EffectiveCapacityBreakdown>();
+  const leafCapacityCache = new Map<string, LeafStructuralCapacity>();
   const schedulableCategoryIds = new Set(categories.map((c) => c.id));
   const plannersById = new Map(allPlanners.map((p) => [p.id, p]));
 
@@ -227,8 +230,11 @@ export function scheduleTasksAndGoals(
 
   // Counts leaves that passed both gates and actually attempted placement in
   // the current pass — a pass with zero attempts is a precedence deadlock,
-  // not slot scarcity, so expansion cannot help it.
+  // not slot scarcity, so expansion cannot help it. attemptedLeafIds records
+  // WHICH leaves attempted, for the post-budget phase to tell a stuck source
+  // (its leaves attempt and fail) from a merely gate-blocked one.
   let attemptedThisPass = 0;
+  const attemptedLeafIds = new Set<string>();
 
   // Attempt one leaf. Returns whether it resolved (placed or permanently
   // failed) and should leave the pool; a skip (blocked / NO_SLOTS / partial
@@ -255,6 +261,7 @@ export function scheduleTasksAndGoals(
     }
 
     attemptedThisPass++;
+    attemptedLeafIds.add(leafId);
     const result = placeLeaf({
       leaf: node.leaf,
       scheduler,
@@ -264,6 +271,7 @@ export function scheduleTasksAndGoals(
       categoryEligibilityMap,
       currentDate: context.currentDate,
       capacityCache,
+      leafCapacityCache,
       splitState,
       scheduledTaskIds,
       failures,
@@ -364,16 +372,25 @@ export function scheduleTasksAndGoals(
       const leafId = node.leaf.id;
       if (chainBlocked(leafId) || crossBlocked(leafId)) continue;
       const duration = placementBlockMinutes(node.leaf);
-      const capacityCeiling = maxEffectiveCapacityFor(
-        node.leaf,
+      // The FULL structural ceiling, intersection gates included — the same
+      // number placeLeaf's TOO_LARGE gate enforces. Sizing the watermark on a
+      // looser ceiling starves the loop: a leaf only an intersection gate can
+      // fail keeps `biggestFit < biggestRemaining` true forever and burns the
+      // whole expansion budget before its first attempt fails it loud.
+      const { maxCapacity } = leafStructuralCapacity({
+        leaf: node.leaf,
+        allowedChain:
+          context.plannerConstraintsMap?.get(leafId)?.allowedTimes ?? [],
         perTemplateMasks,
         categories,
         plannerCategoryMap,
-        context.currentDate,
+        currentDate: context.currentDate,
         categoryEligibilityMap,
         capacityCache,
-      );
-      if (duration > capacityCeiling) continue;
+        bufferTimeMinutes: slotManager.bufferTimeMinutes,
+        cache: leafCapacityCache,
+      });
+      if (duration > maxCapacity) continue;
       if (biggestLeaf === null || duration > biggestRemaining) {
         biggestRemaining = duration;
         biggestLeaf = node.leaf;
@@ -457,31 +474,132 @@ export function scheduleTasksAndGoals(
     }
   }
 
+  // Post-budget resolution. The expansion budget is spent, but most of what
+  // is left is usually not stuck at all — it is gate-BLOCKED behind one stuck
+  // predecessor and has never even attempted. Stamping every unresolved
+  // source "horizon" at once and running a single score-ordered sweep (the
+  // old shape) let a chain's LAST member place unbounded near now — its
+  // predecessor's outcome was stamped with no lastEnd before the predecessor
+  // ever placed — putting queue members visibly out of order. Instead:
+  // repeated no-expansion passes (day-cap relaxation allowed). When a pass
+  // resolves nothing, stamp the horizon failure ONLY on sources that are
+  // genuinely stuck — one with an unresolved leaf that attempted and failed
+  // this pass, or whose leaf is trapped behind such a leaf through chain
+  // predecessors (a source whose leaves wait on another source's missing
+  // outcome is waiting, not stuck) — then keep passing: successors unblock
+  // one topological rank at a time,
+  // each bounded by the max end of what its predecessor actually placed, and
+  // a break is recorded only where a stamp was truly needed. Terminates:
+  // every pass either shrinks remaining, stamps a new source (both finite),
+  // or exits.
   if (remaining.length > 0) {
-    for (const edge of allEdges) {
-      if (!chainOutcome.has(edge.fromId)) {
-        chainOutcome.set(edge.fromId, {
+    const sourceIds = new Set<string>();
+    for (const edge of allEdges) sourceIds.add(edge.fromId);
+    const leafIdsBySource = new Map<string, string[]>();
+    for (const node of nodes) {
+      for (const rootId of completionRoots.get(node.leaf.id) ?? []) {
+        if (!sourceIds.has(rootId)) continue;
+        const list = leafIdsBySource.get(rootId);
+        if (list) list.push(node.leaf.id);
+        else leafIdsBySource.set(rootId, [node.leaf.id]);
+      }
+    }
+
+    let guard = remaining.length + sourceIds.size + 2;
+    while (remaining.length > 0 && guard-- > 0) {
+      context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
+      maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
+      resolveZeroLeafCandidates();
+      attemptedLeafIds.clear();
+      const resolvedIds = new Set<string>();
+      for (const node of remaining) {
+        if (attemptLeaf(node, true)) resolvedIds.add(node.leaf.id);
+      }
+      if (resolvedIds.size > 0) {
+        remaining = remaining.filter((n) => !resolvedIds.has(n.leaf.id));
+        continue;
+      }
+      // Transitive stuckness: a leaf that attempted and failed is stuck, and
+      // a leaf whose every unresolved chain predecessor is stuck can never
+      // attempt — its work is trapped behind the failure — so it is stuck
+      // too (a node-level anchor behind a stuck earlier step, a detour
+      // target behind a stuck host leaf). Leaves blocked on a MISSING
+      // cross-gate outcome stay out of the set: they are waiting on another
+      // source, and stamping theirs would let its successors place first.
+      const stuckLeafIds = new Set<string>();
+      for (const id of attemptedLeafIds) {
+        if (!isResolved(id)) stuckLeafIds.add(id);
+      }
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const node of remaining) {
+          const id = node.leaf.id;
+          if (stuckLeafIds.has(id) || isResolved(id)) continue;
+          const unresolvedPreds = (chainPreds.get(id) ?? []).filter(
+            (p) => !isResolved(p),
+          );
+          if (unresolvedPreds.length === 0) continue;
+          if (unresolvedPreds.every((p) => stuckLeafIds.has(p))) {
+            stuckLeafIds.add(id);
+            grew = true;
+          }
+        }
+      }
+      let stamped = false;
+      for (const sourceId of sourceIds) {
+        if (chainOutcome.has(sourceId)) continue;
+        const stuck = leafIdsBySource
+          .get(sourceId)
+          ?.some((id) => stuckLeafIds.has(id));
+        if (!stuck) continue;
+        chainOutcome.set(sourceId, {
           status: "failed",
           failCause: "horizon",
-          lastEnd: rootLastEnd.get(edge.fromId),
+          lastEnd: rootLastEnd.get(sourceId),
         });
+        stamped = true;
+      }
+      if (!stamped) break;
+    }
+
+    // Backstop for shapes even the transitive rule cannot see (e.g. a
+    // cross-gate cycle from stale data): stamp whatever outcome is still
+    // missing and sweep to quiescence so nothing stays gated on an outcome
+    // that will never arrive. Topological order is not guaranteed here — by
+    // construction these shapes have no consistent order — but multi-rank
+    // chains behind the stamps still resolve instead of being falsely
+    // reported unschedulable after a single sweep.
+    if (remaining.length > 0) {
+      let stampedAny = false;
+      for (const edge of allEdges) {
+        if (!chainOutcome.has(edge.fromId)) {
+          chainOutcome.set(edge.fromId, {
+            status: "failed",
+            failCause: "horizon",
+            lastEnd: rootLastEnd.get(edge.fromId),
+          });
+          stampedAny = true;
+        }
+      }
+      if (stampedAny) {
+        let backstopGuard = remaining.length + 2;
+        let progressed = true;
+        while (progressed && remaining.length > 0 && backstopGuard-- > 0) {
+          resolveZeroLeafCandidates();
+          const resolvedIds = new Set<string>();
+          for (const node of remaining) {
+            if (attemptLeaf(node, true)) resolvedIds.add(node.leaf.id);
+          }
+          progressed = resolvedIds.size > 0;
+          if (progressed) {
+            remaining = remaining.filter((n) => !resolvedIds.has(n.leaf.id));
+          }
+        }
       }
     }
     resolveZeroLeafCandidates();
   }
-
-  if (remaining.length > 0) {
-    context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
-    maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
-    const resolvedIds = new Set<string>();
-    for (const node of remaining) {
-      if (attemptLeaf(node, true)) resolvedIds.add(node.leaf.id);
-    }
-    if (resolvedIds.size > 0) {
-      remaining = remaining.filter((n) => !resolvedIds.has(n.leaf.id));
-    }
-  }
-  resolveZeroLeafCandidates();
 
   // One budget-exhaustion failure per structural root, not per leaf — message
   // identity (TASK_UNSCHEDULABLE id = plannerId) and console rows match the

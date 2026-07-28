@@ -398,6 +398,13 @@ export interface FindValidSlotsResult {
    * the same bound instead of being skipped wholesale.
    */
   effectiveAfter: Date;
+  /**
+   * True when the search window this call scanned already reached past the
+   * last built slot (or was uncapped) — a wider tier of the search ladder
+   * would return a byte-identical candidate set, so the caller must stop
+   * escalating instead of re-scanning the same fabric.
+   */
+  windowCoversFabric: boolean;
 }
 
 /**

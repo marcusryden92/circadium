@@ -77,17 +77,22 @@ export const SCHEDULING_CONFIG = {
    */
   MAX_HORIZON_EXPANSIONS: 30,
   /**
-   * Preference window (days from a task's effective earliest start) that the
-   * per-item slot finder tries FIRST. When the near window yields any fitting
-   * slot the task places there, so a nearer slot is always preferred over a
-   * farther one even after the fabric has expanded years out — otherwise a far
-   * slot could win on location-grouping score alone once the earliest-slot
-   * score saturates. Only when the near window is empty does the finder fall
-   * back to scanning the whole built fabric, the uncapped reach that lets an
-   * item find slots horizon expansion materialized past this window. It is a
-   * soft preference, never a hard cap: no slot is ever hidden.
+   * First rung of the slot-search window ladder (days from a task's effective
+   * earliest start). scheduleTask escalates NEAR -> WIDE -> uncapped: a tier
+   * whose candidates are geometrically absent OR all rejected at selection
+   * (capacity + travel, day budgets) hands off to the next, so a nearer
+   * usable slot is always preferred over a farther one — past ~two weeks the
+   * earliest-slot score saturates and an uncapped scan would let
+   * location-grouping alone pick a slot months beyond the nearest fit — while
+   * escalation on selection failure prevents the starvation where a non-empty
+   * near window is entirely unusable and horizon expansion can never change
+   * its content. Escalation stops early when a tier's window already covered
+   * the whole built fabric (a wider scan would be byte-identical). A soft
+   * preference ladder, never a hard cap: no slot is ever hidden.
    */
   SLOT_SEARCH_NEAR_WINDOW_DAYS: 90,
+  /** Second rung of the slot-search window ladder (see NEAR above). */
+  SLOT_SEARCH_WIDE_WINDOW_DAYS: 360,
   /** Minimum slot size in minutes to consider */
   MIN_SLOT_SIZE: 5,
   /** Buffer time between events in minutes */
