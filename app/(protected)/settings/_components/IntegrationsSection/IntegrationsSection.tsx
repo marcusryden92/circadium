@@ -720,8 +720,9 @@ export function IntegrationsSection() {
         <span className={fieldNote}>
           Google and Microsoft calendars added through a connected account
           refresh via their provider APIs; ICS feeds re-fetch their URL. All
-          refresh about once an hour when you use the app, or manually with
-          Refresh. Two-way sync is on the roadmap.
+          refresh automatically each time the app loads, or manually with
+          Refresh — here or from an imported event&apos;s popover. Two-way sync
+          is on the roadmap.
         </span>
       </div>
 

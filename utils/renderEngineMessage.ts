@@ -28,7 +28,10 @@ export type RenderedEngineMessage = {
   tag: string;
   tone: EngineMessageTone;
   title: string;
-  body: string;
+  // One entry per point: a single entry renders as a paragraph, several render
+  // as a bulleted list. The engine emits facts; how they're grouped into
+  // points is a presentation concern that lives here.
+  body: string[];
   // ISO datetime when the card references a specific placement the calendar
   // can jump to; null for types without a concrete date (recurring travel
   // patterns, unplaced tasks, aggregate summaries).
@@ -59,6 +62,10 @@ export function buildEngineMessageLookups(
 export function renderEngineMessage(
   message: EngineMessage,
   lookups: EngineMessageLookups,
+  // The user's between-events buffer preference. Some capacity ceilings have
+  // it subtracted (see tooLargeBody), which is what makes a "4h" gap report as
+  // "3h58m" — surfaced as a note so the number doesn't read as a bug.
+  bufferMinutes = 0,
 ): RenderedEngineMessage | null {
   // payload is Prisma.JsonValue in the DB. Guard the JSON shape first, then
   // narrow via the discriminant. An unknown or malformed shape (e.g. row
@@ -118,7 +125,7 @@ export function renderEngineMessage(
         tag: "TOO LARGE",
         tone,
         title,
-        body: tooLargeBody(payload, planner, lookups),
+        body: tooLargeBody(payload, planner, lookups, bufferMinutes),
         goToDate: null,
       };
     }
@@ -134,13 +141,13 @@ export function renderEngineMessage(
           : `Couldn't place: "${planner.title}"`
         : `Couldn't place task`;
       const partialNote = isPartial
-        ? ` ${formatMinutes(payload.remainingMinutes!)} still unplaced${
+        ? `${formatMinutes(payload.remainingMinutes!)} still unplaced${
             typeof payload.placedMinutes === "number" &&
             payload.placedMinutes > 0
               ? ` (${formatMinutes(payload.placedMinutes)} placed)`
               : ""
           }.`
-        : "";
+        : null;
       const body =
         payload.reason === SchedulingFailureReason.IMPOSSIBLE_CONSTRAINTS &&
         planner
@@ -151,7 +158,7 @@ export function renderEngineMessage(
         tag: "UNPLACED",
         tone,
         title,
-        body: `${body}${partialNote}`,
+        body: [body, ...(partialNote ? [partialNote] : [])],
         goToDate: null,
       };
     }
@@ -162,13 +169,12 @@ export function renderEngineMessage(
       const title = `"${label}" scheduled ${payload.daysLate} day${payload.daysLate === 1 ? "" : "s"} after deadline`;
       const scheduledLabel = formatDateLabel(payload.scheduledStart);
       const dueLabel = formatDateLabel(payload.deadline);
-      const body = `Scheduled ${scheduledLabel}. Deadline was ${dueLabel}.`;
       return {
         id: message.id,
         tag: "LATE",
         tone,
         title,
-        body,
+        body: [`Scheduled ${scheduledLabel}.`, `Deadline was ${dueLabel}.`],
         goToDate: payload.scheduledStart,
       };
     }
@@ -178,17 +184,17 @@ export function renderEngineMessage(
       const to = locationLabel(payload.toLocationId, lookups);
       const dayLabel = weekdayLabel(payload.dayOfWeek);
       const title = `Insufficient travel · ${from} → ${to} · ${dayLabel} ${payload.timeOfDay}`;
+      const shortage = `Short by ${formatMinutes(payload.shortageMinutes)} (placed ${formatMinutes(payload.actualMinutes)}, needs ${formatMinutes(payload.requiredMinutes)}).`;
       const scale =
         payload.affectedCount > 1
-          ? ` Recurs ${payload.affectedCount}× in the horizon.`
-          : "";
-      const body = `Short by ${formatMinutes(payload.shortageMinutes)} (placed ${formatMinutes(payload.actualMinutes)}, needs ${formatMinutes(payload.requiredMinutes)}).${scale}`;
+          ? `Recurs ${payload.affectedCount}× in the horizon.`
+          : null;
       return {
         id: message.id,
         tag: "TRAVEL",
         tone,
         title,
-        body,
+        body: [shortage, ...(scale ? [scale] : [])],
         goToDate: null,
       };
     }
@@ -209,7 +215,7 @@ export function renderEngineMessage(
         tag: "SPLIT",
         tone,
         title: `"${label}" placed with a compromise`,
-        body,
+        body: [body],
         goToDate: null,
       };
     }
@@ -230,7 +236,7 @@ export function renderEngineMessage(
         tag: "DAILY LIMIT",
         tone,
         title: `"${label}" placed over its daily limit`,
-        body,
+        body: [body],
         goToDate: null,
       };
     }
@@ -245,7 +251,9 @@ export function renderEngineMessage(
         tag: "QUEUE",
         tone,
         title: `Order broken in ${queueLabel}`,
-        body: `${failedLabel} couldn't be placed, so later items in the queue were scheduled without waiting for it.`,
+        body: [
+          `${failedLabel} couldn't be placed, so later items in the queue were scheduled without waiting for it.`,
+        ],
         goToDate: null,
       };
     }
@@ -265,7 +273,7 @@ export function renderEngineMessage(
         tag: "PREREQUISITE",
         tone,
         title: `${successorLabel} scheduled without its prerequisite`,
-        body: `${reason}, so ${successorLabel} was scheduled without waiting for it.`,
+        body: [`${reason}, so ${successorLabel} was scheduled without waiting for it.`],
         goToDate: null,
       };
     }
@@ -290,7 +298,9 @@ export function renderEngineMessage(
         tag: "HORIZON",
         tone,
         title: `Forecast for ${predecessorLabel} runs past the horizon`,
-        body: `The schedule couldn't reach the end of ${predecessorLabel}${context} within the planning horizon, so ${successorLabel} was scheduled without waiting for it.`,
+        body: [
+          `The schedule couldn't reach the end of ${predecessorLabel}${context} within the planning horizon, so ${successorLabel} was scheduled without waiting for it.`,
+        ],
         goToDate: null,
       };
     }
@@ -298,13 +308,12 @@ export function renderEngineMessage(
     case "SCHEDULED_OK": {
       const label = payload.placedCount === 1 ? "item" : "items";
       const title = `${payload.placedCount} ${label} successfully scheduled!`;
-      const body = `All candidates placed given current templates and constraints.`;
       return {
         id: message.id,
         tag: "OK",
         tone,
         title,
-        body,
+        body: [`All candidates placed given current templates and constraints.`],
         goToDate: null,
       };
     }
@@ -510,9 +519,13 @@ function tooLargeBody(
   payload: Extract<EngineMessagePayload, { type: "TASK_TOO_LARGE" }>,
   planner: Planner | undefined,
   lookups: EngineMessageLookups,
-): string {
+  bufferMinutes: number,
+): string[] {
   const needs = `Needs ${formatMinutes(payload.duration)}.`;
-  const generic = `${needs} Largest available gap is ${formatMinutes(payload.maxCapacity)} given current templates and category constraints.`;
+  const generic = [
+    needs,
+    `Largest available gap is ${formatMinutes(payload.maxCapacity)} given current templates and category constraints.`,
+  ];
   if (!planner || !payload.limitingAxis) return generic;
 
   const cap = formatMinutes(payload.maxCapacity);
@@ -520,24 +533,33 @@ function tooLargeBody(
   const windowCategories = eligibleWindowCategoriesFor(planner, lookups);
   const windowNames = joinQuoted(windowCategories.map((c) => c.name));
 
+  // Only the template-intersection ceiling has the between-events buffer
+  // subtracted (see leafStructuralCapacity), so a "4h" gap reports as "3h58m".
+  // A short parenthetical keeps the odd number from reading as a bug.
+  const bufferNote =
+    bufferMinutes > 0 && payload.maxCapacity > 0
+      ? ` (taking the ${formatMinutes(bufferMinutes)} buffer into account)`
+      : "";
+
   switch (payload.limitingAxis) {
     case "templateGaps":
       return payload.maxCapacity === 0
-        ? `Can never be scheduled: your weekly templates leave no free time at all.`
-        : `${needs} The longest free stretch between your weekly templates is ${cap}.`;
+        ? [`Can never be scheduled: your weekly templates leave no free time at all.`]
+        : [needs, `The longest free stretch between your weekly templates is ${cap}.`];
     case "categoryWindow": {
       const name = largestWindowCategoryName(windowCategories);
-      return name
-        ? `${needs} The largest "${name}" window is ${cap}.`
-        : generic;
+      return name ? [needs, `The largest "${name}" window is ${cap}.`] : generic;
     }
     case "allowedTimes":
       return allowed
-        ? `${needs} ${capitalize(allowed)} never hold more than ${cap} in one stretch.`
+        ? [needs, `${capitalize(allowed)} never hold more than ${cap} in one stretch.`]
         : generic;
     case "allowedTimesWindows":
       return allowed && windowNames
-        ? `${needs} Where ${allowed} overlap the ${windowNames} windows, the longest stretch is ${cap}.`
+        ? [
+            needs,
+            `Where ${allowed} overlap the ${windowNames} windows, the longest stretch is ${cap}.`,
+          ]
         : generic;
     case "templateIntersection": {
       const inside =
@@ -550,8 +572,11 @@ function tooLargeBody(
               : null;
       if (!inside) return generic;
       return payload.maxCapacity === 0
-        ? `Can never be scheduled: your weekly templates cover every moment ${inside}.`
-        : `${needs} Around your weekly templates, the longest free stretch ${inside} is ${cap}.`;
+        ? [`Can never be scheduled: your weekly templates cover every moment ${inside}.`]
+        : [
+            needs,
+            `Around your weekly templates, the longest free stretch ${inside} is ${cap}${bufferNote}.`,
+          ];
     }
     default:
       return generic;

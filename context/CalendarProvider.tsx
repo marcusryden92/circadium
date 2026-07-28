@@ -57,7 +57,6 @@ import {
   fetchExternalCalendarData,
   refreshExternalCalendarSource,
 } from "@/actions/externalCalendars";
-import { externalSourceNeedsRefresh } from "@/utils/external-calendar/refreshPolicy";
 import { hydrateHabitCompletions } from "@/redux/slices/habitCompletionsSlice";
 import { getHabitCompletions } from "@/actions/habitCompletions";
 import type {
@@ -354,10 +353,11 @@ export default function CalendarProvider({
     (state: RootState) => state.externalCalendar.events,
   );
 
-  // External-calendar bootstrap, once per app load: hydrate the slice from
-  // the DB, refresh TTL-stale feeds, then regen once so busy blocks from
-  // imported events shape this session's placements. Best-effort like the
-  // travel top-up — a dead feed keeps its lastError and stale rows.
+  // External-calendar bootstrap, once per app load (login redirect and hard
+  // refresh both land here): hydrate the slice from the DB, refresh every
+  // enabled source, then regen once so busy blocks from imported events shape
+  // this session's placements. Best-effort like the travel top-up — a dead
+  // feed keeps its lastError and stale rows.
   const externalBootstrapFired = useRef(false);
   useEffect(() => {
     if (!isCalendarLoaded || !userId || externalBootstrapFired.current) return;
@@ -372,9 +372,8 @@ export default function CalendarProvider({
             events: result.events,
           }),
         );
-        const now = new Date();
         for (const source of result.sources) {
-          if (!externalSourceNeedsRefresh(source, now)) continue;
+          if (!source.enabled) continue;
           const refreshed = await refreshExternalCalendarSource(source.id);
           if (refreshed.success) {
             dispatch(

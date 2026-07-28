@@ -148,15 +148,14 @@ export const engineDismissBtn = style([engineCardActionBtn, { right: 6 }]);
 
 export const engineGoToBtn = style([engineCardActionBtn, { right: 32 }]);
 
+// Badge-only header row. The title sits on its own line below (engineCardTitle)
+// so the badge shares this row with the absolute-positioned action buttons.
 export const engineCardHead = style({
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
   gap: space["2"],
-  flexWrap: "wrap",
-  // Reserve space for the absolute-positioned buttons in the top-right
-  // corner (dismiss + optional go-to) so a long title wraps before it slides
-  // under either. Sized for both buttons; cards without a go-to have a bit
-  // of extra breathing room, which reads consistently.
+  minHeight: 22,
+  // Keep the badge clear of the dismiss/go-to buttons in the top-right corner.
   paddingRight: space["12"],
 });
 
@@ -174,8 +173,7 @@ export const engineCardTitle = style([
   {
     color: vars.ink,
     lineHeight: 1.25,
-    flex: 1,
-    minWidth: 0,
+    marginTop: space["1.5"],
     transition: themeTransition,
   },
 ]);
@@ -187,5 +185,36 @@ export const engineCardBody = style([
     marginTop: space["1.5"],
     lineHeight: 1.45,
     transition: themeTransition,
+  },
+]);
+
+export const engineCardBullets = style({
+  listStyle: "none",
+  margin: 0,
+  marginTop: space["1.5"],
+  padding: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: space["1"],
+});
+
+export const engineCardBullet = style([
+  text.label,
+  {
+    position: "relative",
+    paddingLeft: space["4"],
+    color: vars.inkSoft,
+    lineHeight: 1.45,
+    transition: themeTransition,
+    "::before": {
+      content: '""',
+      position: "absolute",
+      left: space["1"],
+      top: "0.62em",
+      width: 3,
+      height: 3,
+      borderRadius: radii.pill,
+      background: vars.muted,
+    },
   },
 ]);

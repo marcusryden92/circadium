@@ -24,6 +24,8 @@ import {
   engineTag,
   engineCardTitle,
   engineCardBody,
+  engineCardBullets,
+  engineCardBullet,
 } from "../page.css";
 
 export type ConsoleMessage = RenderedEngineMessage & {
@@ -132,9 +134,19 @@ export function EngineConsole({
             <span className={engineTag} style={{ background: tc }}>
               {m.tag}
             </span>
-            <span className={engineCardTitle}>{m.title}</span>
           </div>
-          <div className={engineCardBody}>{m.body}</div>
+          <div className={engineCardTitle}>{m.title}</div>
+          {m.body.length > 1 ? (
+            <ul className={engineCardBullets}>
+              {m.body.map((point, i) => (
+                <li key={i} className={engineCardBullet}>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className={engineCardBody}>{m.body[0]}</div>
+          )}
         </div>
       </div>
     );

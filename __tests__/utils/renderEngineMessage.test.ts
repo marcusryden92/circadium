@@ -36,7 +36,7 @@ describe("renderEngineMessage precedence types", () => {
     expect(rendered).not.toBeNull();
     expect(rendered!.tag).toBe("QUEUE");
     expect(rendered!.title).toContain("a queue");
-    expect(rendered!.body).toContain("scheduled without waiting");
+    expect(rendered!.body.join(" ")).toContain("scheduled without waiting");
   });
 
   it("DEPENDENCY_BROKEN renders both causes with deleted planners", () => {
@@ -56,7 +56,7 @@ describe("renderEngineMessage precedence types", () => {
       const rendered = renderEngineMessage(message, emptyLookups);
       expect(rendered).not.toBeNull();
       expect(rendered!.tag).toBe("PREREQUISITE");
-      expect(rendered!.body).toContain("scheduled without waiting");
+      expect(rendered!.body.join(" ")).toContain("scheduled without waiting");
     }
   });
 
@@ -77,7 +77,7 @@ describe("renderEngineMessage precedence types", () => {
     const rendered = renderEngineMessage(message, emptyLookups);
     expect(rendered).not.toBeNull();
     expect(rendered!.tag).toBe("HORIZON");
-    expect(rendered!.body).toContain("in a queue");
+    expect(rendered!.body.join(" ")).toContain("in a queue");
   });
 
   it("resolves titles from the lookups when the entities exist", () => {
@@ -101,7 +101,7 @@ describe("renderEngineMessage precedence types", () => {
 
     const rendered = renderEngineMessage(message, lookups);
     expect(rendered!.title).toContain("Work");
-    expect(rendered!.body).toContain("Get a job");
+    expect(rendered!.body.join(" ")).toContain("Get a job");
   });
 });
 
@@ -157,7 +157,7 @@ describe("renderEngineMessage constraint attribution", () => {
       [],
     );
     const rendered = renderEngineMessage(tooLargeMessage({}), lookups);
-    expect(rendered!.body).toContain("Largest available gap");
+    expect(rendered!.body.join(" ")).toContain("Largest available gap");
   });
 
   it("names the item's own allowed times with day and range detail", () => {
@@ -171,9 +171,9 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "allowedTimes" }),
       lookups,
     );
-    expect(rendered!.body).toContain("Its allowed times");
-    expect(rendered!.body).toContain("Mon–Fri 09:00–17:00");
-    expect(rendered!.body).toContain("3h58m");
+    expect(rendered!.body.join(" ")).toContain("Its allowed times");
+    expect(rendered!.body.join(" ")).toContain("Mon–Fri 09:00–17:00");
+    expect(rendered!.body.join(" ")).toContain("3h58m");
   });
 
   it("attributes inherited allowed times to the ancestor that carries them", () => {
@@ -192,10 +192,10 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "templateIntersection" }),
       lookups,
     );
-    expect(rendered!.body).toContain(
+    expect(rendered!.body.join(" ")).toContain(
       'the allowed times it inherits from "Launch Circadium"',
     );
-    expect(rendered!.body).toContain("weekly templates");
+    expect(rendered!.body.join(" ")).toContain("weekly templates");
   });
 
   it("names the category whose largest window bounds the item", () => {
@@ -211,7 +211,7 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "categoryWindow", maxCapacity: 240 }),
       lookups,
     );
-    expect(rendered!.body).toContain('The largest "Professional" window is 4h');
+    expect(rendered!.body.join(" ")).toContain('The largest "Professional" window is 4h');
   });
 
   it("renders the never-fits copy when the template intersection is empty", () => {
@@ -227,8 +227,8 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "templateIntersection", maxCapacity: 0 }),
       lookups,
     );
-    expect(rendered!.body).toContain("Can never be scheduled");
-    expect(rendered!.body).toContain('the "Professional" windows');
+    expect(rendered!.body.join(" ")).toContain("Can never be scheduled");
+    expect(rendered!.body.join(" ")).toContain('the "Professional" windows');
   });
 
   it("resolves the queue-lent category for a categoryless root member", () => {
@@ -249,7 +249,7 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "templateIntersection", maxCapacity: 50 }),
       lookups,
     );
-    expect(rendered!.body).toContain('the "Professional" windows');
+    expect(rendered!.body.join(" ")).toContain('the "Professional" windows');
   });
 
   it("IMPOSSIBLE_CONSTRAINTS names both sides and keeps the generic fallback", () => {
@@ -278,11 +278,42 @@ describe("renderEngineMessage constraint attribution", () => {
     } as unknown as EngineMessage;
 
     const specific = renderEngineMessage(message, withEntities);
-    expect(specific!.body).toContain("Its allowed times (Sun)");
-    expect(specific!.body).toContain('the "Professional" scheduled windows');
+    expect(specific!.body.join(" ")).toContain("Its allowed times (Sun)");
+    expect(specific!.body.join(" ")).toContain('the "Professional" scheduled windows');
 
     const generic = renderEngineMessage(message, emptyLookups);
-    expect(generic!.body).toContain("never overlap");
+    expect(generic!.body.join(" ")).toContain("never overlap");
+  });
+
+  it("adds a buffer note when the template-intersection ceiling was buffer-reduced", () => {
+    const lookups = buildEngineMessageLookups(
+      [
+        makePlanner({
+          id: "root",
+          title: "Launch Circadium",
+          allowedTimes: NINE_TO_FIVE,
+        }),
+        makePlanner({ id: "leaf", title: "Stripe", parentId: "root" }),
+      ] as never[],
+      [],
+    );
+    const withBuffer = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "templateIntersection" }),
+      lookups,
+      2,
+    );
+    expect(withBuffer!.body.join(" ")).toContain(
+      "taking the 2m buffer into account",
+    );
+
+    // The note is specific to the buffer-reduced axis: the allowed-times
+    // ceiling reports raw fragment sizes, so it never gets the note.
+    const otherAxis = renderEngineMessage(
+      tooLargeMessage({ limitingAxis: "allowedTimes" }),
+      lookups,
+      2,
+    );
+    expect(otherAxis!.body.join(" ")).not.toContain("buffer");
   });
 
   it("falls back to the generic body when the planner row is gone", () => {
@@ -290,6 +321,6 @@ describe("renderEngineMessage constraint attribution", () => {
       tooLargeMessage({ limitingAxis: "templateIntersection" }),
       emptyLookups,
     );
-    expect(rendered!.body).toContain("Largest available gap");
+    expect(rendered!.body.join(" ")).toContain("Largest available gap");
   });
 });

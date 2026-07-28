@@ -1,13 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { CalendarClock, Settings } from "lucide-react";
+import { CalendarClock, RefreshCw, Settings } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
 import type { AppDispatch } from "@/redux/store";
-import { upsertExternalSource } from "@/redux/slices/externalCalendarSlice";
 import {
+  applyExternalRefresh,
+  upsertExternalSource,
+} from "@/redux/slices/externalCalendarSlice";
+import {
+  refreshExternalCalendarSource,
   toggleExternalEventBusyException,
   updateExternalCalendarSource,
 } from "@/actions/externalCalendars";
@@ -50,6 +54,7 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { updateAll, externalSources } = useCalendarProvider();
+  const [refreshing, setRefreshing] = useState(false);
 
   const ext = event.extendedProps as RuntimeEventExtendedProps;
   const sourceId = ext.externalSourceId;
@@ -91,6 +96,27 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
         updateAll();
       }
     });
+  };
+
+  const onRefreshSource = async () => {
+    if (!source || refreshing) return;
+    setRefreshing(true);
+    try {
+      const result = await refreshExternalCalendarSource(source.id);
+      if (result.success) {
+        dispatch(
+          applyExternalRefresh({
+            source: result.source,
+            events: result.events,
+          }),
+        );
+        updateAll();
+      } else if (result.source) {
+        dispatch(upsertExternalSource(result.source));
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -157,7 +183,7 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
             )}
 
             <PopoverFooter
-              primary={
+              utility={
                 <Button
                   variant="glass"
                   size="sm"
@@ -169,6 +195,19 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
                   <Settings size={13} strokeWidth={2} />
                   Calendar settings
                 </Button>
+              }
+              primary={
+                source ? (
+                  <Button
+                    variant="glass"
+                    size="sm"
+                    disabled={refreshing}
+                    onClick={() => void onRefreshSource()}
+                  >
+                    <RefreshCw size={13} strokeWidth={2} />
+                    {refreshing ? "Refreshing…" : "Refresh calendar"}
+                  </Button>
+                ) : undefined
               }
             />
           </div>

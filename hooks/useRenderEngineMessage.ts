@@ -17,6 +17,7 @@ export default function useRenderEngineMessages(
   queues: Queue[],
   categories: Category[],
   engineMessages: EngineMessage[],
+  bufferMinutes: number,
   filterId?: string,
 ) {
   const { active, dismissed } = useMemo(() => {
@@ -30,7 +31,7 @@ export default function useRenderEngineMessages(
     // (e.g. a persisted row from a newer client version). Drop those rather
     // than showing an undefined card — no signal is better than a crash.
     const render = (m: EngineMessage) => {
-      const rendered = renderEngineMessage(m, lookups);
+      const rendered = renderEngineMessage(m, lookups, bufferMinutes);
       if (!rendered) return [];
       // Match the calendar popover's item navigation: a root opens its item
       // page; a subtask opens its ROOT's subtasks tree with the edit drawer
@@ -61,7 +62,7 @@ export default function useRenderEngineMessages(
       active: engineMessages.filter((m) => !m.dismissed).flatMap(render),
       dismissed: engineMessages.filter((m) => m.dismissed).flatMap(render),
     };
-  }, [engineMessages, planner, locations, queues, categories]);
+  }, [engineMessages, planner, locations, queues, categories, bufferMinutes]);
 
   // Item-page filter: a message belongs to the viewed item when any planner
   // it references sits in the item's subtree — a goal's alerts include every
