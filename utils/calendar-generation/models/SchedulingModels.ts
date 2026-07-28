@@ -287,10 +287,8 @@ export interface LocationGroupingScoresConfig {
  * Location grouping strategy penalty configuration
  */
 export interface LocationGroupingPenaltiesConfig {
-  maxSingleTravelPenalty?: number;
-  maxDoubleTravelPenalty?: number;
-  singleTravelPenaltyDivisor?: number;
-  doubleTravelPenaltyDivisor?: number;
+  singleTravelPenaltyScale?: number;
+  doubleTravelPenaltyScale?: number;
 }
 
 /**

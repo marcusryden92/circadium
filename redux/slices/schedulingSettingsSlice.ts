@@ -63,10 +63,8 @@ export type LocationGroupingScores = {
 };
 
 export type LocationGroupingPenalties = {
-  maxSingleTravelPenalty: number;
-  maxDoubleTravelPenalty: number;
-  singleTravelPenaltyDivisor: number;
-  doubleTravelPenaltyDivisor: number;
+  singleTravelPenaltyScale: number;
+  doubleTravelPenaltyScale: number;
 };
 
 export type DebugStrategyConfig = {

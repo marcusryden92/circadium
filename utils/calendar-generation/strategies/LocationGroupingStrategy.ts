@@ -53,6 +53,21 @@ export class LocationGroupingStrategy implements SchedulingStrategy {
     const scores = this.scores;
     const penalties = this.penalties;
 
+    // Proportional travel penalty: ratio of travel to travel + task duration,
+    // scaled. Monotone in travel time with no saturation, so distance
+    // discriminates across the whole range — a 90-min commute for a 30-min
+    // errand is heavily penalized while the same commute wrapping a full
+    // workday barely registers. For a chunked placement task.duration is the
+    // chunk minimum (the fit-test size), a conservative stand-in for the
+    // eventual grant. Clamped so the penalty never drives the score negative.
+    const travelPenalty = (totalTravelMinutes: number, scale: number) => {
+      if (totalTravelMinutes <= 0) return 0;
+      const ratio =
+        totalTravelMinutes / (totalTravelMinutes + Math.max(0, task.duration));
+      return ratio * scale;
+    };
+    const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
     // If task has no location, return neutral score - doesn't affect grouping
     if (!task.locationId) {
       return scores.noLocation;
@@ -108,11 +123,10 @@ export class LocationGroupingStrategy implements SchedulingStrategy {
 
     if (prevMatches || nextMatches) {
       // One end matches, other doesn't - need travel on one side
-      const singleTravelPenalty = Math.min(
-        penalties.maxSingleTravelPenalty,
-        totalTravelTime / penalties.singleTravelPenaltyDivisor
+      return clamp01(
+        scores.oneMatch -
+          travelPenalty(totalTravelTime, penalties.singleTravelPenaltyScale)
       );
-      return scores.oneMatch - singleTravelPenalty;
     }
 
     if (!prevExists && !nextExists) {
@@ -122,19 +136,17 @@ export class LocationGroupingStrategy implements SchedulingStrategy {
 
     if (!prevExists || !nextExists) {
       // One end is open, other doesn't match - travel on one side
-      const singleTravelPenalty = Math.min(
-        penalties.maxSingleTravelPenalty,
-        totalTravelTime / penalties.singleTravelPenaltyDivisor
+      return clamp01(
+        scores.oneOpenNoMatch -
+          travelPenalty(totalTravelTime, penalties.singleTravelPenaltyScale)
       );
-      return scores.oneOpenNoMatch - singleTravelPenalty;
     }
 
     // Neither end matches and both exist - travel on both sides
-    const doubleTravelPenalty = Math.min(
-      penalties.maxDoubleTravelPenalty,
-      totalTravelTime / penalties.doubleTravelPenaltyDivisor
+    return clamp01(
+      scores.neitherMatch -
+        travelPenalty(totalTravelTime, penalties.doubleTravelPenaltyScale)
     );
-    return scores.neitherMatch - doubleTravelPenalty;
   }
 
   /**

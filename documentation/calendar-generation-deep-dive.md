@@ -506,7 +506,7 @@ interface SchedulingStrategy {
 ### Built-in strategies
 
 - **`EarliestSlotStrategy`** ([EarliestSlotStrategy.ts](../utils/calendar-generation/strategies/EarliestSlotStrategy.ts)) — Linear decay: `score = max(0, 1 - daysFromNow / 14)`. Task-independent. Day 0 → 1.0, Day 14+ → 0.0.
-- **`LocationGroupingStrategy`** ([LocationGroupingStrategy.ts](../utils/calendar-generation/strategies/LocationGroupingStrategy.ts)) — Examines the slot's `prevLocationId` / `nextLocationId` (or `currentLocationId` for `CategorySlot`) and applies a base sandwich-match score plus a travel-time penalty when locations don't match.
+- **`LocationGroupingStrategy`** ([LocationGroupingStrategy.ts](../utils/calendar-generation/strategies/LocationGroupingStrategy.ts)) — Examines the slot's `prevLocationId` / `nextLocationId` (or `currentLocationId` for `CategorySlot`) and applies a base sandwich-match score minus a **proportional travel penalty** when locations don't match: `penalty = scale * travelMinutes / (travelMinutes + taskDurationMinutes)`. Monotone in travel time with no saturation — a long commute for a short errand is heavily penalized, the same commute wrapping a full workday barely registers. The result is clamped to `[0, 1]`. For a chunked placement the duration is the chunk minimum (the fit-test size).
 
 ### Default constants (verbatim from [strategies/defaultStrategy.ts](../utils/calendar-generation/strategies/defaultStrategy.ts))
 
@@ -527,10 +527,8 @@ DEFAULT_LOCATION_GROUPING_SCORES = {
 };
 
 DEFAULT_LOCATION_GROUPING_PENALTIES = {
-  maxSingleTravelPenalty:     0.02,
-  maxDoubleTravelPenalty:     0.03,
-  singleTravelPenaltyDivisor: 600,   // penalty = travelMinutes / 600 (capped)
-  doubleTravelPenaltyDivisor: 400,
+  singleTravelPenaltyScale: 0.5,   // penalty at travel ratio 1.0, one-sided travel
+  doubleTravelPenaltyScale: 0.75,  // penalty at travel ratio 1.0, both sides
 };
 ```
 

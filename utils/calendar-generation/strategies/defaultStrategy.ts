@@ -43,16 +43,19 @@ export const DEFAULT_LOCATION_GROUPING_SCORES = {
 
 /**
  * Location grouping travel penalty configuration
+ *
+ * Penalty = travelRatio * scale, where
+ * travelRatio = travelMinutes / (travelMinutes + taskDurationMinutes).
+ * Proportional by design: a long commute for a short errand is heavily
+ * penalized, the same commute wrapping a full workday barely registers, and
+ * the penalty stays monotone in travel time with no saturation cap. A ratio
+ * of 1.0 is worth roughly the full sandwich spread (bothMatch - neitherMatch).
  */
 export const DEFAULT_LOCATION_GROUPING_PENALTIES = {
-  /** Max penalty for single-direction travel */
-  maxSingleTravelPenalty: 0.02,
-  /** Max penalty for double-direction travel */
-  maxDoubleTravelPenalty: 0.03,
-  /** Divisor for single travel penalty calculation (travel minutes / this = penalty) */
-  singleTravelPenaltyDivisor: 600,
-  /** Divisor for double travel penalty calculation */
-  doubleTravelPenaltyDivisor: 400,
+  /** Penalty at travel ratio 1.0 for single-direction travel */
+  singleTravelPenaltyScale: 0.5,
+  /** Penalty at travel ratio 1.0 for double-direction travel */
+  doubleTravelPenaltyScale: 0.75,
 } as const;
 
 
@@ -96,10 +99,8 @@ export type LocationGroupingScores = {
 };
 
 export type LocationGroupingPenalties = {
-  maxSingleTravelPenalty: number;
-  maxDoubleTravelPenalty: number;
-  singleTravelPenaltyDivisor: number;
-  doubleTravelPenaltyDivisor: number;
+  singleTravelPenaltyScale: number;
+  doubleTravelPenaltyScale: number;
 };
 
 export type StrategyConfig = {
