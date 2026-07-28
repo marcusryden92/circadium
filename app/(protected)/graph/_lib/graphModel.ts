@@ -8,6 +8,7 @@ import type {
 } from "@/types/prisma";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { plannerIdFromEventId } from "@/utils/planRecurrence";
+import { isCompletedSegmentEventId } from "@/utils/taskSplitting";
 import { sortQueueMembers } from "@/utils/queue-handlers/mutateQueueMembers";
 import { plannerIsCompleted } from "@/utils/plannerCompletion";
 
@@ -86,15 +87,38 @@ const makeRootResolver = (planner: Planner[]) => {
   };
 };
 
+// Completed-segment events on a goal-typed row WITH children are calendar
+// history from before the row became a container (a splittable task retyped
+// into a goal): the engine never schedules a goal container's own row, so
+// such segments must not drag the root's span back in time. A task-typed
+// row with children still schedules its own block — its segments are live.
+const makeStaleSegmentCheck = (planner: Planner[]) => {
+  const goalContainers = new Set<string>();
+  const goalIds = new Set<string>();
+  for (const row of planner) {
+    if (row.plannerType === "goal") goalIds.add(row.id);
+  }
+  for (const row of planner) {
+    if (row.parentId && goalIds.has(row.parentId)) {
+      goalContainers.add(row.parentId);
+    }
+  }
+  return (eventId: string, plannerId: string): boolean =>
+    isCompletedSegmentEventId(eventId) && goalContainers.has(plannerId);
+};
+
 export function buildRootSpans(
   calendar: SimpleEvent[],
   planner: Planner[],
 ): Map<string, GraphSpan> {
   const rootOf = makeRootResolver(planner);
+  const isStaleSegment = makeStaleSegmentCheck(planner);
   const spans = new Map<string, GraphSpan>();
   for (const event of calendar) {
     if (event.extendedProps?.eventType !== "planner") continue;
-    const rootId = rootOf(plannerIdFromEventId(event.id));
+    const plannerId = plannerIdFromEventId(event.id);
+    if (isStaleSegment(event.id, plannerId)) continue;
+    const rootId = rootOf(plannerId);
     if (!rootId) continue;
     const start = Date.parse(event.start);
     const end = Date.parse(event.end);
@@ -118,10 +142,12 @@ export function buildLeafSpans(
   planner: Planner[],
 ): Map<string, Map<string, GraphSpan>> {
   const rootOf = makeRootResolver(planner);
+  const isStaleSegment = makeStaleSegmentCheck(planner);
   const result = new Map<string, Map<string, GraphSpan>>();
   for (const event of calendar) {
     if (event.extendedProps?.eventType !== "planner") continue;
     const leafId = plannerIdFromEventId(event.id);
+    if (isStaleSegment(event.id, leafId)) continue;
     const rootId = rootOf(leafId);
     if (!rootId) continue;
     const start = Date.parse(event.start);

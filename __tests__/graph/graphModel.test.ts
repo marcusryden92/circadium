@@ -152,6 +152,63 @@ describe("buildRootSpans", () => {
     });
     expect(spans.has("template-1")).toBe(false);
   });
+
+  it("ignores stale completed segments on a goal container (splittable task retyped into a goal)", () => {
+    const planner = [
+      makePlanner({
+        id: "goal-1",
+        plannerType: "goal",
+        splitting: JSON.stringify({ minMinutes: 30, maxMinutes: 60 }),
+        completedSegments: JSON.stringify([
+          {
+            start: "2026-06-01T09:00:00.000Z",
+            end: "2026-06-01T10:00:00.000Z",
+          },
+        ]),
+      }),
+      makePlanner({ id: "leaf-1", parentId: "goal-1" }),
+      makePlanner({
+        id: "task-split",
+        splitting: JSON.stringify({ minMinutes: 30, maxMinutes: 60 }),
+      }),
+    ];
+    const calendar = [
+      // Stale history from before goal-1 became a container.
+      makeEvent(
+        "goal-1|done:2026-06-01T09:00:00.000Z",
+        "2026-06-01T09:00:00.000Z",
+        "2026-06-01T10:00:00.000Z",
+      ),
+      makeEvent(
+        "leaf-1",
+        "2026-07-15T09:00:00.000Z",
+        "2026-07-15T10:00:00.000Z",
+      ),
+      // A childless split task's segments are live and must keep counting.
+      makeEvent(
+        "task-split|done:2026-07-14T09:00:00.000Z",
+        "2026-07-14T09:00:00.000Z",
+        "2026-07-14T10:00:00.000Z",
+      ),
+    ];
+
+    const spans = buildRootSpans(calendar, planner);
+    expect(spans.get("goal-1")).toEqual({
+      start: Date.parse("2026-07-15T09:00:00.000Z"),
+      end: Date.parse("2026-07-15T10:00:00.000Z"),
+    });
+    expect(spans.get("task-split")).toEqual({
+      start: Date.parse("2026-07-14T09:00:00.000Z"),
+      end: Date.parse("2026-07-14T10:00:00.000Z"),
+    });
+
+    const leafSpans = buildLeafSpans(calendar, planner);
+    expect(leafSpans.get("goal-1")?.has("goal-1")).toBe(false);
+    expect(leafSpans.get("goal-1")?.get("leaf-1")).toEqual({
+      start: Date.parse("2026-07-15T09:00:00.000Z"),
+      end: Date.parse("2026-07-15T10:00:00.000Z"),
+    });
+  });
 });
 
 describe("buildGraphLanes", () => {

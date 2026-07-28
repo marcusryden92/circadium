@@ -122,6 +122,21 @@ export const completeHeader = style({
   gap: space["2"],
 });
 
+// Split items lead with logged progress instead of a completed-at date.
+export const splitCompletedRow = style({
+  display: "flex",
+  alignItems: "center",
+  gap: space["2"],
+});
+
+export const splitCompletedNote = style([
+  text.bodySm,
+  {
+    color: vars.inkSoft,
+    transition: themeTransition,
+  },
+]);
+
 // Sized just under the overview page's 22px completion checkbox so the two
 // surfaces read as the same control at the drawer's denser scale.
 export const completeCheckbox = style({

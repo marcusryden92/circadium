@@ -1,6 +1,6 @@
 "use client";
 
-import { space } from "@/lib/theme";
+import { space, vars } from "@/lib/theme";
 import {
   useEffect,
   useMemo,
@@ -25,9 +25,11 @@ import {
   Caption,
   FieldStack,
   Input,
+  ProgressBar,
   Switch,
   type ComboboxOption,
 } from "@/components/ui";
+import { formatMinutesToHours } from "@/utils/taskArrayUtils";
 import { canLinkAsDetour } from "@/utils/precedence/detourLinks";
 import { isValidPrecedenceEndpoint } from "@/utils/precedence/endpoints";
 import { plannerIsCompleted } from "@/utils/plannerCompletion";
@@ -80,6 +82,8 @@ import {
   completeSection,
   completeHeader,
   completeCheckbox,
+  splitCompletedRow,
+  splitCompletedNote,
   drawerFooter,
   footerActionGroup,
 } from "./EditDrawer.css";
@@ -202,6 +206,11 @@ export function EditDrawer() {
 
   const splitSettings = parseTaskSplitting(task.splitting);
   const splitCompleted = splitCompletedMinutes(task);
+
+  const effectiveCategory = categories.find(
+    (c) => c.id === getEffectiveCategoryId(planner, task.id),
+  );
+  const progressColor = effectiveCategory?.color ?? vars.accent.primary;
 
   const isLinked = !!task.linkedItemId;
   const linkedTarget = isLinked
@@ -393,12 +402,7 @@ export function EditDrawer() {
     setFocusedTask(result.newRootId);
   };
 
-  const promotedCategoryName = (() => {
-    const categoryId = getEffectiveCategoryId(planner, task.id);
-    return categoryId
-      ? (categories.find((c) => c.id === categoryId)?.name ?? null)
-      : null;
-  })();
+  const promotedCategoryName = effectiveCategory?.name ?? null;
 
   const handlePromote = () => {
     const result = promoteSubtree(planner, task.id);
@@ -465,7 +469,38 @@ export function EditDrawer() {
           </FieldStack>
         ) : (
           <>
-            {isLeaf && (
+            {isLeaf && splitSettings && (
+              <div className={completeSection}>
+                <span className={fieldLabel}>Completed</span>
+                <div className={splitCompletedRow}>
+                  {completionLocked ? (
+                    <span
+                      className={splitCompletedNote}
+                      title="Mark the goal ready before completing subtasks"
+                    >
+                      {formatMinutesToHours(splitCompleted)}
+                    </span>
+                  ) : (
+                    <DurationField
+                      minutes={splitCompleted}
+                      onCommit={commitSplitCompleted}
+                      ariaLabel="Completed time"
+                    />
+                  )}
+                  <span className={splitCompletedNote}>
+                    of {formatMinutesToHours(task.duration ?? 0)} done
+                  </span>
+                </div>
+                <ProgressBar
+                  value={splitCompleted}
+                  max={Math.max(task.duration ?? 0, 1)}
+                  color={progressColor}
+                  size="sm"
+                />
+              </div>
+            )}
+
+            {isLeaf && !splitSettings && (
               <div className={completeSection}>
                 <div className={completeHeader}>
                   <button
@@ -542,9 +577,7 @@ export function EditDrawer() {
                     duration={task.duration ?? 0}
                     completed={splitCompleted}
                     onChange={applySplitting}
-                    onCompletedCommit={
-                      completionLocked ? undefined : commitSplitCompleted
-                    }
+                    showCompleted={false}
                   />
                 )}
               </FieldStack>

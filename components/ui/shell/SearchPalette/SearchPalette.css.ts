@@ -118,7 +118,12 @@ export const item = style({
 });
 
 export const itemActive = style({
-  background: vars.glass.bgSoft,
+  background: vars.interactive.selectedFill,
+  selectors: {
+    "&:hover": {
+      background: vars.interactive.selectedFill,
+    },
+  },
 });
 
 export const itemIcon = style({

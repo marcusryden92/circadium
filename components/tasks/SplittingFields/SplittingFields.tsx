@@ -21,7 +21,7 @@ import {
 // The default a fresh "Split into chunks" toggle enables with.
 export const DEFAULT_SPLITTING_SETTINGS: TaskSplittingSettings = {
   minMinutes: 60,
-  maxMinutes: 120,
+  maxMinutes: SPLIT_MAX_UNLIMITED,
   maxMinutesPerDay: null,
   minSpacingMinutes: null,
 };
@@ -77,6 +77,7 @@ export function SplittingFields({
   completed,
   onChange,
   onCompletedCommit,
+  showCompleted = true,
 }: {
   settings: TaskSplittingSettings;
   duration: number;
@@ -86,6 +87,8 @@ export function SplittingFields({
   // instead of the read-only note. Hosts withhold it while completion is
   // locked (root not ready).
   onCompletedCommit?: (minutes: number) => void;
+  // False when the host renders its own completed/progress block (EditDrawer).
+  showCompleted?: boolean;
 }) {
   const commitMin = (raw: string) => {
     const parsed = Math.floor(Number(raw));
@@ -129,7 +132,8 @@ export function SplittingFields({
     if (!Number.isFinite(parsed)) return;
     onChange({
       ...settings,
-      maxMinutesPerDay: Math.max(settings.minMinutes, parsed),
+      maxMinutesPerDay:
+        parsed <= 0 ? null : Math.max(settings.minMinutes, parsed),
     });
   };
 
@@ -167,8 +171,8 @@ export function SplittingFields({
           <span className={inputCaption}>Max / day</span>
           <CommitNumberInput
             value={settings.maxMinutesPerDay}
-            placeholder="—"
-            ariaLabel="Maximum minutes per day"
+            placeholder="∞"
+            ariaLabel="Maximum minutes per day (0 or empty = no limit)"
             onCommit={commitPerDay}
           />
         </div>
@@ -176,13 +180,13 @@ export function SplittingFields({
           <span className={inputCaption}>Min gap</span>
           <CommitNumberInput
             value={settings.minSpacingMinutes ?? null}
-            placeholder="—"
+            placeholder="0"
             ariaLabel="Minimum minutes between chunks"
             onCommit={commitSpacing}
           />
         </div>
       </div>
-      {onCompletedCommit ? (
+      {!showCompleted ? null : onCompletedCommit ? (
         <div className={completedRow}>
           <DurationField
             minutes={completed}

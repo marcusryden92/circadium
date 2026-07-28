@@ -23,6 +23,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useSearch } from "../SearchContext";
 import { useCalendarProvider } from "@/context/CalendarProvider";
+import { getRootParentId } from "@/utils/goalPageHandlers";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { RootState } from "@/redux/store";
 import type { Planner, Category, Location } from "@/types/prisma";
@@ -124,14 +125,22 @@ export function SearchPalette() {
           .filter((x) => x.score > 0)
           .sort((a, b) => b.score - a.score)
           .slice(0, MAX_PER_GROUP)
-          .map(({ p }) => ({
-            kind: "item" as const,
-            id: p.id,
-            title: p.title || "Untitled",
-            sub: plannerSub(p),
-            icon: PLANNER_ICONS[p.plannerType] ?? CheckSquare,
-            href: `/items/${p.id}`,
-          }))
+          .map(({ p }) => {
+            // Sub-items open in their goal's subtasks view with the edit
+            // drawer focused, matching the calendar popover's deep link.
+            const rootId = p.parentId ? getRootParentId(planner, p.id) : null;
+            return {
+              kind: "item" as const,
+              id: p.id,
+              title: p.title || "Untitled",
+              sub: plannerSub(p),
+              icon: PLANNER_ICONS[p.plannerType] ?? CheckSquare,
+              href:
+                rootId && rootId !== p.id
+                  ? `/items/${rootId}/subtasks?focus=${p.id}`
+                  : `/items/${p.id}`,
+            };
+          })
       : [];
 
     const categoryResults: SearchResult[] = q

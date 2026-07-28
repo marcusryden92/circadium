@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Plus, Link2 } from "lucide-react";
+import { Plus, Link2, Scissors } from "lucide-react";
 
 import TaskDisplay from "./TaskDisplay";
 import { TaskHeaderProps } from "@/lib/taskItem";
@@ -10,6 +10,7 @@ import DurationDisplay from "./DurationDisplay";
 import { useDraggableContext } from "@/components/draggable/DraggableContext";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { addSubtask } from "@/utils/goalPageHandlers";
+import { parseTaskSplitting } from "@/utils/taskSplitting";
 import { iconBtn } from "@/lib/theme";
 import {
   headerRow,
@@ -63,6 +64,11 @@ export const TaskHeader = ({
     ? (planner.find((p) => p.id === task.linkedItemId)?.title ?? "Untitled")
     : null;
 
+  // Splitting only means chunked placement on childless rows — a container's
+  // stale settings shouldn't badge the row.
+  const isSplit =
+    subtasks.length === 0 && parseTaskSplitting(task.splitting) !== null;
+
   const dimInner = subtasks.length !== 0 && !itemIsFocused;
   const draggedSelf =
     displayDragBox && currentlyClickedItem?.parentId === task.id;
@@ -81,6 +87,15 @@ export const TaskHeader = ({
             aria-label={`Redirects into "${linkedTargetTitle}"`}
           >
             <Link2 size={13} strokeWidth={2} />
+          </span>
+        )}
+        {isSplit && (
+          <span
+            className={linkedIcon}
+            title="Split into chunks"
+            aria-label="Split into chunks"
+          >
+            <Scissors size={12} strokeWidth={2} />
           </span>
         )}
         <button
