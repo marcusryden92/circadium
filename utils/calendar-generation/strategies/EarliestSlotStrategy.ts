@@ -30,15 +30,20 @@ export class EarliestSlotStrategy implements SchedulingStrategy {
     const now = context.currentDate;
     const slotStart = slot.start;
 
-    // Calculate days from now to slot
+    // Days from now to slot; a slot already underway scores like day 0.
     const msPerDay = 24 * 60 * 60 * 1000;
-    const daysFromNow = (slotStart.getTime() - now.getTime()) / msPerDay;
+    const daysFromNow = Math.max(
+      0,
+      (slotStart.getTime() - now.getTime()) / msPerDay,
+    );
 
-    // Score decays over 14 days (typical scheduling window)
-    // Day 0 = 1.0, Day 14 = 0.0
-    const maxDays = 14;
-    const score = Math.max(0, 1 - daysFromNow / maxDays);
-
-    return score;
+    // Hyperbolic decay that never reaches zero, so earliness keeps
+    // discriminating across the whole search range (a linear cutoff went to
+    // exactly 0 past two weeks, degenerating far-horizon placement to array
+    // order). Day 0 = 1.0, day 7 = 0.5, day 28 = 0.2, day 90 ~ 0.072.
+    // The half-life constant is the tuning knob: larger = flatter = more
+    // willing to defer.
+    const halfLifeDays = 7;
+    return 1 / (1 + daysFromNow / halfLifeDays);
   }
 }

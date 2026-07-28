@@ -505,7 +505,7 @@ interface SchedulingStrategy {
 
 ### Built-in strategies
 
-- **`EarliestSlotStrategy`** ([EarliestSlotStrategy.ts](../utils/calendar-generation/strategies/EarliestSlotStrategy.ts)) — Linear decay: `score = max(0, 1 - daysFromNow / 14)`. Task-independent. Day 0 → 1.0, Day 14+ → 0.0.
+- **`EarliestSlotStrategy`** ([EarliestSlotStrategy.ts](../utils/calendar-generation/strategies/EarliestSlotStrategy.ts)) — Hyperbolic decay: `score = 1 / (1 + daysFromNow / 7)`. Task-independent, never reaches zero (a linear cutoff went to exactly 0 past two weeks, degenerating far-horizon placement to array order). Day 0 → 1.0, day 7 → 0.5, day 28 → 0.2, day 90 → ~0.072. The half-life constant (7) is the tuning knob: larger = flatter = more willing to defer.
 - **`LocationGroupingStrategy`** ([LocationGroupingStrategy.ts](../utils/calendar-generation/strategies/LocationGroupingStrategy.ts)) — Examines the slot's `prevLocationId` / `nextLocationId` (or `currentLocationId` for `CategorySlot`) and applies a base sandwich-match score minus a **proportional travel penalty** when locations don't match: `penalty = scale * travelMinutes / (travelMinutes + taskDurationMinutes)`. Monotone in travel time with no saturation — a long commute for a short errand is heavily penalized, the same commute wrapping a full workday barely registers. The result is clamped to `[0, 1]`. For a chunked placement the duration is the chunk minimum (the fit-test size).
 
 ### Default constants (verbatim from [strategies/defaultStrategy.ts](../utils/calendar-generation/strategies/defaultStrategy.ts))
