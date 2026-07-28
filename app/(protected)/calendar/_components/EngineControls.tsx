@@ -5,8 +5,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import {
   setBufferTimeMinutes as setBufferTimeMinutesAction,
+  setLocationGroupingPenalties,
   setStrategyWeights,
 } from "@/redux/slices/schedulingSettingsSlice";
+import { DEFAULT_LOCATION_GROUPING_PENALTIES } from "@/utils/calendar-generation/strategies/defaultStrategy";
 import { updateUserSchedulingPreferences } from "@/actions/scheduling";
 import type { AppDispatch, RootState } from "@/redux/store";
 import {
@@ -36,6 +38,16 @@ export function EngineControls() {
     (state: RootState) =>
       state.schedulingSettings.debugStrategyConfig.weights,
   );
+  const penalties = useSelector(
+    (state: RootState) =>
+      state.schedulingSettings.debugStrategyConfig.locationGrouping.penalties,
+  );
+  // Travel sensitivity is a single multiplier over the proportional penalty
+  // scales; the stored scales are the source of truth, so derive the slider
+  // position from the single-travel scale's ratio to its default.
+  const travelSensitivity =
+    penalties.singleTravelPenaltyScale /
+    DEFAULT_LOCATION_GROUPING_PENALTIES.singleTravelPenaltyScale;
 
   const [bufferDraft, setBufferDraft] = useState<string>(String(reduxBuffer));
   useEffect(() => {
@@ -74,11 +86,26 @@ export function EngineControls() {
     }, PERSIST_DEBOUNCE_MS);
   };
 
+  // Earliest slot stays a fixed 1.0 anchor: the composite is a weighted
+  // mean, so with the anchor pinned each remaining slider is a real degree
+  // of freedom (two sliders over two weights were one).
   const handleWeightChange = (
-    key: "earliestSlot" | "locationGrouping",
+    key: "locationGrouping" | "fitTightness",
     value: number,
   ) => {
     dispatch(setStrategyWeights({ [key]: value }));
+    scheduleRefresh();
+  };
+
+  const handleTravelSensitivityChange = (value: number) => {
+    dispatch(
+      setLocationGroupingPenalties({
+        singleTravelPenaltyScale:
+          DEFAULT_LOCATION_GROUPING_PENALTIES.singleTravelPenaltyScale * value,
+        doubleTravelPenaltyScale:
+          DEFAULT_LOCATION_GROUPING_PENALTIES.doubleTravelPenaltyScale * value,
+      }),
+    );
     scheduleRefresh();
   };
 
@@ -120,24 +147,6 @@ export function EngineControls() {
 
       <div className={controlRow}>
         <div className={controlHead}>
-          <span className={controlLabel}>Earliest slot</span>
-          <span className={controlValue}>{weights.earliestSlot.toFixed(2)}</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={2}
-          step={0.01}
-          value={weights.earliestSlot}
-          onChange={(e) =>
-            handleWeightChange("earliestSlot", parseFloat(e.target.value))
-          }
-          className={controlSlider}
-        />
-      </div>
-
-      <div className={controlRow}>
-        <div className={controlHead}>
           <span className={controlLabel}>Location grouping</span>
           <span className={controlValue}>
             {weights.locationGrouping.toFixed(2)}
@@ -151,6 +160,46 @@ export function EngineControls() {
           value={weights.locationGrouping}
           onChange={(e) =>
             handleWeightChange("locationGrouping", parseFloat(e.target.value))
+          }
+          className={controlSlider}
+        />
+      </div>
+
+      <div className={controlRow}>
+        <div className={controlHead}>
+          <span className={controlLabel}>Fit tightness</span>
+          <span className={controlValue}>
+            {weights.fitTightness.toFixed(2)}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={0.5}
+          step={0.01}
+          value={weights.fitTightness}
+          onChange={(e) =>
+            handleWeightChange("fitTightness", parseFloat(e.target.value))
+          }
+          className={controlSlider}
+        />
+      </div>
+
+      <div className={controlRow}>
+        <div className={controlHead}>
+          <span className={controlLabel}>Travel sensitivity</span>
+          <span className={controlValue}>
+            {travelSensitivity.toFixed(2)}x
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={3}
+          step={0.05}
+          value={travelSensitivity}
+          onChange={(e) =>
+            handleTravelSensitivityChange(parseFloat(e.target.value))
           }
           className={controlSlider}
         />
