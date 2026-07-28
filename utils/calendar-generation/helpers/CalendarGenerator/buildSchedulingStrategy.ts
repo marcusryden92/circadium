@@ -10,6 +10,7 @@ import {
 } from "../../strategies/SchedulingStrategy";
 import { EarliestSlotStrategy } from "../../strategies/EarliestSlotStrategy";
 import { LocationGroupingStrategy } from "../../strategies/LocationGroupingStrategy";
+import { FitTightnessStrategy } from "../../strategies/FitTightnessStrategy";
 import { DEFAULT_STRATEGY_WEIGHTS } from "../../strategies/defaultStrategy";
 import { StrategyConfig } from "../../models/SchedulingModels";
 
@@ -22,6 +23,12 @@ export function buildSchedulingStrategy(
       weight:
         config?.strategyWeights?.earliestSlot ??
         DEFAULT_STRATEGY_WEIGHTS.earliestSlot,
+    },
+    {
+      strategy: new FitTightnessStrategy(),
+      weight:
+        config?.strategyWeights?.fitTightness ??
+        DEFAULT_STRATEGY_WEIGHTS.fitTightness,
     },
   ];
 

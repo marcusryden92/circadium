@@ -36,6 +36,7 @@ export interface GenerateCalendarOptions {
   strategyWeights?: {
     earliestSlot?: number;
     locationGrouping?: number;
+    fitTightness?: number;
   };
   locationGroupingScores?: LocationGroupingScoresConfig;
   locationGroupingPenalties?: LocationGroupingPenaltiesConfig;

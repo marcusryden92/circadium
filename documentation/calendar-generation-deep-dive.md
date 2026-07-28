@@ -507,13 +507,15 @@ interface SchedulingStrategy {
 
 - **`EarliestSlotStrategy`** ([EarliestSlotStrategy.ts](../utils/calendar-generation/strategies/EarliestSlotStrategy.ts)) — Hyperbolic decay: `score = 1 / (1 + daysFromNow / 7)`. Task-independent, never reaches zero (a linear cutoff went to exactly 0 past two weeks, degenerating far-horizon placement to array order). Day 0 → 1.0, day 7 → 0.5, day 28 → 0.2, day 90 → ~0.072. The half-life constant (7) is the tuning knob: larger = flatter = more willing to defer.
 - **`LocationGroupingStrategy`** ([LocationGroupingStrategy.ts](../utils/calendar-generation/strategies/LocationGroupingStrategy.ts)) — Examines the slot's `prevLocationId` / `nextLocationId` (or `currentLocationId` for `CategorySlot`) and applies a base sandwich-match score minus a **proportional travel penalty** when locations don't match: `penalty = scale * travelMinutes / (travelMinutes + taskDurationMinutes)`. Monotone in travel time with no saturation — a long commute for a short errand is heavily penalized, the same commute wrapping a full workday barely registers. The result is clamped to `[0, 1]`. For a chunked placement the duration is the chunk minimum (the fit-test size).
+- **`FitTightnessStrategy`** ([FitTightnessStrategy.ts](../utils/calendar-generation/strategies/FitTightnessStrategy.ts)) — Fill ratio `task.duration / slot.durationMinutes`, clamped to `[0, 1]`: prefers snug slots so a 30-minute task takes a 35-minute gap instead of shattering a four-hour one. Weighted (0.1) to break ties among same-day slots without ever outweighing a full day of earliness. Sized placements — split chunks (`isChunkEventId`) and habit flexible blocks — return a rank-neutral constant, since their grant genuinely wants headroom to grow into.
 
 ### Default constants (verbatim from [strategies/defaultStrategy.ts](../utils/calendar-generation/strategies/defaultStrategy.ts))
 
 ```typescript
 DEFAULT_STRATEGY_WEIGHTS = {
-  earliestSlot:     1.0,
+  earliestSlot:     1.0,   // the fixed anchor — only ratios against it matter
   locationGrouping: 0.2,
+  fitTightness:     0.1,
 };
 
 DEFAULT_LOCATION_GROUPING_SCORES = {

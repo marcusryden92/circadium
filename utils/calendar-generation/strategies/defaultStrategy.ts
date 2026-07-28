@@ -14,10 +14,20 @@
  * These weights only affect slot scoring (e.g., location grouping)
  */
 export const DEFAULT_STRATEGY_WEIGHTS = {
-  /** Weight for earliest slot preference (baseline) */
+  /**
+   * Weight for earliest slot preference. The fixed 1.0 anchor: the composite
+   * is a weighted mean, so only ratios against this matter — tune the other
+   * weights, not this one.
+   */
   earliestSlot: 1.0,
   /** Weight for location-based grouping */
   locationGrouping: 0.2,
+  /**
+   * Weight for fit tightness (prefer snug slots). Sized to break ties among
+   * same-day slots without ever outweighing a full day of earliness: the max
+   * fill-ratio swing (0..1) must stay below the day-1 earliness drop.
+   */
+  fitTightness: 0.1,
 } as const;
 
 /**
@@ -86,6 +96,7 @@ export type StrategyConfigReadonly = typeof DEFAULT_STRATEGY_CONFIG;
 export type StrategyWeights = {
   earliestSlot: number;
   locationGrouping: number;
+  fitTightness: number;
 };
 
 export type LocationGroupingScores = {

@@ -50,6 +50,7 @@ export type SerializedTravelTime = {
 export type StrategyWeights = {
   earliestSlot: number;
   locationGrouping: number;
+  fitTightness: number;
 };
 
 export type LocationGroupingScores = {

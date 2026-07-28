@@ -307,6 +307,7 @@ export interface CalendarGenerationConfig {
   strategyWeights?: {
     earliestSlot?: number;
     locationGrouping?: number;
+    fitTightness?: number;
   };
   /** Location grouping strategy internal scores */
   locationGroupingScores?: LocationGroupingScoresConfig;
@@ -379,6 +380,7 @@ export interface StrategyConfig {
   strategyWeights?: {
     earliestSlot?: number;
     locationGrouping?: number;
+    fitTightness?: number;
   };
   locationGroupingScores?: LocationGroupingScoresConfig;
   locationGroupingPenalties?: LocationGroupingPenaltiesConfig;
