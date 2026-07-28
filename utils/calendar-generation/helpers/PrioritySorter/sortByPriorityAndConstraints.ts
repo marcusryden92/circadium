@@ -2,6 +2,7 @@ import { Planner, PlannerType } from "@/types/prisma";
 import { URGENCY_CONFIG } from "../../constants";
 import type { PrecedenceEdge } from "@/utils/precedence/types";
 import { placementBlockMinutes } from "../Scheduler/capacityCheck";
+import type { PlannerSchedulingConstraints } from "../CalendarGenerator/buildPlannerConstraintsMap";
 import {
   compareSchedulingOrder,
   edfSlackMinutes,
@@ -178,6 +179,7 @@ export function sortByPriorityAndConstraints(
   urgencyScores: Map<string, number>,
   plannerCategoryMap: Map<string, string | null> | undefined,
   currentDate: Date,
+  plannerConstraintsMap?: Map<string, PlannerSchedulingConstraints>,
 ): Planner[] {
   const plannerById = new Map(allPlanners.map((p) => [p.id, p]));
   const deadlineCache = new Map<string, Date | null>();
@@ -185,7 +187,11 @@ export function sortByPriorityAndConstraints(
   const withMeta = goalsAndTasks.map((item, index) => ({
     item,
     key: {
-      constrained: hasCategoryConstraint(item, allPlanners, plannerCategoryMap),
+      // An allowed-times restriction competes for slots as scarce as a
+      // category window's, so it qualifies for the constrained tier too.
+      constrained:
+        hasCategoryConstraint(item, allPlanners, plannerCategoryMap) ||
+        (plannerConstraintsMap?.get(item.id)?.allowedTimes.length ?? 0) > 0,
       slackMinutes: edfSlackMinutes(
         item,
         resolveInheritedDeadline(item, plannerById, deadlineCache),

@@ -334,12 +334,15 @@ export function scheduleTasksAndGoals(
     return false;
   };
 
-  // Category-constrained leaves pick slots first (they have strictly fewer
-  // options), then the EDF slack tier, then inherited score, then the
-  // clustering index — the SAME comparator sortByPriorityAndConstraints gives
-  // the candidate walk (compareSchedulingOrder); the two must never disagree.
+  // Constrained leaves pick slots first (they have strictly fewer options),
+  // then the EDF slack tier, then inherited score, then the clustering index
+  // — the SAME comparator sortByPriorityAndConstraints gives the candidate
+  // walk (compareSchedulingOrder); the two must never disagree. Constrained =
+  // a resolved category OR an allowed-times chain: a task restricted to
+  // Tuesday evenings competes for scarcer slots than most categories offer.
   const leafConstrained = (leaf: Planner): boolean =>
-    (plannerCategoryMap.get(leaf.id) ?? leaf.categoryId) !== null;
+    (plannerCategoryMap.get(leaf.id) ?? leaf.categoryId) !== null ||
+    (context.plannerConstraintsMap?.get(leaf.id)?.allowedTimes.length ?? 0) > 0;
   const deadlineCache = new Map<string, Date | null>();
   const leafOrderKeys = new Map<string, SchedulingOrderKey>(
     nodes.map((node) => [

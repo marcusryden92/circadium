@@ -6,6 +6,7 @@
 
 import { Planner, PlannerType } from "@/types/prisma";
 import { sortByPriorityAndConstraints } from "../PrioritySorter";
+import type { PlannerSchedulingConstraints } from "./buildPlannerConstraintsMap";
 import { taskIsCompleted } from "../../../taskHelpers";
 import { getScheduledLeafSequence } from "../../../goalPageHandlers";
 import { isOccurrenceEventId } from "../../../planRecurrence";
@@ -16,6 +17,7 @@ export function prepareCandidates(
   urgencyScores: Map<string, number>,
   plannerCategoryMap: Map<string, string | null> | undefined,
   currentDate: Date,
+  plannerConstraintsMap?: Map<string, PlannerSchedulingConstraints>,
 ): Planner[] {
   const plannersById = new Map(planners.map((p) => [p.id, p]));
 
@@ -75,5 +77,6 @@ export function prepareCandidates(
     urgencyScores,
     plannerCategoryMap,
     currentDate,
+    plannerConstraintsMap,
   );
 }
