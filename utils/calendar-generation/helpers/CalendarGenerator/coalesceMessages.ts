@@ -24,6 +24,7 @@ import { SchedulingFailure } from "../../models/SchedulingModels";
 import { SchedulingFailureReason } from "../../constants";
 import { taskIsCompleted } from "../../../taskHelpers";
 import { plannerIdFromEventId } from "../../../planRecurrence";
+import { resolveInheritedDeadline } from "../PrioritySorter/schedulingOrder";
 import type { SplitRelaxation } from "../Scheduler/scheduleSplitTask";
 import type { GoalCapRelaxation } from "../Scheduler/goalDayCap";
 import type { SequenceBreak } from "../Scheduler/precedenceGate";
@@ -393,38 +394,6 @@ function emitScheduledLateMessages(
   }
 
   return emits;
-}
-
-/**
- * Walk up the parent chain to find the nearest deadline. Cached per planner
- * so a wide tree with hundreds of leaves only pays one walk per branch.
- * Cycle-safe via a visited set — malformed data shouldn't hang the engine.
- */
-function resolveInheritedDeadline(
-  planner: Planner,
-  plannerById: Map<string, Planner>,
-  cache: Map<string, Date | null>,
-): Date | null {
-  const cached = cache.get(planner.id);
-  if (cached !== undefined) return cached;
-
-  const visited = new Set<string>();
-  let current: Planner | undefined = planner;
-  while (current) {
-    if (visited.has(current.id)) break;
-    visited.add(current.id);
-    if (current.deadline) {
-      const resolved = new Date(current.deadline);
-      cache.set(planner.id, resolved);
-      return resolved;
-    }
-    current = current.parentId
-      ? plannerById.get(current.parentId)
-      : undefined;
-  }
-
-  cache.set(planner.id, null);
-  return null;
 }
 
 /**

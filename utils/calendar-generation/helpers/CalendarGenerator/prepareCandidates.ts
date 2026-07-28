@@ -14,7 +14,8 @@ export function prepareCandidates(
   planners: Planner[],
   memoizedEventIds: Set<string>,
   urgencyScores: Map<string, number>,
-  plannerCategoryMap?: Map<string, string | null>,
+  plannerCategoryMap: Map<string, string | null> | undefined,
+  currentDate: Date,
 ): Planner[] {
   const plannersById = new Map(planners.map((p) => [p.id, p]));
 
@@ -73,5 +74,6 @@ export function prepareCandidates(
     candidates,
     urgencyScores,
     plannerCategoryMap,
+    currentDate,
   );
 }

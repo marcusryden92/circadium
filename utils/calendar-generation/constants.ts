@@ -133,6 +133,18 @@ export const SCHEDULING_CONFIG = {
    * horizon expansion it can't benefit from.
    */
   HABIT_HORIZON_DAYS: 14,
+  /**
+   * Earliest-deadline-first tier (see compareSchedulingOrder): items whose
+   * own-or-inherited deadline falls within EDF_HORIZON_DAYS sort by slack
+   * (time to deadline minus required placement block) ascending — above the
+   * score tier, below the category-constrained tier — so a task due tomorrow
+   * is never out-prioritized by deadline-free higher-priority work. Habit
+   * occurrences are excluded: their synthetic period deadline is a placement
+   * window, not a commitment. EDF_TIER_ENABLED is the kill switch for A/B
+   * comparison against a real calendar.
+   */
+  EDF_TIER_ENABLED: true,
+  EDF_HORIZON_DAYS: HORIZON_CHUNK_DAYS,
 } as const;
 
 /**

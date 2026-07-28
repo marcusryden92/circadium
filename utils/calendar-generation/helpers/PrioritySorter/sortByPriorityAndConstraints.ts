@@ -1,6 +1,12 @@
 import { Planner, PlannerType } from "@/types/prisma";
 import { URGENCY_CONFIG } from "../../constants";
 import type { PrecedenceEdge } from "@/utils/precedence/types";
+import { placementBlockMinutes } from "../Scheduler/capacityCheck";
+import {
+  compareSchedulingOrder,
+  edfSlackMinutes,
+  resolveInheritedDeadline,
+} from "./schedulingOrder";
 
 function calculateTaskUrgency(
   task: Planner,
@@ -170,23 +176,28 @@ export function sortByPriorityAndConstraints(
   allPlanners: Planner[],
   goalsAndTasks: Planner[],
   urgencyScores: Map<string, number>,
-  plannerCategoryMap?: Map<string, string | null>,
+  plannerCategoryMap: Map<string, string | null> | undefined,
+  currentDate: Date,
 ): Planner[] {
-  const withMeta = goalsAndTasks.map((item) => ({
+  const plannerById = new Map(allPlanners.map((p) => [p.id, p]));
+  const deadlineCache = new Map<string, Date | null>();
+
+  const withMeta = goalsAndTasks.map((item, index) => ({
     item,
-    urgencyScore: urgencyScores.get(item.id) ?? 0,
-    hasCategoryConstraint: hasCategoryConstraint(
-      item,
-      allPlanners,
-      plannerCategoryMap,
-    ),
+    key: {
+      constrained: hasCategoryConstraint(item, allPlanners, plannerCategoryMap),
+      slackMinutes: edfSlackMinutes(
+        item,
+        resolveInheritedDeadline(item, plannerById, deadlineCache),
+        currentDate,
+        placementBlockMinutes(item),
+      ),
+      score: urgencyScores.get(item.id) ?? 0,
+      index,
+    },
   }));
 
   return withMeta
-    .sort((a, b) => {
-      if (a.hasCategoryConstraint && !b.hasCategoryConstraint) return -1;
-      if (!a.hasCategoryConstraint && b.hasCategoryConstraint) return 1;
-      return b.urgencyScore - a.urgencyScore;
-    })
+    .sort((a, b) => compareSchedulingOrder(a.key, b.key))
     .map((row) => row.item);
 }

@@ -36,6 +36,12 @@ import {
 } from "./precedenceGate";
 import { placeLeaf } from "./placeLeaf";
 import type { LeafGraph, LeafNode } from "./buildLeafGraph";
+import {
+  compareSchedulingOrder,
+  edfSlackMinutes,
+  resolveInheritedDeadline,
+  type SchedulingOrderKey,
+} from "../PrioritySorter/schedulingOrder";
 
 // Flat-order scheduler over the leaf precedence graph (buildLeafGraph). Leaves
 // are placed one at a time, ordered by inherited score then clustering index,
@@ -329,19 +335,34 @@ export function scheduleTasksAndGoals(
   };
 
   // Category-constrained leaves pick slots first (they have strictly fewer
-  // options), then inherited score, then the clustering index — the same
-  // two-tier order sortByPriorityAndConstraints gives the candidate walk.
+  // options), then the EDF slack tier, then inherited score, then the
+  // clustering index — the SAME comparator sortByPriorityAndConstraints gives
+  // the candidate walk (compareSchedulingOrder); the two must never disagree.
   const leafConstrained = (leaf: Planner): boolean =>
     (plannerCategoryMap.get(leaf.id) ?? leaf.categoryId) !== null;
-  let remaining: LeafNode[] = [...nodes].sort((a, b) => {
-    const ca = leafConstrained(a.leaf) ? 1 : 0;
-    const cb = leafConstrained(b.leaf) ? 1 : 0;
-    if (ca !== cb) return cb - ca;
-    const sa = leafEffScore.get(a.leaf.id) ?? 0;
-    const sb = leafEffScore.get(b.leaf.id) ?? 0;
-    if (sb !== sa) return sb - sa;
-    return a.scheduleIndex - b.scheduleIndex;
-  });
+  const deadlineCache = new Map<string, Date | null>();
+  const leafOrderKeys = new Map<string, SchedulingOrderKey>(
+    nodes.map((node) => [
+      node.leaf.id,
+      {
+        constrained: leafConstrained(node.leaf),
+        slackMinutes: edfSlackMinutes(
+          node.leaf,
+          resolveInheritedDeadline(node.leaf, plannersById, deadlineCache),
+          context.currentDate,
+          placementBlockMinutes(node.leaf),
+        ),
+        score: leafEffScore.get(node.leaf.id) ?? 0,
+        index: node.scheduleIndex,
+      },
+    ]),
+  );
+  let remaining: LeafNode[] = [...nodes].sort((a, b) =>
+    compareSchedulingOrder(
+      leafOrderKeys.get(a.leaf.id)!,
+      leafOrderKeys.get(b.leaf.id)!,
+    ),
+  );
 
   // The horizon expands on demand until every placeable item is scheduled,
   // bounded only by MAX_HORIZON_EXPANSIONS (~2 years). There is deliberately no
