@@ -355,6 +355,8 @@ export class CalendarGenerator {
       plannerCategoryMap,
       currentDate,
       plannerConstraintsMap,
+      this.scheduledCategories,
+      categoryEligibilityMap,
     );
 
     // Phase 10: Build the leaf precedence graph (detour-spliced sequences +

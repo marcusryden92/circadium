@@ -40,6 +40,7 @@ import {
   compareSchedulingOrder,
   edfSlackMinutes,
   resolveInheritedDeadline,
+  scarcityMinutesFor,
   type SchedulingOrderKey,
 } from "../PrioritySorter/schedulingOrder";
 
@@ -344,11 +345,22 @@ export function scheduleTasksAndGoals(
     (plannerCategoryMap.get(leaf.id) ?? leaf.categoryId) !== null ||
     (context.plannerConstraintsMap?.get(leaf.id)?.allowedTimes.length ?? 0) > 0;
   const deadlineCache = new Map<string, Date | null>();
+  const weeklyWindowMinutesCache = new Map<string, number>();
   const leafOrderKeys = new Map<string, SchedulingOrderKey>(
     nodes.map((node) => [
       node.leaf.id,
       {
         constrained: leafConstrained(node.leaf),
+        scarcityMinutes: scarcityMinutesFor({
+          effectiveCategoryId:
+            plannerCategoryMap.get(node.leaf.id) ?? node.leaf.categoryId,
+          allowedChain:
+            context.plannerConstraintsMap?.get(node.leaf.id)?.allowedTimes ??
+            [],
+          windowedCategories: categories,
+          categoryEligibilityMap,
+          weeklyWindowMinutesCache,
+        }),
         slackMinutes: edfSlackMinutes(
           node.leaf,
           resolveInheritedDeadline(node.leaf, plannersById, deadlineCache),

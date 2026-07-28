@@ -7,7 +7,9 @@ import {
   compareSchedulingOrder,
   edfSlackMinutes,
   resolveInheritedDeadline,
+  scarcityMinutesFor,
 } from "./schedulingOrder";
+import type { Category } from "@/types/prisma";
 
 function calculateTaskUrgency(
   task: Planner,
@@ -180,9 +182,12 @@ export function sortByPriorityAndConstraints(
   plannerCategoryMap: Map<string, string | null> | undefined,
   currentDate: Date,
   plannerConstraintsMap?: Map<string, PlannerSchedulingConstraints>,
+  windowedCategories?: Category[],
+  categoryEligibilityMap?: Map<string, Set<string>>,
 ): Planner[] {
   const plannerById = new Map(allPlanners.map((p) => [p.id, p]));
   const deadlineCache = new Map<string, Date | null>();
+  const weeklyWindowMinutesCache = new Map<string, number>();
 
   const withMeta = goalsAndTasks.map((item, index) => ({
     item,
@@ -192,6 +197,14 @@ export function sortByPriorityAndConstraints(
       constrained:
         hasCategoryConstraint(item, allPlanners, plannerCategoryMap) ||
         (plannerConstraintsMap?.get(item.id)?.allowedTimes.length ?? 0) > 0,
+      scarcityMinutes: scarcityMinutesFor({
+        effectiveCategoryId:
+          plannerCategoryMap?.get(item.id) ?? item.categoryId,
+        allowedChain: plannerConstraintsMap?.get(item.id)?.allowedTimes ?? [],
+        windowedCategories: windowedCategories ?? [],
+        categoryEligibilityMap,
+        weeklyWindowMinutesCache,
+      }),
       slackMinutes: edfSlackMinutes(
         item,
         resolveInheritedDeadline(item, plannerById, deadlineCache),

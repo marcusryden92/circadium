@@ -4,7 +4,7 @@
  * Prepares and sorts candidates for scheduling
  */
 
-import { Planner, PlannerType } from "@/types/prisma";
+import { Category, Planner, PlannerType } from "@/types/prisma";
 import { sortByPriorityAndConstraints } from "../PrioritySorter";
 import type { PlannerSchedulingConstraints } from "./buildPlannerConstraintsMap";
 import { taskIsCompleted } from "../../../taskHelpers";
@@ -18,6 +18,8 @@ export function prepareCandidates(
   plannerCategoryMap: Map<string, string | null> | undefined,
   currentDate: Date,
   plannerConstraintsMap?: Map<string, PlannerSchedulingConstraints>,
+  windowedCategories?: Category[],
+  categoryEligibilityMap?: Map<string, Set<string>>,
 ): Planner[] {
   const plannersById = new Map(planners.map((p) => [p.id, p]));
 
@@ -78,5 +80,7 @@ export function prepareCandidates(
     plannerCategoryMap,
     currentDate,
     plannerConstraintsMap,
+    windowedCategories,
+    categoryEligibilityMap,
   );
 }

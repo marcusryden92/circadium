@@ -1,11 +1,18 @@
-import { Planner, PlannerType } from "@/types/prisma";
+import { Category, Planner, PlannerType } from "@/types/prisma";
 import { SCHEDULING_CONFIG, TIME_CONSTANTS } from "../../constants";
+import {
+  AllowedTimesSettings,
+  rangeMinutes,
+  weeklyAllowedMinutes,
+} from "../../../allowedTimes";
 
 // The ONE scheduling-order comparator, shared by the candidate sort
 // (sortByPriorityAndConstraints) and the flat scheduler's leaf ordering
 // (scheduleTasksAndGoals) — the two orderings must never disagree. Tiers:
 //
-//   1. category-constrained first (scarce windows get first pick)
+//   1. constrained first (a resolved category or an allowed-times chain:
+//      scarce slots get first pick), ordered within by weekly eligible
+//      minutes ascending — four window-hours a week places before forty
 //   2. EDF: in-horizon deadlines by slack ascending (deadline - now -
 //      required block). Deadline-free and far-future items sort after every
 //      EDF item. A discrete tier, not a score adjustment — folded into the
@@ -15,6 +22,8 @@ import { SCHEDULING_CONFIG, TIME_CONSTANTS } from "../../constants";
 
 export interface SchedulingOrderKey {
   constrained: boolean;
+  /** Weekly eligible minutes (scarcity proxy); null = unconstrained */
+  scarcityMinutes: number | null;
   /** null = deadline-free, beyond the EDF horizon, habit, or tier disabled */
   slackMinutes: number | null;
   score: number;
@@ -26,6 +35,9 @@ export function compareSchedulingOrder(
   b: SchedulingOrderKey,
 ): number {
   if (a.constrained !== b.constrained) return a.constrained ? -1 : 1;
+  const aScarcity = a.scarcityMinutes ?? Infinity;
+  const bScarcity = b.scarcityMinutes ?? Infinity;
+  if (aScarcity !== bScarcity) return aScarcity - bScarcity;
   const aEdf = a.slackMinutes !== null;
   const bEdf = b.slackMinutes !== null;
   if (aEdf !== bEdf) return aEdf ? -1 : 1;
@@ -34,6 +46,56 @@ export function compareSchedulingOrder(
   }
   if (a.score !== b.score) return b.score - a.score;
   return a.index - b.index;
+}
+
+/**
+ * Weekly eligible minutes — the constrained tier's scarcity key. The min of
+ * the item's weekly eligible category-window minutes (own effective category
+ * plus its upward cascade, window-bearing members only) and its weekly
+ * allowed-times minutes. True MRV (per-leaf fitting-slot counts) would be
+ * O(leaves x slots); this weekly proxy is a cheap cached sum. null =
+ * unconstrained on both axes (the key is inert outside the constrained tier).
+ */
+export function scarcityMinutesFor(args: {
+  effectiveCategoryId: string | null;
+  allowedChain: AllowedTimesSettings[];
+  windowedCategories: Category[];
+  categoryEligibilityMap?: Map<string, Set<string>>;
+  weeklyWindowMinutesCache?: Map<string, number>;
+}): number | null {
+  let windowWeekly = Infinity;
+  if (args.effectiveCategoryId) {
+    const cached = args.weeklyWindowMinutesCache?.get(args.effectiveCategoryId);
+    if (cached !== undefined) {
+      windowWeekly = cached;
+    } else {
+      const eligible = args.categoryEligibilityMap?.get(
+        args.effectiveCategoryId,
+      );
+      let total = 0;
+      let anyWindows = false;
+      if (eligible) {
+        for (const category of args.windowedCategories) {
+          if (!eligible.has(category.id)) continue;
+          for (const window of category.timeSlots) {
+            total += rangeMinutes(window);
+            anyWindows = true;
+          }
+        }
+      }
+      windowWeekly = anyWindows ? total : Infinity;
+      args.weeklyWindowMinutesCache?.set(args.effectiveCategoryId, windowWeekly);
+    }
+  }
+
+  let allowedWeekly = Infinity;
+  for (const settings of args.allowedChain) {
+    const weekly = weeklyAllowedMinutes(settings);
+    if (weekly < allowedWeekly) allowedWeekly = weekly;
+  }
+
+  const scarcity = Math.min(windowWeekly, allowedWeekly);
+  return Number.isFinite(scarcity) ? scarcity : null;
 }
 
 /**

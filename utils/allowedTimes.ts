@@ -333,6 +333,26 @@ function weeklyWindowIntervals(
   return mergeMinuteIntervals(weekly);
 }
 
+// Nominal minutes one range spans, wrap-aware ("23:59" = end of day).
+// Structurally shared with CategoryTimeWindow rows (same startTime/endTime
+// shape), so window-scarcity sums reuse it.
+export function rangeMinutes(range: AllowedTimeRange): number {
+  const { startMin, endMin } = rangeBoundsMinutes(range);
+  return endMin - startMin;
+}
+
+// Total weekly minutes an allowed-times pattern admits. The scarcity proxy
+// the constrained tier orders by; chains take the min across entries — an
+// upper bound on the intersection (exact chain algebra buys nothing here).
+export function weeklyAllowedMinutes(settings: AllowedTimesSettings): number {
+  const dayCount = settings.days === null ? 7 : settings.days.length;
+  const perDay =
+    settings.ranges === null
+      ? MINUTES_PER_DAY
+      : settings.ranges.reduce((sum, range) => sum + rangeMinutes(range), 0);
+  return dayCount * perDay;
+}
+
 // Exact longest contiguous allowed block (in nominal minutes) in a generic
 // week under the whole chain — the capacity ceiling that turns an impossible
 // duration into a loud TOO_LARGE instead of an expansion-burning NO_SLOTS.
