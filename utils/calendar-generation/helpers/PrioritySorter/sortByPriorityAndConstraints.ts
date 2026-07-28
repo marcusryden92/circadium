@@ -212,6 +212,7 @@ export function sortByPriorityAndConstraints(
         placementBlockMinutes(item),
       ),
       score: urgencyScores.get(item.id) ?? 0,
+      attempts: 0,
       index,
     },
   }));

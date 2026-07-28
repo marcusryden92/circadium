@@ -18,7 +18,10 @@ import {
 //      EDF item. A discrete tier, not a score adjustment — folded into the
 //      score it would be diluted by priority, which is the bug it fixes.
 //   3. score descending (urgency / inheritance-adjusted)
-//   4. stable index ascending (total, deterministic order)
+//   4. failed attempts descending (anti-starvation aging: a leaf that has
+//      been losing the retry loop longest gets first pick within its band —
+//      never overriding the constrained, EDF, or score tiers)
+//   5. stable index ascending (total, deterministic order)
 
 export interface SchedulingOrderKey {
   constrained: boolean;
@@ -27,6 +30,8 @@ export interface SchedulingOrderKey {
   /** null = deadline-free, beyond the EDF horizon, habit, or tier disabled */
   slackMinutes: number | null;
   score: number;
+  /** Placement attempts so far (retry-loop aging); 0 outside the scheduler */
+  attempts: number;
   index: number;
 }
 
@@ -45,6 +50,7 @@ export function compareSchedulingOrder(
     return (a.slackMinutes as number) - (b.slackMinutes as number);
   }
   if (a.score !== b.score) return b.score - a.score;
+  if (a.attempts !== b.attempts) return b.attempts - a.attempts;
   return a.index - b.index;
 }
 

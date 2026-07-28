@@ -269,6 +269,8 @@ export function scheduleTasksAndGoals(
 
     attemptedThisPass++;
     attemptedLeafIds.add(leafId);
+    const orderKey = leafOrderKeys.get(leafId);
+    if (orderKey) orderKey.attempts++;
     const result = placeLeaf({
       leaf: node.leaf,
       scheduler,
@@ -368,16 +370,19 @@ export function scheduleTasksAndGoals(
           placementBlockMinutes(node.leaf),
         ),
         score: leafEffScore.get(node.leaf.id) ?? 0,
+        attempts: 0,
         index: node.scheduleIndex,
       },
     ]),
   );
-  let remaining: LeafNode[] = [...nodes].sort((a, b) =>
-    compareSchedulingOrder(
-      leafOrderKeys.get(a.leaf.id)!,
-      leafOrderKeys.get(b.leaf.id)!,
-    ),
-  );
+  const sortBySchedulingOrder = (pool: LeafNode[]): LeafNode[] =>
+    pool.sort((a, b) =>
+      compareSchedulingOrder(
+        leafOrderKeys.get(a.leaf.id)!,
+        leafOrderKeys.get(b.leaf.id)!,
+      ),
+    );
+  let remaining: LeafNode[] = sortBySchedulingOrder([...nodes]);
 
   // The horizon expands on demand until every placeable item is scheduled,
   // bounded only by MAX_HORIZON_EXPANSIONS (~2 years). There is deliberately no
@@ -462,6 +467,10 @@ export function scheduleTasksAndGoals(
       continue;
     }
 
+    // Re-sort each pass: attempts accumulated by the retry loop age
+    // long-losing leaves up within their band (anti-starvation tiebreak
+    // below the score tiers).
+    sortBySchedulingOrder(remaining);
     attemptedThisPass = 0;
     const resolvedIds = new Set<string>();
     for (const node of remaining) {
@@ -546,6 +555,7 @@ export function scheduleTasksAndGoals(
       context.placementCutoffDate = computePlacementCutoff(slotManager.slots);
       maxPlaceableEndMs = maxPlaceableEndOf(slotManager.slots);
       resolveZeroLeafCandidates();
+      sortBySchedulingOrder(remaining);
       attemptedLeafIds.clear();
       const resolvedIds = new Set<string>();
       for (const node of remaining) {
