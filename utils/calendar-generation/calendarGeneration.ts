@@ -33,6 +33,8 @@ export interface GenerateCalendarOptions {
   bufferTimeMinutes?: number;
   travelTimeMatrix?: Map<string, TravelTimeEntry>;
   injectTravelEvents?: boolean;
+  /** Same-duration swap pass after placement (flagged, default off) */
+  polishPass?: boolean;
   strategyWeights?: {
     earliestSlot?: number;
     locationGrouping?: number;
@@ -150,6 +152,7 @@ export function generateCalendar(
       bufferTimeMinutes,
       travelTimeMatrix: opts.travelTimeMatrix,
       injectTravelEvents: opts.injectTravelEvents,
+      polishPass: opts.polishPass,
       strategyWeights: opts.strategyWeights,
       locationGroupingScores: opts.locationGroupingScores,
       locationGroupingPenalties: opts.locationGroupingPenalties,

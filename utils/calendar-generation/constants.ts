@@ -153,6 +153,14 @@ export const SCHEDULING_CONFIG = {
    * work into many small chunks when fewer large ones would serve better.
    */
   SPLIT_PREFERRED_CHUNK_MULTIPLIER: 2,
+  /**
+   * Same-duration polish pass (see polishPass.ts; opt-in via the polishPass
+   * generation option, default off): only events within this many days of
+   * each other are considered for a swap, and at most MAX_TRIALS
+   * snapshot-trial-restore attempts run per regen.
+   */
+  POLISH_PASS_PAIR_WINDOW_DAYS: 7,
+  POLISH_PASS_MAX_TRIALS: 64,
 } as const;
 
 /**

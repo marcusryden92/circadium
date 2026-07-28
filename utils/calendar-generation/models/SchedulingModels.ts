@@ -172,6 +172,8 @@ export interface SchedulingContext {
    * placement without colliding with already-placed dynamic events.
    */
   placementCutoffDate?: Date | null;
+  /** Same-duration swap pass after placement (flagged, default off) */
+  polishPassEnabled?: boolean;
   /**
    * Previous regen's events by id. Event builders reuse identity fields
    * (extendedProps.id, createdAt, updatedAt) from here so an unchanged
@@ -317,6 +319,8 @@ export interface CalendarGenerationConfig {
   travelTimeMatrix?: Map<string, TravelTimeEntry>;
   /** Whether to inject travel events between location changes */
   injectTravelEvents?: boolean;
+  /** Same-duration swap pass after placement (flagged, default off) */
+  polishPass?: boolean;
 }
 
 /**

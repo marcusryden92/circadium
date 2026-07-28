@@ -35,6 +35,7 @@ import {
   recordSequenceBreaks,
 } from "./precedenceGate";
 import { placeLeaf } from "./placeLeaf";
+import { polishPass } from "./polishPass";
 import type { LeafGraph, LeafNode } from "./buildLeafGraph";
 import {
   compareSchedulingOrder,
@@ -645,6 +646,51 @@ export function scheduleTasksAndGoals(
       }
     }
     resolveZeroLeafCandidates();
+  }
+
+  // Same-duration polish pass (flagged, default off): one snapshot-guarded
+  // sweep looking for pure slot exchanges that strictly reduce travel.
+  // Exclusions err toward "no swap": anything with chain edges, cross gates,
+  // precedence-endpoint roots, or a goal day cap stays put — those bounds
+  // were validated at placement time and this pass cannot re-derive them.
+  if (context.polishPassEnabled) {
+    const chainInvolved = new Set<string>();
+    for (const [succId, preds] of chainPreds) {
+      chainInvolved.add(succId);
+      for (const predId of preds) chainInvolved.add(predId);
+    }
+    const precedenceRootIds = new Set<string>();
+    for (const edge of allEdges) {
+      precedenceRootIds.add(edge.fromId);
+      precedenceRootIds.add(edge.toId);
+    }
+    const excludedLeafIds = new Set<string>();
+    for (const node of nodes) {
+      const leafId = node.leaf.id;
+      const roots = completionRoots.get(leafId) ?? [];
+      if (
+        chainInvolved.has(leafId) ||
+        crossGateRoots.has(leafId) ||
+        roots.some(
+          (rootId) =>
+            precedenceRootIds.has(rootId) || goalCapFor(rootId) !== undefined,
+        )
+      ) {
+        excludedLeafIds.add(leafId);
+      }
+    }
+    polishPass({
+      slots: slotManager.slots,
+      bufferTimeMinutes: slotManager.bufferTimeMinutes,
+      travelManager,
+      events,
+      plannersById,
+      plannerLocationMap,
+      plannerConstraintsMap: context.plannerConstraintsMap,
+      excludedLeafIds,
+      windowedCategories: categories,
+      placementCutoffDate: context.placementCutoffDate ?? null,
+    });
   }
 
   // One budget-exhaustion failure per structural root, not per leaf — message

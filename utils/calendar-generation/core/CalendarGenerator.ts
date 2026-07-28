@@ -344,6 +344,7 @@ export class CalendarGenerator {
       schedulerRecorder,
       previousById,
     );
+    context.polishPassEnabled = input.config?.polishPass === true;
 
     // Phase 9: Prepare candidates (filter root goals, tasks and sort by
     // priority). Sorts on the inheritance-adjusted scores so a prerequisite
