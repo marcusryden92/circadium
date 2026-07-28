@@ -145,6 +145,14 @@ export const SCHEDULING_CONFIG = {
    */
   EDF_TIER_ENABLED: true,
   EDF_HORIZON_DAYS: HORIZON_CHUNK_DAYS,
+  /**
+   * Split-task chunk placement fit-tests at (min chunk x this) first and
+   * falls back to the true minimum only when no slot hosts the preferred
+   * size (clamped to the max-chunk bound and the remainder). Without it an
+   * unlimited-max split takes the earliest minimum-size gap and fragments
+   * work into many small chunks when fewer large ones would serve better.
+   */
+  SPLIT_PREFERRED_CHUNK_MULTIPLIER: 2,
 } as const;
 
 /**

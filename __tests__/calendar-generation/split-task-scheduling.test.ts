@@ -144,6 +144,97 @@ describe("split task scheduling", () => {
     expect(failures).toEqual([]);
   });
 
+  it("prefers a slot hosting a larger chunk over an earlier minimum-size gap", () => {
+    // Monday: a 55-minute gap at 08:00 (hosts a 30-minute fit + 2x10 buffer,
+    // but not the 60-minute preferred fit), then a blocker until 13:00, then
+    // an open afternoon. An unlimited-max split used to fit-test at the
+    // minimum and fragment into the small gap first; the preferred-size pass
+    // skips it and places the whole remainder in the roomy afternoon.
+    const blocker: EventTemplate[] = [
+      {
+        id: "blocker-mon",
+        title: "Blocker",
+        startDay: 1,
+        startTime: "08:55",
+        duration: 245,
+        userId: USER_ID,
+        color: null,
+        locationId: null,
+        createdAt: FAKE_TODAY.toISOString(),
+        updatedAt: FAKE_TODAY.toISOString(),
+      },
+    ] as unknown as EventTemplate[];
+    const task = makePlanner("deep-work", {
+      duration: 120,
+      splitting: serializeTaskSplitting({
+        minMinutes: 30,
+        maxMinutes: 0,
+        maxMinutesPerDay: null,
+      }),
+    });
+
+    const { events } = generateCalendar(
+      USER_ID,
+      1,
+      [...SLEEP_TEMPLATES, ...blocker],
+      [task],
+      [],
+      { injectTravelEvents: false },
+    );
+
+    const chunks = chunksOf(events, "deep-work");
+    expect(chunks.reduce((sum, c) => sum + eventMinutes(c), 0)).toBe(120);
+    expect(chunks.length).toBe(1);
+    expect(new Date(chunks[0].start).getHours()).toBeGreaterThanOrEqual(13);
+  });
+
+  it("a bounded max still uses an early gap that hosts a max-size chunk", () => {
+    // A 65-minute gap at 08:00 hosts a full-max 45-minute chunk (+ 2x10
+    // buffer), so the preferred-size pass must NOT skip it — the preferred
+    // fit clamps to the max bound.
+    const blocker: EventTemplate[] = [
+      {
+        id: "blocker-mon",
+        title: "Blocker",
+        startDay: 1,
+        startTime: "09:05",
+        duration: 235,
+        userId: USER_ID,
+        color: null,
+        locationId: null,
+        createdAt: FAKE_TODAY.toISOString(),
+        updatedAt: FAKE_TODAY.toISOString(),
+      },
+    ] as unknown as EventTemplate[];
+    const task = makePlanner("deep-work", {
+      duration: 120,
+      splitting: serializeTaskSplitting({
+        minMinutes: 30,
+        maxMinutes: 45,
+        maxMinutesPerDay: null,
+      }),
+    });
+
+    const { events } = generateCalendar(
+      USER_ID,
+      1,
+      [...SLEEP_TEMPLATES, ...blocker],
+      [task],
+      [],
+      { injectTravelEvents: false },
+    );
+
+    const chunks = chunksOf(events, "deep-work");
+    expect(chunks.reduce((sum, c) => sum + eventMinutes(c), 0)).toBe(120);
+    const first = chunks
+      .slice()
+      .sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
+      )[0];
+    expect(new Date(first.start).getHours()).toBe(8);
+    expect(eventMinutes(first)).toBe(45);
+  });
+
   it("respects the per-day cap", () => {
     const task = makePlanner("reading", {
       duration: 300,

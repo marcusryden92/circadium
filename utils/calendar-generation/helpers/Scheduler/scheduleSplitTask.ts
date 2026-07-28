@@ -1,7 +1,7 @@
 import { Planner, SimpleEvent } from "@/types/prisma";
 import { Scheduler } from "../../core/Scheduler";
 import { ChunkSizing, SchedulingFailure } from "../../models/SchedulingModels";
-import { SchedulingFailureReason } from "../../constants";
+import { SCHEDULING_CONFIG, SchedulingFailureReason } from "../../constants";
 import {
   TaskSplittingSettings,
   addIntervalMinutesByDay,
@@ -159,9 +159,24 @@ export function scheduleSplitTask(args: {
             )
         : undefined;
 
-    const attempts: Array<{ dayCap: boolean }> = [{ dayCap: true }];
+    // Two-pass slot search (mirrors the compromise pass's relaxation
+    // ladder): fit-test at a preferred chunk size first so a roomy slot
+    // beats an earlier minimum-size gap, then fall back to the true minimum.
+    // The preferred size clamps to the max-chunk bound and the remainder, so
+    // a bounded max never skips a gap that hosts a full-max chunk, and a
+    // rule-forced-whole remainder collapses to a single pass.
+    const preferredFit = Math.min(
+      minReq * SCHEDULING_CONFIG.SPLIT_PREFERRED_CHUNK_MULTIPLIER,
+      effectiveMaxChunkMinutes(settings),
+      remaining,
+    );
+    const attempts: Array<{ fitMinutes: number; dayCap: boolean }> = [];
+    if (preferredFit > minReq) {
+      attempts.push({ fitMinutes: preferredFit, dayCap: true });
+    }
+    attempts.push({ fitMinutes: minReq, dayCap: true });
     if (args.allowDayCapRelaxation && effectiveBudgetFn) {
-      attempts.push({ dayCap: false });
+      attempts.push({ fitMinutes: minReq, dayCap: false });
     }
 
     let placedEvent: SimpleEvent | null = null;
@@ -194,7 +209,7 @@ export function scheduleSplitTask(args: {
     for (const attempt of attempts) {
       const chunkRemaining = remaining;
       const sizing: ChunkSizing = {
-        minMinutes: minReq,
+        minMinutes: attempt.fitMinutes,
         grant: (headroom, dayBudget) =>
           grantChunkMinutes({
             remaining: chunkRemaining,
