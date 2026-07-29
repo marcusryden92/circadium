@@ -21,6 +21,15 @@ import {
 // occurrence must vanish (a "missed" window), and a COMPLETED one re-derives
 // fresh from the log via buildOccurrenceCompletedEvents — never frozen from
 // the previous emit.
+//
+// Completed whole-item tiles (extendedProps.completedEndTime set) are excluded
+// for the same reason: they are deterministic from the row's
+// completedStartTime/End, so buildCompletedEvents must own them. Freezing the
+// old emit here made editing a completed item's time (or clearing it) a no-op
+// once its window was in the past — the stale tile stayed pinned and its id,
+// being memoized, was also barred from re-entering candidacy. Scheduled tiles
+// carry completedEndTime null (buildTaskEvent), so genuine past placements are
+// still memoized.
 export function buildMemoizedEvents(
   previousCalendar: SimpleEvent[],
   currentDate: Date,
@@ -37,6 +46,7 @@ export function buildMemoizedEvents(
         e.extendedProps?.eventType !== EventType.travel &&
         e.extendedProps?.eventType !== EventType.category &&
         e.extendedProps?.plannerType !== PlannerType.plan &&
+        !e.extendedProps?.completedEndTime &&
         !isRecurrenceOccurrenceId(e.id) &&
         !splitPlannerIds.has(plannerIdFromEventId(e.id)),
     );

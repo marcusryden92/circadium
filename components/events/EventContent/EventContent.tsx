@@ -24,6 +24,7 @@ import {
 import {
   occurrenceKey as makeOccurrenceKey,
   occurrenceKeyFromEventId,
+  occurrenceKeyToDate,
   plannerIdFromEventId,
   planIsRecurring,
   hasMovedException,
@@ -188,10 +189,28 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
       const logKey = isPlanTile ? planCheckKey : occurrenceKey;
       if (!plannerId || !logKey) return;
       const nextCompleted = !isCompleted;
-      // A not-yet-started occurrence can't be completed — logging it would
-      // freeze a phantom tile at a future window (carving a real slot) that the
-      // stats layer can't count until the period elapses.
-      if (nextCompleted && startTime > currentTime) return;
+
+      // The engine schedules recurring occurrences forward (at or after now),
+      // so gating completion on the tile's own start would make "check off the
+      // thing I already did today" impossible — its slot is almost always
+      // ahead. Gate on the PERIOD instead: the current period is completable
+      // even when its engine slot sits later, but a future PERIOD (next week's
+      // weekly occurrence) still can't be pre-completed. When the slot is ahead
+      // of now, freeze the logged window ending at now (back-dated by its
+      // length) so the completed tile lands in the past rather than carving a
+      // phantom future slot the stats layer can't count. Plan check-offs keep
+      // the strict rule: you can't mark a future plan as having happened.
+      let logStart = startTime;
+      let logEnd = endTime;
+      if (nextCompleted && startTime > currentTime) {
+        if (isPlanTile) return;
+        if (occurrenceKeyToDate(logKey) > currentTime) return;
+        logEnd = currentTime;
+        logStart = new Date(
+          currentTime.getTime() - (endTime.getTime() - startTime.getTime()),
+        );
+      }
+
       setOptimisticCompleted(nextCompleted);
       const regenAfterWrite = isFlexibleOccurrence;
       occurrenceWriteChainRef.current = occurrenceWriteChainRef.current
@@ -201,8 +220,8 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
             ? logOccurrenceCompletion({
                 plannerId,
                 occurrenceKey: logKey,
-                start: startTime.toISOString(),
-                end: endTime.toISOString(),
+                start: logStart.toISOString(),
+                end: logEnd.toISOString(),
               }).then((row) => {
                 dispatch(upsertOccurrenceCompletion(row));
                 if (regenAfterWrite) updateAll();

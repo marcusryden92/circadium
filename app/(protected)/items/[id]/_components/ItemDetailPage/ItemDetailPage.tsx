@@ -15,6 +15,8 @@ import {
   setSplitCompletedMinutes,
 } from "@/utils/taskSplitting";
 import { formatDatetimeLocal, parseDatetimeLocal } from "@/utils/datetime";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
+import { plannerIsCompleted } from "@/utils/plannerCompletion";
 import { DateTimePicker, DurationField } from "@/components/ui";
 import { vars } from "@/lib/theme";
 import { useItem } from "../ItemContext";
@@ -74,7 +76,14 @@ export default function ItemOverviewPage() {
       ? Math.min(100, Math.round((splitCompleted / item.duration) * 100))
       : 0;
 
-  const isCompleted = !!item.completedEndTime;
+  // A repeating task is never wholesale-completed — completion lives per
+  // occurrence in the log (check off each one on the calendar), so its row-level
+  // completion columns are inert. Hide the checkbox rather than render a toggle
+  // the engine ignores.
+  const isRecurring = plannerHasFlexibleRecurrence(item);
+  // Type-aware, not a raw timestamp read: a plan-retype or a repeat rule can
+  // leave stale completedEndTime on the row that must not read as "done".
+  const isCompleted = plannerIsCompleted(item);
   const completedValue = formatDatetimeLocal(item.completedEndTime);
 
   // Completion is gated on isReady — a task can't be checked off until it's
@@ -184,7 +193,14 @@ export default function ItemOverviewPage() {
               : "No date set"}
           </div>
         )}
-        {isTask && !isSplitTask && (
+        {isTask && !isSplitTask && isRecurring && (
+          <div className={progressMeta}>
+            <span className={progressMetaStrong}>Repeats</span>
+            {"  ·  "}
+            check off each occurrence on the calendar
+          </div>
+        )}
+        {isTask && !isSplitTask && !isRecurring && (
           <div className={completeRow}>
             <div className={completeLeftGroup}>
               <button

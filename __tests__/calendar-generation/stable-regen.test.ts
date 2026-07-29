@@ -137,4 +137,91 @@ describe("regen stability against previousCalendar", () => {
     expect(planEvents).toHaveLength(1);
     expect(planEvents[0].start).toBe(draggedStarts);
   });
+
+  // A completed tile is deterministic from the row's completedStartTime/End, so
+  // editing that time must re-render even when the old completion window is in
+  // the past — it must NOT be frozen from previousCalendar like an engine
+  // placement. Guards the memoization exclusion for completed items.
+  const completedTask = (): Planner => ({
+    ...FIXTURE.planner[0],
+    id: "test-completed-task",
+    title: "Completed task",
+    parentId: null,
+    plannerType: PlannerType.task,
+    isReady: true,
+    isTriaged: true,
+    duration: 60,
+    deadline: null,
+    starts: null,
+    recurrence: null,
+    recurrenceExceptions: null,
+    splitting: null,
+    completedSegments: null,
+    sortOrder: 0,
+    completedStartTime: "2026-07-01T09:00:00.000Z",
+    completedEndTime: "2026-07-01T10:00:00.000Z",
+    locationId: null,
+    useParentLocation: false,
+    categoryId: null,
+  });
+
+  it("honors a completed-time edit on a task whose completion window already passed", () => {
+    const task = completedTask();
+    const planner = [...FIXTURE.planner, task];
+    const first = generateCalendar("1", 1, templates, planner, [], OPTIONS);
+    const firstTile = first.events.find((e) => e.id === task.id);
+    expect(firstTile?.start).toBe("2026-07-01T09:00:00.000Z");
+    expect(firstTile?.end).toBe("2026-07-01T10:00:00.000Z");
+
+    // Edit the completion window to a different past time while the old tile
+    // (ended days ago) is still in previousCalendar.
+    const editedStart = "2026-06-30T14:00:00.000Z";
+    const editedEnd = "2026-06-30T15:00:00.000Z";
+    const editedPlanner = planner.map((p) =>
+      p.id === task.id
+        ? { ...p, completedStartTime: editedStart, completedEndTime: editedEnd }
+        : p,
+    );
+    const second = generateCalendar(
+      "1",
+      1,
+      templates,
+      editedPlanner,
+      first.events,
+      OPTIONS,
+    );
+
+    const tiles = second.events.filter((e) => e.id === task.id);
+    expect(tiles).toHaveLength(1);
+    expect(tiles[0].start).toBe(editedStart);
+    expect(tiles[0].end).toBe(editedEnd);
+  });
+
+  it("drops the completed tile (no ghost) when completion is cleared on a past item", () => {
+    const task = completedTask();
+    const planner = [...FIXTURE.planner, task];
+    const first = generateCalendar("1", 1, templates, planner, [], OPTIONS);
+    expect(first.events.some((e) => e.id === task.id)).toBe(true);
+
+    // Un-complete: the old completed tile must not linger, and the now-ready
+    // task must be free to reschedule (its memoized id previously barred it).
+    const clearedPlanner = planner.map((p) =>
+      p.id === task.id
+        ? { ...p, completedStartTime: null, completedEndTime: null }
+        : p,
+    );
+    const second = generateCalendar(
+      "1",
+      1,
+      templates,
+      clearedPlanner,
+      first.events,
+      OPTIONS,
+    );
+
+    const ghost = second.events.find(
+      (e) => e.id === task.id && e.start === "2026-07-01T09:00:00.000Z",
+    );
+    expect(ghost).toBeUndefined();
+  });
 });
