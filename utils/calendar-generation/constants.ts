@@ -190,8 +190,6 @@ export const URGENCY_CONFIG = {
  * Location and travel time configuration
  */
 export const LOCATION_CONFIG = {
-  /** Maximum number of locations a user can save */
-  MAX_LOCATIONS: 10,
   /** Rush hour morning start (7 AM) */
   RUSH_HOUR_MORNING_START: 7,
   /** Rush hour morning end (9 AM) */

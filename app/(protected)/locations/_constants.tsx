@@ -3,7 +3,7 @@ import type { TransportMode } from "@/generated/client";
 
 export const SUCCESS_MESSAGE_MS = 3000;
 
-export const MAX_LOCATIONS = 10;
+export { MAX_LOCATIONS } from "@/utils/locations/travelRefreshPolicy";
 
 export const TRANSPORT_MODE_OPTIONS = [
   {

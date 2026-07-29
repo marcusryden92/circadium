@@ -22,6 +22,10 @@ export function topUpAllowed(now: number, lastTopUpAt: Date | null): boolean {
 // Google's free caps pool across the billing account, not per user.
 export const TRAVEL_ELEMENT_MONTHLY_CAP = 4500;
 
+// Ceiling on saved locations. Upstream of every travel-cost cap: N locations is
+// up to N*(N-1) directional pairs, so this bounds worst-case matrix spend.
+export const MAX_LOCATIONS = 5;
+
 // Billed elements for a set of pairs: time-varying modes fetch all three
 // conditions, walk/cycle fetch one and reuse it.
 export function elementsForPairs(pairCount: number, timeVarying: boolean): number {

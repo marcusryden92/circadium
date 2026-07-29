@@ -18,10 +18,9 @@ import {
   reserveElements,
   elementsForPairs,
   STALE_TOP_UP_MAX_PAIRS,
+  MAX_LOCATIONS,
 } from "@/utils/locations/travelRefreshPolicy";
 import { isTimeVarying } from "@/utils/locations/travelTime";
-
-const MAX_LOCATIONS = 10;
 
 // Per-user throttle on the Google-proxying search action. In-memory, so it is
 // per server instance — the hard stop lives in Cloud Console quotas.
