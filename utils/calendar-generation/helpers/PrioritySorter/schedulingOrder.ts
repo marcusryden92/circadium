@@ -1,10 +1,11 @@
-import { Category, Planner, PlannerType } from "@/types/prisma";
+import { Category, Planner } from "@/types/prisma";
 import { SCHEDULING_CONFIG, TIME_CONSTANTS } from "../../constants";
 import {
   AllowedTimesSettings,
   rangeMinutes,
   weeklyAllowedMinutes,
 } from "../../../allowedTimes";
+import { isRecurrenceOccurrenceId } from "../../../planRecurrence";
 
 // The ONE scheduling-order comparator, shared by the candidate sort
 // (sortByPriorityAndConstraints) and the flat scheduler's leaf ordering
@@ -27,7 +28,7 @@ export interface SchedulingOrderKey {
   constrained: boolean;
   /** Weekly eligible minutes (scarcity proxy); null = unconstrained */
   scarcityMinutes: number | null;
-  /** null = deadline-free, beyond the EDF horizon, habit, or tier disabled */
+  /** null = deadline-free, beyond the EDF horizon, occurrence, or disabled */
   slackMinutes: number | null;
   score: number;
   /** Placement attempts so far (retry-loop aging); 0 outside the scheduler */
@@ -137,10 +138,11 @@ export function resolveInheritedDeadline(
 }
 
 /**
- * EDF-tier membership + ordering key. Habit occurrences are excluded — their
- * synthetic period deadline is a placement window, not a commitment, and
- * hoisting them above deadline-free work would break the designed contest
- * where a low-priority habit yields.
+ * EDF-tier membership + ordering key. Recurring occurrences (clone roots and
+ * clone leaves alike) are excluded — their synthetic period deadline is a
+ * placement window, not a commitment, and hoisting them above deadline-free
+ * work would break the designed contest where a low-priority occurrence
+ * yields.
  */
 export function edfSlackMinutes(
   item: Planner,
@@ -149,7 +151,7 @@ export function edfSlackMinutes(
   requiredBlockMinutes: number,
 ): number | null {
   if (!SCHEDULING_CONFIG.EDF_TIER_ENABLED) return null;
-  if (item.plannerType === PlannerType.habit) return null;
+  if (isRecurrenceOccurrenceId(item.id)) return null;
   if (!deadline) return null;
   const minutesUntilDeadline =
     (deadline.getTime() - now.getTime()) / TIME_CONSTANTS.MS_PER_MINUTE;

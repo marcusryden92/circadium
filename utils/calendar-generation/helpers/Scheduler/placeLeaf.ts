@@ -1,5 +1,6 @@
-import { Planner, SimpleEvent, Category, PlannerType } from "@/types/prisma";
+import { Planner, SimpleEvent, Category } from "@/types/prisma";
 import { Scheduler } from "../../core/Scheduler";
+import { isRecurrenceOccurrenceId } from "../../../planRecurrence";
 import { SchedulingFailure } from "../../models/SchedulingModels";
 import { SchedulingFailureReason } from "../../constants";
 import { PerTemplateMask } from "../../models/TemplateModels";
@@ -95,11 +96,15 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
     return { scheduled: true, permanentFailure: false, events: [] };
   }
 
-  // A habit occurrence reuses the `splitting` JSON to store min/max bounds for
-  // a SINGLE flexible block, so it must never enter the multi-chunk split loop.
-  const isHabit = leaf.plannerType === PlannerType.habit;
-  const splitSettings = isHabit ? null : parseTaskSplitting(leaf.splitting);
-  const habitBounds = isHabit ? parseTaskSplitting(leaf.splitting) : null;
+  // A recurring-item occurrence reuses the `splitting` JSON to store min/max
+  // bounds for a SINGLE flexible block, so it must never enter the multi-chunk
+  // split loop. Pool leaves carry planner-row ids, so the occurrence-id shape
+  // uniquely marks clones here.
+  const isOccurrence = isRecurrenceOccurrenceId(leaf.id);
+  const splitSettings = isOccurrence ? null : parseTaskSplitting(leaf.splitting);
+  const flexibleBounds = isOccurrence
+    ? parseTaskSplitting(leaf.splitting)
+    : null;
 
   const allowedChain =
     scheduler.context.plannerConstraintsMap?.get(leaf.id)?.allowedTimes ?? [];
@@ -129,8 +134,8 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
 
   const requiredBlockMinutes = splitSettings
     ? minChunkRequired(splitRemainingForRun(leaf, splitState), splitSettings)
-    : habitBounds
-      ? habitBounds.minMinutes
+    : flexibleBounds
+      ? flexibleBounds.minMinutes
       : leaf.duration;
 
   if (requiredBlockMinutes > maxCapacity) {
@@ -175,58 +180,39 @@ export function placeLeaf(args: PlaceLeafArgs): PlaceLeafResult {
     };
   }
 
-  // Habit occurrence: one flexible block sized to the slot's headroom, clamped
-  // to [min, max] (or the fixed duration when no bounds). Habits are roots, so
-  // there are never goal caps here — the placement-window upper bound in the
-  // occurrence's constraints keeps it inside its period.
-  if (isHabit) {
-    const res = habitBounds
-      ? scheduler.scheduleTask(
-          leaf,
-          afterTime,
-          flexibleBlockSizing(habitBounds.minMinutes, habitBounds.maxMinutes),
-        )
-      : scheduler.scheduleTask(leaf, afterTime);
-    if (res.success && res.event) {
-      scheduledTaskIds.add(leaf.id);
-      return {
-        scheduled: true,
-        permanentFailure: false,
-        events: [res.event],
-        lastEnd: new Date(res.event.end),
-      };
-    }
-    if (res.failure) {
-      failures.push(res.failure);
-      if (res.failure.reason !== SchedulingFailureReason.NO_SLOTS) {
-        return { scheduled: false, permanentFailure: true, events: [] };
-      }
-    }
-    return { scheduled: false, permanentFailure: false, events: [] };
-  }
-
-  // A leaf bigger than a goal's daily cap can never place under that cap —
+  // One block, flexible or whole, with day caps composed identically for
+  // both: a recurring occurrence with bounds grants a single block clamped to
+  // [min, max] (shrinking into a fitting cap's remaining budget — the
+  // placement-window upper bound in its constraints keeps it inside its
+  // period); everything else places its fixed duration whole. A leaf whose
+  // minimum block exceeds a goal's daily cap can never place under that cap —
   // no horizon expansion creates such a day — so that cap is ruled out of
   // steering (recorded as an oversizedLeaf compromise on placement) instead
-  // of starving the loop. Caps the leaf DOES fit keep steering it.
-  const exceededCaps = goalCaps.filter((c) => leaf.duration > c.capMinutes);
-  const fittingCaps = goalCaps.filter((c) => leaf.duration <= c.capMinutes);
+  // of starving the loop. Caps the block DOES fit keep steering it.
+  const exceededCaps = goalCaps.filter(
+    (c) => requiredBlockMinutes > c.capMinutes,
+  );
+  const fittingCaps = goalCaps.filter(
+    (c) => requiredBlockMinutes <= c.capMinutes,
+  );
   const fittingBudget = (slotStart: Date): number => {
     let min = Infinity;
     for (const c of fittingCaps) min = Math.min(min, c.budget(slotStart));
     return min;
   };
-  let res =
-    fittingCaps.length > 0
-      ? scheduler.scheduleTask(
-          leaf,
-          afterTime,
-          wholeBlockSizing(leaf.duration, fittingBudget),
-        )
-      : scheduler.scheduleTask(leaf, afterTime);
+  const flexibleSizing = flexibleBounds
+    ? flexibleBlockSizing(flexibleBounds.minMinutes, flexibleBounds.maxMinutes)
+    : null;
+  const cappedSizing =
+    fittingCaps.length === 0
+      ? (flexibleSizing ?? undefined)
+      : flexibleSizing
+        ? { ...flexibleSizing, dayBudget: fittingBudget }
+        : wholeBlockSizing(leaf.duration, fittingBudget);
+  let res = scheduler.scheduleTask(leaf, afterTime, cappedSizing);
   let dayCapRelaxed = false;
   if (fittingCaps.length > 0 && !res.success && allowDayCapRelaxation) {
-    res = scheduler.scheduleTask(leaf, afterTime);
+    res = scheduler.scheduleTask(leaf, afterTime, flexibleSizing ?? undefined);
     dayCapRelaxed = res.success;
   }
 

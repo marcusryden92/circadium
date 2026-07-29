@@ -7,15 +7,17 @@
  * gap while a 35-minute gap the same day goes unused. Weighted to break ties
  * among same-day slots, never to override a full day of earliness.
  *
- * Sized placements are excluded: a split chunk's grant and a habit's flexible
- * block genuinely want headroom to grow into, so a tightness bonus would
- * fight them. They return a constant — rank-neutral across one task's slots.
+ * Sized placements are excluded: a split chunk's grant and a recurring
+ * occurrence's flexible block genuinely want headroom to grow into, so a
+ * tightness bonus would fight them. They return a constant — rank-neutral
+ * across one task's slots.
  */
 
-import { Planner, PlannerType } from "@/types/prisma";
+import { Planner } from "@/types/prisma";
 import { PlaceableSlot } from "../models/TimeSlot";
 import { SchedulingStrategy } from "./SchedulingStrategy";
 import { isChunkEventId } from "../../taskSplitting";
+import { isRecurrenceOccurrenceId } from "../../planRecurrence";
 
 const NEUTRAL_SCORE = 0.5;
 
@@ -23,7 +25,7 @@ export class FitTightnessStrategy implements SchedulingStrategy {
   readonly name = "fitTightness";
 
   score(task: Planner, slot: PlaceableSlot): number {
-    if (task.plannerType === PlannerType.habit || isChunkEventId(task.id)) {
+    if (isRecurrenceOccurrenceId(task.id) || isChunkEventId(task.id)) {
       return NEUTRAL_SCORE;
     }
     if (slot.durationMinutes <= 0 || task.duration <= 0) {

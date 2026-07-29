@@ -359,20 +359,23 @@ export interface CalendarGenerationInput {
    */
   externalBusyEvents?: SimpleEvent[];
   /**
-   * Logged habit-occurrence completions. Each row marks one period of a habit
-   * as done: expandHabits skips that period (never re-schedules it) and
-   * buildHabitCompletedEvents freezes it at its logged window. Derived fresh
-   * per run from the habitCompletions Redux slice, outside the OCC diff sync.
+   * Logged occurrence completions. Each row marks one period of a recurring
+   * task (or one leaf-period of a recurring goal) as done:
+   * expandRecurringItems skips that period (never re-schedules it) and
+   * buildOccurrenceCompletedEvents freezes it at its logged window. Plan
+   * check-off rows ride the same log but never touch scheduling. Derived
+   * fresh per run from the occurrenceCompletions Redux slice, outside the OCC
+   * diff sync.
    */
-  habitCompletions?: HabitCompletionInput[];
+  occurrenceCompletions?: OccurrenceCompletionInput[];
 }
 
 /**
- * One logged completion of a habit occurrence, keyed by (plannerId,
- * occurrenceKey) — the composite that also forms its event id
- * `${plannerId}|${occurrenceKey}`. start/end are the window it was done in.
+ * One logged completion of an occurrence, keyed by (plannerId, occurrenceKey)
+ * — the composite that also forms its event id `${plannerId}|${occurrenceKey}`.
+ * start/end are the window it was done in.
  */
-export interface HabitCompletionInput {
+export interface OccurrenceCompletionInput {
   plannerId: string;
   occurrenceKey: string;
   start: string;

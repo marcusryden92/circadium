@@ -1,7 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import type { DraftNode } from "./plannerTreeToJson";
 import type { DraftForest } from "./plannerForestToJson";
-import { normalizeDraftTree, coerceParentTypes } from "./normalizeDraftTree";
+import {
+  normalizeDraftTree,
+  normalizeDraftRecurrence,
+  coerceParentTypes,
+} from "./normalizeDraftTree";
 import {
   draftValidateSubtreeOrder,
   type DraftPrecedenceState,
@@ -63,6 +67,14 @@ export interface DraftItemUpdate {
   // The goal's daily limit: a positive number of minutes sets it, null clears
   // it. Rejected on anything but a top-level goal.
   maxMinutesPerDay?: number | null;
+  // Flexible repeat rule: an object sets it (clearing any deadline — each
+  // occurrence derives its own from its period end), null stops repeating.
+  // Rejected on subtasks and plans; top-level tasks and goals only.
+  recurrence?: {
+    freq: "daily" | "weekly" | "monthly";
+    interval?: number;
+    until?: string | null;
+  } | null;
 }
 
 function coerceForestTypes(forest: DraftForest): DraftForest {
@@ -292,24 +304,60 @@ export function updateDraftItems(
         node.maxMinutesPerDay = Math.floor(update.maxMinutesPerDay);
       }
     }
+    if (update.recurrence !== undefined) {
+      if (update.recurrence === null) {
+        node.recurrence = null;
+      } else {
+        if (!isRoot) {
+          failures.push({
+            id,
+            reason:
+              "a repeat rule applies to top-level items only (subtasks repeat with their goal)",
+          });
+          continue;
+        }
+        if (node.plannerType === "plan") {
+          failures.push({
+            id,
+            reason:
+              "plans repeat on their fixed schedule — this rule is for tasks and goals",
+          });
+          continue;
+        }
+        const rule = normalizeDraftRecurrence(update.recurrence);
+        if (!rule) {
+          failures.push({
+            id,
+            reason:
+              'recurrence requires freq "daily"|"weekly"|"monthly" (interval and until optional)',
+          });
+          continue;
+        }
+        node.recurrence = rule;
+        // Mutually exclusive with a deadline: each occurrence is bounded by
+        // its own period end.
+        node.deadline = null;
+      }
+    }
     if (update.isReady !== undefined) {
       if (update.isReady !== null && typeof update.isReady !== "boolean") {
         failures.push({ id, reason: "isReady must be a boolean or null" });
         continue;
       }
       // Same gate as the app's manual "Mark ready": a top-level goal needs
-      // subtasks and a deadline. Tasks and plans are freely readyable —
-      // readiness is just the scheduling gate for them.
+      // subtasks and a deadline OR a repeat rule. Tasks and plans are freely
+      // readyable — readiness is just the scheduling gate for them.
       if (
         update.isReady === true &&
         isRoot &&
         node.plannerType === "goal" &&
-        (node.children.length === 0 || node.deadline === null)
+        (node.children.length === 0 ||
+          (node.deadline === null && (node.recurrence ?? null) === null))
       ) {
         failures.push({
           id,
           reason:
-            "a goal can only be readied when it has at least one subtask and a deadline",
+            "a goal can only be readied when it has at least one subtask and a deadline or repeat rule",
         });
         continue;
       }
@@ -498,12 +546,15 @@ export function addDraftItems(
 // Added nodes are new by definition, so any model-supplied id is discarded
 // (which also blocks "moving" an existing item via add_items) and a fresh
 // draft id is minted in its place — draft nodes stay addressable by every
-// tool. Permanent UUIDs still replace draft ids at Save.
+// tool. Permanent UUIDs still replace draft ids at Save. add_items always
+// inserts UNDER a parent, so root-only fields (categoryId, recurrence) are
+// stripped here.
 function mintDraftIds(node: DraftNode): DraftNode {
   return {
     ...node,
     id: uuidv4(),
     categoryId: null,
+    recurrence: null,
     children: node.children.map(mintDraftIds),
   };
 }

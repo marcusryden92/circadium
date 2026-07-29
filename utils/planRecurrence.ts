@@ -159,6 +159,28 @@ export function planIsRecurring(plan: Planner): boolean {
   return parsePlanRecurrence(plan.recurrence) !== null;
 }
 
+// Strict occurrence-id test: `${plannerId}|${occurrenceKey}` where the suffix
+// is exactly the local wall-clock key occurrenceKey() mints. Chunk ids
+// (`|chunk:n`) and completed-segment ids (`|done:<iso>`) also contain the
+// separator, so sites classifying pool leaves or events by "is this a
+// recurrence occurrence" must use this, never bare isOccurrenceEventId.
+const OCCURRENCE_KEY_SUFFIX = /\|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+export function isRecurrenceOccurrenceId(eventId: string): boolean {
+  return OCCURRENCE_KEY_SUFFIX.test(eventId);
+}
+
+// A task or goal with a parseable recurrence rule schedules as one flexibly
+// placed occurrence per period (the retired habit type's model) instead of as
+// a single block. Root-only in effect: the engine expands roots, and a nested
+// value is inert. Plans keep their own fixed-anchor recurrence semantics.
+export function plannerHasFlexibleRecurrence(item: Planner): boolean {
+  return (
+    (item.plannerType === "task" || item.plannerType === "goal") &&
+    parsePlanRecurrence(item.recurrence) !== null
+  );
+}
+
 // True when the occurrence at `key` already carries a moved exception — i.e. it
 // is a customized one-off tile. The scope prompt ("just this / every
 // occurrence?") is skipped for these: re-editing an already-customized

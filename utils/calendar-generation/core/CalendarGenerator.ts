@@ -21,7 +21,7 @@ import {
   validateInput,
   buildInitialEventArray,
   expandTemplates,
-  expandHabits,
+  expandRecurringItems,
   buildLocationMap,
   buildPlannerCategoryMap,
   buildCategoryEligibilityMap,
@@ -150,34 +150,36 @@ export class CalendarGenerator {
       currentDate,
     );
 
-    // Phase 1b: Expand habits into per-period occurrence candidates and score
-    // them on the SAME urgency scale as tasks/goals (deadline = period end, so
-    // an occurrence competes harder as its window closes). Denominator stays
-    // the base planner durations so existing task/goal urgency is unchanged.
-    // From here `schedulingPlanners` (base + occurrences) is what every
-    // scheduling-phase tree walk reads; the occurrences never touch the fabric
-    // (Phase 2), precedence, or the persisted planner rows.
-    const habitExpansion = expandHabits({
+    // Phase 1b: Expand flexibly recurring roots (tasks AND goal subtrees) into
+    // per-period occurrence candidates and score the clone ROOTS on the SAME
+    // urgency scale as one-off work (deadline = period end, so an occurrence
+    // competes harder as its window closes). Denominator stays the base
+    // planner durations so existing task/goal urgency is unchanged. From here
+    // `schedulingPlanners` (base + clones) is what every scheduling-phase tree
+    // walk reads; the clones never touch the fabric (Phase 2), precedence, or
+    // the persisted planner rows. Goal-subtree clone LEAVES need no scores of
+    // their own — the leaf graph reads urgency by clone-root id.
+    const recurrenceExpansion = expandRecurringItems({
       planners: input.planners,
-      completions: input.habitCompletions ?? [],
+      completions: input.occurrenceCompletions ?? [],
       currentDate,
-      horizonDays: SCHEDULING_CONFIG.HABIT_HORIZON_DAYS,
+      horizonDays: SCHEDULING_CONFIG.RECURRENCE_HORIZON_DAYS,
     });
-    const hasHabitOccurrences = habitExpansion.occurrences.length > 0;
-    if (hasHabitOccurrences) {
+    const hasOccurrences = recurrenceExpansion.occurrences.length > 0;
+    if (hasOccurrences) {
       const occurrenceScores = computeUrgencyScores(
         input.planners,
-        habitExpansion.occurrences,
+        recurrenceExpansion.occurrences.filter((o) => o.parentId === null),
         currentDate,
       );
       for (const [id, score] of occurrenceScores) urgencyScores.set(id, score);
     }
-    const schedulingPlanners = hasHabitOccurrences
-      ? [...input.planners, ...habitExpansion.occurrences]
+    const schedulingPlanners = hasOccurrences
+      ? [...input.planners, ...recurrenceExpansion.occurrences]
       : input.planners;
 
     // Phase 2: Build initial event array (memoized, plans, completed,
-    // completed-habit occurrences). Occurrence CANDIDATES are not fabric; only
+    // completed occurrences). Occurrence CANDIDATES are not fabric; only
     // COMPLETED occurrences (frozen tiles) join the event array here.
     const { eventArray, memoizedEventIds, previousById } =
       buildInitialEventArray(
@@ -185,7 +187,7 @@ export class CalendarGenerator {
         input.planners,
         input.previousCalendar,
         currentDate,
-        input.habitCompletions ?? [],
+        input.occurrenceCompletions ?? [],
       );
 
     // Phase 3: Expand templates
@@ -235,11 +237,22 @@ export class CalendarGenerator {
     );
     // Per-planner scheduling constraints (earliest start + allowed times),
     // resolved down the tree so goal leaves inherit their ancestors' bounds.
-    // Habit occurrences supply their own entry (with placementWindowEnd, which
-    // is not column-derivable) — merged in after the column-derived pass.
+    // Occurrence clones get a merged entry: the SOURCE row's resolved chain
+    // (own + ancestors) floored at max(period start, now) and capped by the
+    // period end via placementWindowEnd, which is not column-derivable.
     const plannerConstraintsMap = buildPlannerConstraintsMap(input.planners);
-    for (const [id, constraints] of habitExpansion.occurrenceConstraints) {
-      plannerConstraintsMap.set(id, constraints);
+    for (const [cloneId, meta] of recurrenceExpansion.occurrenceMeta) {
+      const base = plannerConstraintsMap.get(meta.sourceId);
+      const floor = meta.periodStart > currentDate ? meta.periodStart : currentDate;
+      const earliestStart =
+        base?.earliestStart && base.earliestStart > floor
+          ? base.earliestStart
+          : floor;
+      plannerConstraintsMap.set(cloneId, {
+        earliestStart,
+        allowedTimes: base?.allowedTimes ?? [],
+        placementWindowEnd: meta.periodEnd,
+      });
     }
     // Precedence edges (queue order + dependency prerequisites), transparency
     // already applied — the third sibling map. The placement gate reads the
@@ -435,14 +448,14 @@ export class CalendarGenerator {
       });
     }
 
-    // Habit-occurrence failures never surface as-is: a NO_SLOTS "miss" is
-    // expected (the absence of a completion for an elapsed period is a "missed"
-    // window in the stats, not an error), and a structural failure (TOO_LARGE /
+    // Occurrence failures never surface as-is: a NO_SLOTS "miss" is expected
+    // (the absence of a completion for an elapsed period is a "missed" window
+    // in the stats, not an error), and a structural failure (TOO_LARGE /
     // IMPOSSIBLE_CONSTRAINTS — a window smaller than the duration, or allowed
-    // times that never meet the category windows) is remapped to the habit row
-    // so it coalesces to ONE message per habit, not one per occurrence.
-    const occurrenceIds = habitExpansion.occurrenceIds;
-    const habitsById = new Map(input.planners.map((p) => [p.id, p] as const));
+    // times that never meet the category windows) is remapped to the source
+    // row so it coalesces to ONE message per item, not one per occurrence.
+    const occurrenceIds = recurrenceExpansion.occurrenceIds;
+    const plannersById = new Map(input.planners.map((p) => [p.id, p] as const));
     const failures = schedulingResult.failures
       .filter(
         (f) =>
@@ -453,11 +466,11 @@ export class CalendarGenerator {
       )
       .map((f) => {
         if (!occurrenceIds.has(f.taskId)) return f;
-        const habitId = plannerIdFromEventId(f.taskId);
+        const sourceId = plannerIdFromEventId(f.taskId);
         return {
           ...f,
-          taskId: habitId,
-          taskTitle: habitsById.get(habitId)?.title ?? f.taskTitle,
+          taskId: sourceId,
+          taskTitle: plannersById.get(sourceId)?.title ?? f.taskTitle,
         };
       });
 

@@ -5,6 +5,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { assignInlineVars } from "@vanilla-extract/dynamic";
 import { v4 as uuidv4 } from "uuid";
 import { format } from "date-fns";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/redux/store";
 import {
   Button,
   Grain,
@@ -50,8 +52,18 @@ import {
   countPrecedenceChanges,
   diffDraftPrecedence,
 } from "@/utils/draft/diffDraftPrecedence";
+import { habitsToDraftState } from "@/utils/draft/draftHabits";
+import { parsePlanRecurrence } from "@/utils/planRecurrence";
+import {
+  countHabitChanges,
+  diffDraftHabits,
+} from "@/utils/draft/diffDraftHabits";
+import { buildHabitChangeSet } from "@/utils/draft/applyDraftHabits";
+import { applyHabitChanges } from "@/actions/habits";
+import { hydrateHabits } from "@/redux/slices/habitsSlice";
 import { WindowsView } from "@/components/draft/WindowsView";
 import { PrecedenceView } from "@/components/draft/PrecedenceView";
+import { HabitsView } from "@/components/draft/HabitsView/HabitsView";
 import { AssistantGate } from "@/components/draft/AssistantGate";
 import { diffDraftForest } from "@/utils/draft/diffDraftForest";
 import { diffSubtreeHasChanges } from "@/utils/draft/diffDraftTree";
@@ -84,7 +96,7 @@ import {
   a11yHiddenTitle,
 } from "./AIDraftModal.css";
 
-type DraftPaneTab = "goals" | "week" | "windows" | "queues";
+type DraftPaneTab = "goals" | "week" | "windows" | "queues" | "habits";
 type MobilePane = "chat" | "review";
 
 export interface AIDraftFocus {
@@ -97,12 +109,14 @@ function formatDirtyDomains(
   templates: boolean,
   windows: boolean,
   precedence: boolean,
+  habits: boolean,
 ): string {
   const parts = [
     forest ? "goals" : null,
     templates ? "weekly schedule" : null,
     windows ? "category windows" : null,
     precedence ? "queues" : null,
+    habits ? "habits" : null,
   ].filter((p): p is string => p !== null);
   if (parts.length <= 1) return parts[0] ?? "plan";
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
@@ -158,6 +172,13 @@ export function AIDraftModal({
     isLoaded,
   } = useCalendarProvider();
   const { status: aiStatus, getApiKey } = useAiAccess();
+  const dispatch = useDispatch<AppDispatch>();
+  // Habit trackers live outside the OCC sync (their own slice, direct
+  // actions), so the modal reads them straight from Redux rather than the
+  // calendar provider.
+  const habitBucketRows = useSelector((s: RootState) => s.habits.buckets);
+  const habitRows = useSelector((s: RootState) => s.habits.habits);
+  const habitItemRows = useSelector((s: RootState) => s.habits.items);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [chatBasisPct, setChatBasisPct] = useState(50);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
@@ -213,6 +234,26 @@ export function AIDraftModal({
     () => precedenceToDraft(queues, dependencies),
     [queues, dependencies],
   );
+  const canonicalHabits = useMemo(
+    () => habitsToDraftState(habitBucketRows, habitRows, habitItemRows),
+    [habitBucketRows, habitRows, habitItemRows],
+  );
+  // Habit items must repeat; plan recurrence lives outside the forest
+  // contract, so recurring plans are identified for the engine by id. Static
+  // per turn — the assistant cannot edit plan recurrence.
+  const recurringPlanIds = useMemo(
+    () =>
+      planner
+        .filter(
+          (p) =>
+            !p.parentId &&
+            p.isTriaged &&
+            p.plannerType === "plan" &&
+            parsePlanRecurrence(p.recurrence) !== null,
+        )
+        .map((p) => p.id),
+    [planner],
+  );
 
   const {
     workingForest,
@@ -223,10 +264,13 @@ export function AIDraftModal({
     setWorkingWindows,
     workingPrecedence,
     setWorkingPrecedence,
+    workingHabits,
+    setWorkingHabits,
     hasForestChanges,
     hasTemplateChanges,
     hasWindowChanges,
     hasPrecedenceChanges,
+    hasHabitChanges,
     hasChanges,
     messages,
     appendMessage,
@@ -242,6 +286,7 @@ export function AIDraftModal({
     canonicalTemplates,
     canonicalWindows,
     canonicalPrecedence,
+    canonicalHabits,
     autoResume: intent !== "onboarding",
     resumeConversationId,
   });
@@ -266,15 +311,18 @@ export function AIDraftModal({
     workingPrecedence,
     canonicalPrecedence,
   );
+  const diffedHabits = diffDraftHabits(canonicalHabits, workingHabits);
   const goalChangeCount = diffedGoals.filter(diffSubtreeHasChanges).length;
   const templateChangeCount = countTemplateChanges(diffedTemplates);
   const windowChangeCount = countWindowChanges(diffedWindows);
   const precedenceChangeCount = countPrecedenceChanges(diffedPrecedence);
+  const habitChangeCount = countHabitChanges(diffedHabits);
   const reviewChangeCount =
     goalChangeCount +
     templateChangeCount +
     windowChangeCount +
-    precedenceChangeCount;
+    precedenceChangeCount +
+    habitChangeCount;
 
   // Member and dependency endpoints are top-level items; working roots cover
   // drafts, canonical roots cover rows deleted in the working copy.
@@ -357,6 +405,11 @@ export function AIDraftModal({
     workingPrecedenceRef.current = workingPrecedence;
   }, [workingPrecedence]);
 
+  const workingHabitsRef = useRef(workingHabits);
+  useEffect(() => {
+    workingHabitsRef.current = workingHabits;
+  }, [workingHabits]);
+
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
@@ -425,6 +478,7 @@ export function AIDraftModal({
       let sawTemplates = false;
       let sawWindows = false;
       let sawPrecedence = false;
+      let sawHabits = false;
       let sawShow = false;
       let finished = false;
       // Categories ride from the WORKING state, not the provider — pending
@@ -454,6 +508,8 @@ export function AIDraftModal({
         currentForest: turnStartForest,
         currentTemplates: workingTemplatesRef.current,
         currentPrecedence: workingPrecedenceRef.current,
+        currentHabits: workingHabitsRef.current,
+        recurringPlanIds,
         history,
         focus: streamFocus,
         categories: windowsState.categories.map((c) => ({
@@ -514,8 +570,34 @@ export function AIDraftModal({
           setWorkingPrecedence(state);
           autoSwitchTab("queues");
         },
+        onHabits: (state) => {
+          sawHabits = true;
+          setWorkingHabits(state);
+          autoSwitchTab("habits");
+        },
         onStatus: ({ tool, count }) => {
           const plural = count === 1 ? "" : "s";
+          const habitLabel =
+            tool === "add_habits"
+              ? `creating ${count} habit${plural}…`
+              : tool === "update_habits"
+                ? `editing ${count} habit${plural}…`
+                : tool === "delete_habits"
+                  ? `deleting ${count} habit${plural}…`
+                  : tool === "add_habit_buckets"
+                    ? `creating ${count} bucket${plural}…`
+                    : tool === "update_habit_buckets"
+                      ? `editing ${count} bucket${plural}…`
+                      : tool === "delete_habit_buckets"
+                        ? `deleting ${count} bucket${plural}…`
+                        : tool === "add_habit_items" ||
+                            tool === "remove_habit_items"
+                          ? "updating tracked items…"
+                          : null;
+          if (habitLabel) {
+            setStreamStatus(habitLabel);
+            return;
+          }
           const label =
             tool === "get_goal_trees"
               ? `reading ${count} goal${plural}…`
@@ -586,6 +668,7 @@ export function AIDraftModal({
             sawTemplates ? "Week" : null,
             sawWindows ? "Categories" : null,
             sawPrecedence ? "Queues" : null,
+            sawHabits ? "Habits" : null,
           ].filter((t): t is string => t !== null);
           const fallback =
             touchedTabs.length > 0
@@ -648,10 +731,12 @@ export function AIDraftModal({
       setWorkingTemplates,
       setWorkingWindows,
       setWorkingPrecedence,
+      setWorkingHabits,
       autoSwitchTab,
       focus,
       categories,
       locations,
+      recurringPlanIds,
       intent,
     ],
   );
@@ -778,6 +863,27 @@ export function AIDraftModal({
       nextQueues,
       nextDependencies,
     );
+    // Habits are out-of-band (direct actions, never the OCC sync): replay the
+    // assistant's delta on the server after the forest apply so draft item
+    // ids resolve through nodeIdMap, then mirror the fresh state wholesale.
+    // Fire-and-forget — a failure costs only the habit delta; everything else
+    // persisted through the normal sync above.
+    if (hasHabitChanges) {
+      const changes = buildHabitChangeSet({
+        canonical: canonicalHabits,
+        working: workingHabits,
+        currentBuckets: habitBucketRows,
+        currentHabits: habitRows,
+        currentItems: habitItemRows,
+        nextPlanner: plannerForSync ?? planner,
+        nodeIdMap,
+      });
+      if (changes) {
+        void applyHabitChanges(changes)
+          .then((fresh) => dispatch(hydrateHabits(fresh)))
+          .catch(() => {});
+      }
+    }
     if (embedded) onSaved?.();
     else onClose();
   }, [
@@ -785,14 +891,21 @@ export function AIDraftModal({
     workingTemplates,
     workingWindows,
     workingPrecedence,
+    workingHabits,
     canonicalTemplates,
     canonicalWindows,
     canonicalPrecedence,
+    canonicalHabits,
     hasChanges,
     hasForestChanges,
     hasTemplateChanges,
     hasWindowChanges,
     hasPrecedenceChanges,
+    hasHabitChanges,
+    habitBucketRows,
+    habitRows,
+    habitItemRows,
+    dispatch,
     userId,
     isLoaded,
     planner,
@@ -979,6 +1092,17 @@ export function AIDraftModal({
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                className={paneTab}
+                data-active={activeTab === "habits" ? "true" : undefined}
+                onClick={() => selectTab("habits")}
+              >
+                <span className={paneTabLabel}>Habits</span>
+                {habitChangeCount > 0 && (
+                  <span className={tabChangeCount}>{habitChangeCount}</span>
+                )}
+              </button>
             </div>
             <div className={paneSubheaderSection}>
               <span className={paneSubtitle}>
@@ -1024,12 +1148,14 @@ export function AIDraftModal({
             />
           ) : activeTab === "windows" ? (
             <WindowsView diffed={diffedWindows} />
-          ) : (
+          ) : activeTab === "queues" ? (
             <PrecedenceView
               diffed={diffedPrecedence}
               titleById={precedenceTitleById}
               categoryNameById={categoryNameById}
             />
+          ) : (
+            <HabitsView diff={diffedHabits} titleById={precedenceTitleById} />
           )}
         </div>
       </div>
@@ -1046,6 +1172,7 @@ export function AIDraftModal({
                 hasTemplateChanges,
                 hasWindowChanges,
                 hasPrecedenceChanges,
+                hasHabitChanges,
               )}
               . Closing now will discard them.
             </p>

@@ -16,7 +16,7 @@ export type AgendaItem = {
   warn: boolean;
   overdue: boolean;
   pastDeadline: boolean;
-  kind: "plan" | "task" | "goal" | "habit" | "template" | "travel";
+  kind: "plan" | "task" | "goal" | "template" | "travel";
   categoryId?: string | null;
   categoryName?: string;
   categoryColor?: string | null;

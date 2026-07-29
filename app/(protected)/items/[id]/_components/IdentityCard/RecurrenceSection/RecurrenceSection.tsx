@@ -65,15 +65,22 @@ export function RecurrenceSection() {
 
   const rule = parsePlanRecurrence(item.recurrence);
 
-  // Plans repeat by anchoring on `starts`; habits use the same rule as their
-  // cadence (one occurrence per period). Both edit `recurrence` here.
-  if (item.plannerType !== "plan" && item.plannerType !== "habit") return null;
+  // Plans repeat by anchoring on `starts`; tasks and goals repeat flexibly —
+  // one auto-placed occurrence per period (the whole subtree for a goal). All
+  // edit `recurrence` here. Flexible recurrence is root-only: a nested value
+  // would be inert, so subtasks hide the section.
+  const isPlan = item.plannerType === "plan";
+  if (!isPlan && item.parentId) return null;
 
   const preset = presetFromRule(rule);
 
   const applyRule = (next: PlanRecurrenceRule | null) => {
     updateField("recurrence", next ? serializePlanRecurrence(next) : null);
     if (!next) updateField("recurrenceExceptions", null);
+    // Flexible recurrence and a deadline are mutually exclusive — each
+    // occurrence derives its deadline from its own period end. Clearing here
+    // keeps the hidden Deadline field from resurfacing stale.
+    if (next && !isPlan && item.deadline) updateField("deadline", null);
   };
 
   return (

@@ -1,6 +1,10 @@
 import { format } from "date-fns";
 import type { Planner } from "@/types/prisma";
 import { PlannerType } from "@/types/prisma";
+import {
+  isRecurrenceOccurrenceId,
+  plannerHasFlexibleRecurrence,
+} from "@/utils/planRecurrence";
 
 // Task splitting: a task row with non-null `splitting` is placed by the engine
 // as dynamically sized chunks instead of one block. Chunk sizes are decided at
@@ -143,16 +147,18 @@ export function serializeCompletedSegments(
     : null;
 }
 
-// Splitting never applies to plans (fixed anchors) or habits (which reuse the
-// splitting column to store min/max bounds for a single flexible occurrence
-// block, placed by the habit path — never the multi-chunk loop). Goal-typed
-// rows are allowed because goal subtree leaves are goal-typed (see addSubtask)
-// and leaves are exactly what scheduleGoal places — a parent container with
-// splitting set is inert since only bottom-layer leaves ever schedule.
+// Splitting never applies to plans (fixed anchors), flexibly recurring rows,
+// or recurrence-occurrence clones (both reuse the splitting column to store
+// min/max bounds for a single flexible occurrence block, placed by the
+// occurrence path — never the multi-chunk loop). Goal-typed rows are allowed
+// because goal subtree leaves are goal-typed (see addSubtask) and leaves are
+// exactly what the scheduler places — a parent container with splitting set
+// is inert since only bottom-layer leaves ever schedule.
 export function taskIsSplittable(item: Planner): boolean {
   if (
     item.plannerType === PlannerType.plan ||
-    item.plannerType === PlannerType.habit
+    plannerHasFlexibleRecurrence(item) ||
+    isRecurrenceOccurrenceId(item.id)
   ) {
     return false;
   }

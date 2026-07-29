@@ -14,9 +14,10 @@ import {
  * gain). Plans are excluded — they are fixed anchors, never dynamically placed.
  *
  * placementWindowEnd is an upper bound on where the placement unit may END. It
- * is null for every column-derived row (there is no column for it); habit
- * occurrences supply a real value (their period end) via expandHabits, merged
- * into the map after this pass, so a weekly occurrence stays inside its week.
+ * is null for every column-derived row (there is no column for it); recurring
+ * occurrence clones supply a real value (their period end) via
+ * expandRecurringItems, merged into the map after this pass, so a weekly
+ * occurrence stays inside its week.
  */
 export interface PlannerSchedulingConstraints {
   earliestStart: Date | null;

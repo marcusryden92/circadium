@@ -1,23 +1,51 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Flame, Check, X } from "lucide-react";
+import { format } from "date-fns";
+import { Flame, Check, X, Plus, Trash2 } from "lucide-react";
+import { useDispatch } from "react-redux";
 import {
   Glass,
-  Caption,
   CategoryDot,
+  ConfirmModal,
+  TypeBadge,
   categoryColor as resolveCategoryColor,
 } from "@/components/ui";
 import { progressTrack } from "@/lib/theme";
-import { parsePlanRecurrence } from "@/utils/planRecurrence";
-import { parseAllowedTimes } from "@/utils/allowedTimes";
-import type { Planner } from "@/types/prisma";
-import type { HabitStats } from "@/utils/habits/habitStats";
+import { orderedWeekDays } from "@/utils/calendarUtils";
+import type { WeekDayIntegers } from "@/types/calendarTypes";
+import type { AppDispatch } from "@/redux/store";
+import type {
+  Habit,
+  HabitBucket,
+  HabitItem,
+  Planner,
+} from "@/types/prisma";
+import {
+  habitGridWeeks,
+  type HabitTrackerStats,
+} from "@/utils/habits/habitStats";
+import { deleteHabit, removeHabitItem } from "@/actions/habits";
+import {
+  removeHabit as removeHabitFromStore,
+  removeHabitItem as removeHabitItemFromStore,
+} from "@/redux/slices/habitsSlice";
 import {
   card,
   head,
   title,
-  meta,
+  headActions,
+  iconBtn,
+  itemChips,
+  itemChip,
+  itemChipLabel,
+  itemChipRemove,
+  addItemChip,
+  dayGrid,
+  weekRow,
+  weekdayLabel,
+  dayCell,
   rateRow,
   meterTrack,
   meterFill,
@@ -25,117 +53,212 @@ import {
   statsRow,
   statChip,
   streakChip,
-  historyStrip,
-  historyCell,
 } from "./HabitCard.css";
 
-const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const HISTORY_CELLS = 14;
-
-function cadenceLabel(habit: Planner): string {
-  const rule = parsePlanRecurrence(habit.recurrence) ?? {
-    freq: "weekly" as const,
-    interval: 1,
-  };
-  const interval = rule.interval > 1 ? rule.interval : 1;
-  const unit =
-    rule.freq === "daily" ? "day" : rule.freq === "weekly" ? "week" : "month";
-  if (interval === 1) {
-    return rule.freq === "daily"
-      ? "Daily"
-      : rule.freq === "weekly"
-        ? "Weekly"
-        : "Monthly";
-  }
-  return `Every ${interval} ${unit}s`;
-}
-
-function windowLabel(habit: Planner): string {
-  const allowed = parseAllowedTimes(habit.allowedTimes);
-  if (!allowed) return "Anytime";
-  const parts: string[] = [];
-  if (allowed.days && allowed.days.length) {
-    parts.push(allowed.days.map((d) => DAY_ABBR[d]).join(", "));
-  }
-  if (allowed.ranges && allowed.ranges.length) {
-    parts.push(
-      allowed.ranges.map((r) => `${r.startTime}–${r.endTime}`).join(", "),
-    );
-  }
-  return parts.length ? parts.join(" · ") : "Anytime";
-}
+const WEEKDAY_NARROW: Record<WeekDayIntegers, string> = {
+  0: "Su",
+  1: "Mo",
+  2: "Tu",
+  3: "We",
+  4: "Th",
+  5: "Fr",
+  6: "Sa",
+};
 
 export function HabitCard({
   habit,
+  habitItems,
+  planners,
+  bucket,
   stats,
+  weekStartDay,
+  onAddItem,
 }: {
-  habit: Planner;
-  stats: HabitStats;
+  habit: Habit;
+  habitItems: HabitItem[];
+  planners: Planner[];
+  bucket: HabitBucket | undefined;
+  stats: HabitTrackerStats;
+  weekStartDay: WeekDayIntegers;
+  onAddItem: () => void;
 }) {
   const router = useRouter();
-  const color = resolveCategoryColor({ color: habit.color ?? null });
-  const ratePct = Math.round(stats.completionRate * 100);
-  const cells = [...stats.history].slice(0, HISTORY_CELLS).reverse();
+  const dispatch = useDispatch<AppDispatch>();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const open = () => router.push(`/items/${habit.id}`);
+  const color = resolveCategoryColor({
+    color: habit.color ?? bucket?.color ?? null,
+  });
+
+  const trackedRows = useMemo(() => {
+    const byId = new Map(planners.map((p) => [p.id, p]));
+    return habitItems
+      .filter((i) => i.habitId === habit.id)
+      .map((i) => byId.get(i.plannerId))
+      .filter((p): p is Planner => !!p);
+  }, [habitItems, planners, habit.id]);
+
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const weekDays = orderedWeekDays(weekStartDay);
+  const weeks = useMemo(
+    () => habitGridWeeks(stats.days, weekStartDay),
+    [stats.days, weekStartDay],
+  );
+  const ratePct = stats.period
+    ? Math.round(stats.period.completionRate * 100)
+    : null;
+
+  const onRemoveItem = (plannerId: string) => {
+    void removeHabitItem({ habitId: habit.id, plannerId })
+      .then(() =>
+        dispatch(removeHabitItemFromStore({ habitId: habit.id, plannerId })),
+      )
+      .catch(() => {});
+  };
+
+  const onDeleteHabit = () => {
+    setConfirmDelete(false);
+    void deleteHabit({ habitId: habit.id })
+      .then(() => dispatch(removeHabitFromStore({ habitId: habit.id })))
+      .catch(() => {});
+  };
 
   return (
-    <Glass
-      radius="lg"
-      className={card}
-      role="button"
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      }}
-    >
+    <Glass radius="lg" className={card}>
       <div className={head}>
         <CategoryDot color={color} size={9} />
-        <span className={title}>{habit.title}</span>
-      </div>
-
-      <div className={meta}>
-        <Caption>{cadenceLabel(habit)}</Caption>
-        <Caption>· {windowLabel(habit)}</Caption>
-        <Caption>· {habit.duration}m</Caption>
-      </div>
-
-      <div className={rateRow}>
-        <div className={`${progressTrack()} ${meterTrack}`}>
-          <div
-            className={meterFill}
-            style={{
-              width: `${ratePct}%`,
-              background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 80%, transparent))`,
-            }}
-          />
+        <span className={title}>{habit.name}</span>
+        <div className={headActions}>
+          <button
+            type="button"
+            className={iconBtn}
+            aria-label="Delete habit"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 size={13} strokeWidth={2} />
+          </button>
         </div>
-        <span className={rateValue}>{ratePct}%</span>
       </div>
 
-      <div className={statsRow}>
-        <span className={streakChip}>
-          <Flame size={13} strokeWidth={2.2} /> {stats.currentStreak}
-        </span>
-        <span className={statChip}>
-          <Check size={13} strokeWidth={2.2} /> {stats.completedCount}
-        </span>
-        <span className={statChip}>
-          <X size={13} strokeWidth={2.2} /> {stats.missedCount}
-        </span>
+      <div className={itemChips}>
+        {trackedRows.map((row) => (
+          <span
+            key={row.id}
+            className={itemChip}
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/items/${row.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") router.push(`/items/${row.id}`);
+            }}
+          >
+            <TypeBadge size="sm">{row.plannerType}</TypeBadge>
+            <span className={itemChipLabel}>{row.title}</span>
+            <button
+              type="button"
+              className={itemChipRemove}
+              aria-label={`Stop tracking ${row.title}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveItem(row.id);
+              }}
+            >
+              <X size={11} strokeWidth={2.2} />
+            </button>
+          </span>
+        ))}
+        <button type="button" className={addItemChip} onClick={onAddItem}>
+          <Plus size={12} strokeWidth={2.2} />
+          <span className={itemChipLabel}>
+            {trackedRows.length === 0 ? "Track an item" : "Add item"}
+          </span>
+        </button>
       </div>
 
-      {cells.length > 0 && (
-        <div className={historyStrip} aria-hidden="true">
-          {cells.map((entry) => (
-            <span key={entry.key} className={historyCell[entry.status]} />
+      <div className={dayGrid} aria-label="Last 30 days">
+        <div className={weekRow}>
+          {weekDays.map((day) => (
+            <span key={day} className={weekdayLabel}>
+              {WEEKDAY_NARROW[day]}
+            </span>
           ))}
         </div>
+        {weeks.map((week, weekIndex) => (
+          <div key={weekIndex} className={weekRow}>
+            {week.map((cell, cellIndex) =>
+              cell ? (
+                <span
+                  key={cell.dayKey}
+                  className={dayCell}
+                  data-done={cell.completedCount > 0}
+                  data-off={cell.completedCount === 0 && !cell.expected}
+                  data-today={cell.dayKey === todayKey}
+                  title={`${format(cell.date, "MMM d")}${
+                    cell.completedCount > 0
+                      ? ` — ${cell.completedCount} completed`
+                      : cell.expected
+                        ? ""
+                        : " — nothing to track"
+                  }`}
+                >
+                  {cell.completedCount > 1 ? cell.completedCount : ""}
+                </span>
+              ) : (
+                <span
+                  key={`pad-${weekIndex}-${cellIndex}`}
+                  className={dayCell}
+                  data-pad="true"
+                />
+              ),
+            )}
+          </div>
+        ))}
+      </div>
+
+      {stats.period && ratePct !== null ? (
+        <>
+          <div className={rateRow}>
+            <div className={`${progressTrack()} ${meterTrack}`}>
+              <div
+                className={meterFill}
+                style={{
+                  width: `${ratePct}%`,
+                  background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 80%, transparent))`,
+                }}
+              />
+            </div>
+            <span className={rateValue}>{ratePct}%</span>
+          </div>
+          <div className={statsRow}>
+            <span className={streakChip}>
+              <Flame size={13} strokeWidth={2.2} /> {stats.period.currentStreak}
+            </span>
+            <span className={statChip}>
+              <Check size={13} strokeWidth={2.2} /> {stats.period.completedCount}
+            </span>
+            <span className={statChip}>
+              <X size={13} strokeWidth={2.2} /> {stats.period.missedCount}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className={statsRow}>
+          <span className={statChip}>
+            <Check size={13} strokeWidth={2.2} /> {stats.totalCompletions} in
+            the last 30 days
+          </span>
+        </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        title={`Delete "${habit.name}"?`}
+        body="The tracked items themselves are untouched — only the habit and its history grouping go."
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={onDeleteHabit}
+      />
     </Glass>
   );
 }

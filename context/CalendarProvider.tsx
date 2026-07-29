@@ -57,8 +57,10 @@ import {
   fetchExternalCalendarData,
   refreshExternalCalendarSource,
 } from "@/actions/externalCalendars";
-import { hydrateHabitCompletions } from "@/redux/slices/habitCompletionsSlice";
-import { getHabitCompletions } from "@/actions/habitCompletions";
+import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletionsSlice";
+import { getOccurrenceCompletions } from "@/actions/occurrenceCompletions";
+import { hydrateHabits } from "@/redux/slices/habitsSlice";
+import { getHabitData } from "@/actions/habits";
 import type {
   ExternalCalendarSource,
   ExternalEvent,
@@ -393,20 +395,32 @@ export default function CalendarProvider({
     })();
   }, [isCalendarLoaded, userId, dispatch, updateAll]);
 
-  // Habit-completion bootstrap, once per app load: hydrate the log from the DB,
-  // then regen once so completed occurrences render frozen (and are skipped for
-  // rescheduling) this session. Out-of-band, like the external-calendar boot.
-  const habitBootstrapFired = useRef(false);
+  // Occurrence-completion + habit-tracker bootstrap, once per app load:
+  // hydrate the completion log from the DB, then regen once so completed
+  // occurrences render frozen (and are skipped for rescheduling) this
+  // session. Habit trackers ride the same boot but never trigger a regen —
+  // the engine does not read them. Out-of-band, like the external-calendar
+  // boot.
+  const occurrenceBootstrapFired = useRef(false);
   useEffect(() => {
-    if (!isCalendarLoaded || !userId || habitBootstrapFired.current) return;
-    habitBootstrapFired.current = true;
+    if (!isCalendarLoaded || !userId || occurrenceBootstrapFired.current) {
+      return;
+    }
+    occurrenceBootstrapFired.current = true;
     void (async () => {
       try {
-        const rows = await getHabitCompletions();
-        dispatch(hydrateHabitCompletions(rows));
+        const rows = await getOccurrenceCompletions();
+        dispatch(hydrateOccurrenceCompletions(rows));
         if (rows.length > 0) updateAll();
       } catch {
-        // Habits degrade gracefully; completions load on the next visit.
+        // Completions degrade gracefully; they load on the next visit.
+      }
+    })();
+    void (async () => {
+      try {
+        dispatch(hydrateHabits(await getHabitData()));
+      } catch {
+        // The habits page shows its loading state until the next visit.
       }
     })();
   }, [isCalendarLoaded, userId, dispatch, updateAll]);

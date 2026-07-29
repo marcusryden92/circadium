@@ -1,6 +1,33 @@
 import type { DraftNode } from "./plannerTreeToJson";
 import { normalizeTaskSplittingSettings } from "@/utils/taskSplitting";
 import { clampPriority, PRIORITY_DEFAULT } from "@/utils/plannerPriority";
+import type { PlanRecurrenceRule } from "@/utils/planRecurrence";
+
+// Model-supplied repeat rule -> a valid PlanRecurrenceRule or null. Kept local
+// (rather than reusing parsePlanRecurrence, which takes a JSON string) because
+// the draft contract carries the rule as a plain object.
+export function normalizeDraftRecurrence(
+  raw: unknown,
+): PlanRecurrenceRule | null {
+  if (!raw || typeof raw !== "object") return null;
+  const rule = raw as Record<string, unknown>;
+  if (
+    rule.freq !== "daily" &&
+    rule.freq !== "weekly" &&
+    rule.freq !== "monthly"
+  ) {
+    return null;
+  }
+  const interval =
+    typeof rule.interval === "number" && rule.interval >= 1
+      ? Math.floor(rule.interval)
+      : 1;
+  const until =
+    typeof rule.until === "string" && !isNaN(new Date(rule.until).getTime())
+      ? rule.until
+      : null;
+  return { freq: rule.freq, interval, until };
+}
 
 // Partial-JSON parses of a streaming tool input can hand back nodes with
 // missing fields — most commonly `children` still undefined because the array
@@ -38,6 +65,7 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
     node.maxMinutesPerDay > 0
       ? Math.floor(node.maxMinutesPerDay)
       : null;
+  const recurrence = normalizeDraftRecurrence(node.recurrence);
 
   const rawChildren = Array.isArray(node.children) ? node.children : [];
   const children = rawChildren
@@ -50,13 +78,16 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
     // Structure decides type: a node holding children is always a goal.
     plannerType: children.length > 0 ? "goal" : plannerType,
     duration,
-    deadline,
+    // Flexible recurrence and a deadline are mutually exclusive — each
+    // occurrence derives its deadline from its own period end.
+    deadline: recurrence ? null : deadline,
     priority,
     isReady,
     categoryId,
     color,
     splitting,
     maxMinutesPerDay,
+    recurrence,
     children,
   };
 }

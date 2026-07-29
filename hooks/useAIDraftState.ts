@@ -26,6 +26,10 @@ import {
   draftPrecedenceStateEqual,
   type DraftPrecedenceState,
 } from "@/utils/draft/draftPrecedence";
+import {
+  draftHabitsStateEqual,
+  type DraftHabitsState,
+} from "@/utils/draft/draftHabits";
 
 export interface ChatMessage {
   id: string;
@@ -49,6 +53,7 @@ export interface UseAIDraftStateArgs {
   canonicalTemplates: DraftTemplate[];
   canonicalWindows: DraftWindowsState;
   canonicalPrecedence: DraftPrecedenceState;
+  canonicalHabits: DraftHabitsState;
   // Adopt the most recent conversation on first open. Off for the onboarding
   // instance, which always starts on a fresh chat.
   autoResume?: boolean;
@@ -68,10 +73,13 @@ export interface UseAIDraftStateReturn {
   setWorkingWindows: (state: DraftWindowsState) => void;
   workingPrecedence: DraftPrecedenceState;
   setWorkingPrecedence: (state: DraftPrecedenceState) => void;
+  workingHabits: DraftHabitsState;
+  setWorkingHabits: (state: DraftHabitsState) => void;
   hasForestChanges: boolean;
   hasTemplateChanges: boolean;
   hasWindowChanges: boolean;
   hasPrecedenceChanges: boolean;
+  hasHabitChanges: boolean;
   hasChanges: boolean;
 
   messages: ChatMessage[];
@@ -97,6 +105,7 @@ export function useAIDraftState({
   canonicalTemplates,
   canonicalWindows,
   canonicalPrecedence,
+  canonicalHabits,
   autoResume = true,
   resumeConversationId = null,
 }: UseAIDraftStateArgs): UseAIDraftStateReturn {
@@ -108,6 +117,8 @@ export function useAIDraftState({
     useState<DraftWindowsState>(canonicalWindows);
   const [workingPrecedence, setWorkingPrecedenceState] =
     useState<DraftPrecedenceState>(canonicalPrecedence);
+  const [workingHabits, setWorkingHabitsState] =
+    useState<DraftHabitsState>(canonicalHabits);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Minted fresh per chat; becomes the DraftConversation row id on the first
   // persisted turn. Empty conversations never reach the DB.
@@ -127,6 +138,7 @@ export function useAIDraftState({
       setWorkingTemplatesState(canonicalTemplates);
       setWorkingWindowsState(canonicalWindows);
       setWorkingPrecedenceState(canonicalPrecedence);
+      setWorkingHabitsState(canonicalHabits);
     }
     // canonical* intentionally excluded — re-running on every planner,
     // template, or category change while the modal is open would blow away
@@ -147,6 +159,10 @@ export function useAIDraftState({
 
   const setWorkingPrecedence = useCallback((state: DraftPrecedenceState) => {
     setWorkingPrecedenceState(state);
+  }, []);
+
+  const setWorkingHabits = useCallback((state: DraftHabitsState) => {
+    setWorkingHabitsState(state);
   }, []);
 
   // All three gate on `ready`: until the working copies have been seeded from
@@ -172,11 +188,17 @@ export function useAIDraftState({
     return !draftPrecedenceStateEqual(workingPrecedence, canonicalPrecedence);
   }, [ready, workingPrecedence, canonicalPrecedence]);
 
+  const hasHabitChanges = useMemo(() => {
+    if (!ready || workingHabits === canonicalHabits) return false;
+    return !draftHabitsStateEqual(workingHabits, canonicalHabits);
+  }, [ready, workingHabits, canonicalHabits]);
+
   const hasChanges =
     hasForestChanges ||
     hasTemplateChanges ||
     hasWindowChanges ||
-    hasPrecedenceChanges;
+    hasPrecedenceChanges ||
+    hasHabitChanges;
 
   const appendMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
@@ -297,10 +319,13 @@ export function useAIDraftState({
     setWorkingWindows,
     workingPrecedence,
     setWorkingPrecedence,
+    workingHabits,
+    setWorkingHabits,
     hasForestChanges,
     hasTemplateChanges,
     hasWindowChanges,
     hasPrecedenceChanges,
+    hasHabitChanges,
     hasChanges,
     messages,
     appendMessage,

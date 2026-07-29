@@ -73,6 +73,7 @@ function diffNode(working: DraftNode, canonical: DraftNode): DiffNode {
     color: working.color ?? null,
     splitting: working.splitting ?? null,
     maxMinutesPerDay: working.maxMinutesPerDay ?? null,
+    recurrence: working.recurrence ?? null,
     status,
     children: diffedChildren,
     changedFields,
@@ -92,6 +93,7 @@ export function markSubtree(node: DraftNode, status: DiffStatus): DiffNode {
     color: node.color ?? null,
     splitting: node.splitting ?? null,
     maxMinutesPerDay: node.maxMinutesPerDay ?? null,
+    recurrence: node.recurrence ?? null,
     status,
     changedFields: [],
     children: node.children.map((c) => markSubtree(c, status)),
@@ -110,6 +112,20 @@ function splittingEqual(a: DraftNode["splitting"], b: DraftNode["splitting"]): b
   );
 }
 
+function recurrenceEqual(
+  a: DraftNode["recurrence"],
+  b: DraftNode["recurrence"],
+): boolean {
+  const left = a ?? null;
+  const right = b ?? null;
+  if (left === null || right === null) return left === right;
+  return (
+    left.freq === right.freq &&
+    left.interval === right.interval &&
+    (left.until ?? null) === (right.until ?? null)
+  );
+}
+
 function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
   const changed: string[] = [];
   if (a.title !== b.title) changed.push("title");
@@ -123,6 +139,7 @@ function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
   if (!splittingEqual(a.splitting, b.splitting)) changed.push("splitting");
   if ((a.maxMinutesPerDay ?? null) !== (b.maxMinutesPerDay ?? null))
     changed.push("maxMinutesPerDay");
+  if (!recurrenceEqual(a.recurrence, b.recurrence)) changed.push("recurrence");
   return changed;
 }
 

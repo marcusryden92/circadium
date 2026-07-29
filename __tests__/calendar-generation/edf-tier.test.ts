@@ -159,17 +159,16 @@ describe("candidate sort", () => {
     ]);
   });
 
-  it("habit occurrences never enter the EDF tier", () => {
-    const habitOccurrence = makePlanner("habit-1|2026-01-05", {
-      plannerType: "habit",
+  it("recurring occurrences never enter the EDF tier", () => {
+    const occurrence = makePlanner("task-1|2026-01-05T00:00", {
       deadline: daysFromToday(1),
       priority: 1,
     });
     const noDeadline = makePlanner("no-deadline", { priority: 7 });
 
-    expect(sortIds([habitOccurrence, noDeadline])).toEqual([
+    expect(sortIds([occurrence, noDeadline])).toEqual([
       "no-deadline",
-      "habit-1|2026-01-05",
+      "task-1|2026-01-05T00:00",
     ]);
   });
 

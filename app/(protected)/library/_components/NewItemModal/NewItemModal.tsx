@@ -17,7 +17,6 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { fallbackCalendarColor } from "@/utils/colorUtils";
 import { defaultReadyForType } from "@/utils/plannerReadiness";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
-import { serializePlanRecurrence } from "@/utils/planRecurrence";
 import type { Planner } from "@/types/prisma";
 import {
   overlay,
@@ -29,7 +28,7 @@ import {
   sheetStack,
 } from "./NewItemModal.css";
 
-type NewItemType = "task" | "plan" | "goal" | "habit";
+type NewItemType = "task" | "plan" | "goal";
 
 const DEFAULT_DURATION_MINUTES = 30;
 // Non-goal items must carry a positive duration or the engine rejects them and
@@ -87,12 +86,7 @@ export function NewItemModal({
       duration: resolvedDuration,
       deadline: null,
       starts: null,
-      // A habit is inherently recurring — seed a weekly cadence so its detail
-      // page shows "Repeats: weekly" (the engine's own default) instead of off.
-      recurrence:
-        type === "habit"
-          ? serializePlanRecurrence({ freq: "weekly", interval: 1 })
-          : null,
+      recurrence: null,
       recurrenceExceptions: null,
       splitting: null,
       completedSegments: null,
@@ -150,7 +144,6 @@ export function NewItemModal({
             { key: "task", label: "Task" },
             { key: "plan", label: "Plan" },
             { key: "goal", label: "Goal" },
-            { key: "habit", label: "Habit" },
           ]}
         />
       </div>

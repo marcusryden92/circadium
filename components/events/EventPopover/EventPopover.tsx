@@ -200,13 +200,15 @@ const EventPopover: React.FC<EventPopoverProps> = ({
     | PlannerType
     | undefined;
   const isTemplate = !!event.extendedProps.isTemplateItem;
+  // Plans get the status row too: their Complete is a pure check-off record
+  // ("did this actually happen?") feeding the habit tracker, never a
+  // reschedule signal.
   const showStatusActions =
     !isTemplate &&
     (plannerType === PlannerType.task ||
       plannerType === PlannerType.goal ||
-      plannerType === PlannerType.habit);
-  // Only a real plan gets the plan-specific affordances (Duplicate). A habit is
-  // engine-placed like a task/goal, not a fixed anchor.
+      plannerType === PlannerType.plan);
+  // Only a real plan gets the plan-specific affordances (Duplicate).
   const isPlan = plannerType === PlannerType.plan;
 
   const durationMinutes = Math.max(

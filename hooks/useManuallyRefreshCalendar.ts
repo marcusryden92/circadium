@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useRef } from "react";
 import { floorMinutes } from "@/utils/calendarUtils";
@@ -26,8 +26,8 @@ import {
   type DebugStrategyConfig,
 } from "@/redux/slices/schedulingSettingsSlice";
 import { deriveExternalBusyEvents } from "@/utils/external-calendar/deriveExternalBusyEvents";
-import { deriveHabitCompletions } from "@/utils/habits/deriveHabitCompletions";
-import type { HabitCompletionInput } from "@/utils/calendar-generation/models/SchedulingModels";
+import { deriveOccurrenceCompletions } from "@/utils/deriveOccurrenceCompletions";
+import type { OccurrenceCompletionInput } from "@/utils/calendar-generation/models/SchedulingModels";
 
 const useManuallyRefreshCalendar = (
   userId: string | undefined,
@@ -77,8 +77,8 @@ const useManuallyRefreshCalendar = (
   const externalEvents = useSelector(
     (state: RootState) => state.externalCalendar.events
   );
-  const habitCompletionRows = useSelector(
-    (state: RootState) => state.habitCompletions.rows
+  const occurrenceCompletionRows = useSelector(
+    (state: RootState) => state.occurrenceCompletions.rows
   );
 
   // Store latest values in refs so callback doesn't need to depend on them
@@ -91,7 +91,7 @@ const useManuallyRefreshCalendar = (
     queues: Queue[];
     dependencies: PlannerDependency[];
     externalBusyEvents: SimpleEvent[];
-    habitCompletions: HabitCompletionInput[];
+    occurrenceCompletions: OccurrenceCompletionInput[];
     weekStartDay: WeekDayIntegers;
     bufferTimeMinutes: number;
     enableTravelEvents: boolean;
@@ -111,7 +111,7 @@ const useManuallyRefreshCalendar = (
       externalSources,
       externalEvents,
     ),
-    habitCompletions: deriveHabitCompletions(habitCompletionRows),
+    occurrenceCompletions: deriveOccurrenceCompletions(occurrenceCompletionRows),
     weekStartDay,
     bufferTimeMinutes,
     enableTravelEvents,
@@ -132,7 +132,7 @@ const useManuallyRefreshCalendar = (
       externalSources,
       externalEvents,
     ),
-    habitCompletions: deriveHabitCompletions(habitCompletionRows),
+    occurrenceCompletions: deriveOccurrenceCompletions(occurrenceCompletionRows),
     weekStartDay,
     bufferTimeMinutes,
     enableTravelEvents,
@@ -152,7 +152,7 @@ const useManuallyRefreshCalendar = (
       queues,
       dependencies,
       externalBusyEvents,
-      habitCompletions,
+      occurrenceCompletions,
       weekStartDay,
       bufferTimeMinutes,
       enableTravelEvents,
@@ -197,7 +197,7 @@ const useManuallyRefreshCalendar = (
           queues,
           dependencies,
           externalBusyEvents,
-          habitCompletions,
+          occurrenceCompletions,
           previousEngineMessages,
         },
       }).then((result) => {

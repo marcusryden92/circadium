@@ -57,12 +57,21 @@ export function seedGoalDayLedger(
   state.seeded.add(goal.id);
   const dayMap = ledgerFor(goal.id, state);
   // Splice-aware: the cap meters the goal's scheduled sequence, so a completed
-  // detour-target leaf placed under this goal seeds its day too.
+  // detour-target leaf placed under this goal seeds its day too. The raw-id
+  // match covers recurring-goal occurrence clones, whose leaf ids ARE
+  // composite (`${leafId}|${periodKey}`) — stripping the suffix would resolve
+  // a frozen completed-occurrence event to the REAL leaf id and miss the
+  // clone subtree entirely.
   const leafIds = new Set(
     getScheduledLeafSequence(allPlanners, goal.id).map((t) => t.id),
   );
   for (const event of scheduledEvents) {
-    if (!leafIds.has(plannerIdFromEventId(event.id))) continue;
+    if (
+      !leafIds.has(plannerIdFromEventId(event.id)) &&
+      !leafIds.has(event.id)
+    ) {
+      continue;
+    }
     addIntervalMinutesByDay(dayMap, new Date(event.start), new Date(event.end));
   }
 }
@@ -120,11 +129,11 @@ export function wholeBlockSizing(
   };
 }
 
-// Flexible single-block sizing for a habit occurrence: one block sized to the
-// selected slot's headroom, clamped to [min, max]. Unlike split tasks this
-// never loops into a second chunk — it grants the largest block that fits, so
-// an occurrence fills its slot up to max and fails (skips the slot) below min.
-// maxMinutes <= 0 means no upper bound.
+// Flexible single-block sizing for a recurring-item occurrence: one block
+// sized to the selected slot's headroom, clamped to [min, max]. Unlike split
+// tasks this never loops into a second chunk — it grants the largest block
+// that fits, so an occurrence fills its slot up to max and fails (skips the
+// slot) below min. maxMinutes <= 0 means no upper bound.
 export function flexibleBlockSizing(
   minMinutes: number,
   maxMinutes: number,

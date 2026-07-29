@@ -4,14 +4,16 @@ import { space } from "@/lib/theme";
 import { DateTimePicker, FieldStack } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { formatDatetimeLocal } from "@/utils/datetime";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { useItem } from "../../ItemContext";
 
 export function DateSection() {
   const { item, changeDate } = useItem();
   const { weekStartDay } = useCalendarProvider();
-  // Habits have no user-facing deadline — each occurrence is bounded to its own
-  // period internally; a "Deadline" field here would be meaningless.
-  if (item.plannerType === "habit") return null;
+  // A flexibly recurring item has no user-facing deadline — each occurrence
+  // is bounded to its own period internally; a "Deadline" field here would be
+  // meaningless (and RecurrenceSection clears it on enable).
+  if (plannerHasFlexibleRecurrence(item)) return null;
   const isPlan = item.plannerType === "plan";
   const isoValue = isPlan ? item.starts : item.deadline;
   const dateValue = formatDatetimeLocal(isoValue);

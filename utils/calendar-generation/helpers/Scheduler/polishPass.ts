@@ -1,10 +1,10 @@
 import { Planner, PlannerType, SimpleEvent } from "@/types/prisma";
 import { Category } from "@/types/prisma";
+import { plannerHasFlexibleRecurrence } from "../../../planRecurrence";
 import {
   AvailableSlot,
   OccupiedSlot,
   Slot,
-  TravelSlot,
 } from "../../models/TimeSlot";
 import { TravelManager } from "../../core/TravelManager";
 import { SCHEDULING_CONFIG } from "../../constants";
@@ -157,9 +157,7 @@ function collectOwnLegs(
     locationId
   ) {
     if (before.travelToLocationId !== locationId) return null;
-    legKeys.push(
-      (before as TravelSlot).travelId ?? (before as TravelSlot).eventId,
-    );
+    legKeys.push(before.travelId ?? before.eventId);
   }
 
   const after =
@@ -171,9 +169,7 @@ function collectOwnLegs(
     locationId
   ) {
     if (after.travelFromLocationId !== locationId) return null;
-    legKeys.push(
-      (after as TravelSlot).travelId ?? (after as TravelSlot).eventId,
-    );
+    legKeys.push(after.travelId ?? after.eventId);
   }
 
   return { legKeys };
@@ -355,7 +351,7 @@ export function polishPass(args: PolishPassArgs): { swaps: PolishSwap[] } {
     if (!planner) continue;
     if (
       planner.plannerType === PlannerType.plan ||
-      planner.plannerType === PlannerType.habit
+      plannerHasFlexibleRecurrence(planner)
     ) {
       continue;
     }

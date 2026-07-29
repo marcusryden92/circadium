@@ -89,6 +89,10 @@ export async function importUserData(
   const conversations = asArray(data.aiConversations);
   const sources = asArray(data.externalCalendarSources);
   const events = asArray(data.externalCalendarEvents);
+  const habitBuckets = asArray(data.habitBuckets);
+  const habits = asArray(data.habits);
+  const habitItems = asArray(data.habitItems);
+  const occurrenceCompletions = asArray(data.occurrenceCompletions);
   const viewState =
     data.viewState && typeof data.viewState === "object"
       ? (data.viewState as Row)
@@ -131,6 +135,10 @@ export async function importUserData(
           await tx.queue.deleteMany({ where: { userId } });
           await tx.plannerDependency.deleteMany({ where: { userId } });
           await tx.taskPreferences.deleteMany({ where: { planner: { userId } } });
+          await tx.habitItem.deleteMany({ where: { userId } });
+          await tx.habit.deleteMany({ where: { userId } });
+          await tx.habitBucket.deleteMany({ where: { userId } });
+          await tx.occurrenceCompletion.deleteMany({ where: { userId } });
           await tx.categoryTimeWindow.deleteMany({ where: { userId } });
           await tx.planner.deleteMany({ where: { userId } });
           await tx.category.deleteMany({ where: { userId } });
@@ -178,6 +186,10 @@ export async function importUserData(
         for (const d of dependencies) assign("dependency", d.id);
         for (const conv of conversations) assign("conversation", conv.id);
         for (const s of sources) assign("source", s.id);
+        for (const hb of habitBuckets) assign("habitBucket", hb.id);
+        for (const h of habits) assign("habit", h.id);
+        for (const hi of habitItems) assign("habitItem", hi.id);
+        for (const oc of occurrenceCompletions) assign("completion", oc.id);
 
         const travelTimesToInsert = travelTimes
           .map((t) => ({
@@ -287,6 +299,41 @@ export async function importUserData(
           return [{ ...strip(e), id, sourceId, userId }];
         });
 
+        const habitBucketsToInsert = habitBuckets.map((hb) => ({
+          ...strip(hb),
+          id: ref("habitBucket", hb.id),
+          userId,
+        }));
+
+        // Legacy exports carried categoryId on habits (buckets were category
+        // references before they became their own entity) — stripped so an
+        // old file still imports, with those habits landing unsorted.
+        const habitsToInsert = habits.map((h) => ({
+          ...strip(h, ["categoryId"]),
+          id: ref("habit", h.id),
+          bucketId: h.bucketId ? ref("habitBucket", h.bucketId) : null,
+          userId,
+        }));
+
+        const habitItemsToInsert = habitItems
+          .map((hi) => ({
+            ...strip(hi),
+            id: ref("habitItem", hi.id),
+            habitId: ref("habit", hi.habitId),
+            plannerId: ref("planner", hi.plannerId),
+            userId,
+          }))
+          .filter((hi) => hi.habitId && hi.plannerId);
+
+        const completionsToInsert = occurrenceCompletions
+          .map((oc) => ({
+            ...strip(oc),
+            id: ref("completion", oc.id),
+            plannerId: ref("planner", oc.plannerId),
+            userId,
+          }))
+          .filter((oc) => oc.plannerId);
+
         const skipDuplicates = remap;
         const insert = async (
           rows: Row[],
@@ -335,6 +382,21 @@ export async function importUserData(
         );
         await insert(eventsToInsert, (rows) =>
           tx.externalEvent.createMany({ data: rows as never, skipDuplicates }),
+        );
+        await insert(habitBucketsToInsert, (rows) =>
+          tx.habitBucket.createMany({ data: rows as never, skipDuplicates }),
+        );
+        await insert(habitsToInsert, (rows) =>
+          tx.habit.createMany({ data: rows as never, skipDuplicates }),
+        );
+        await insert(habitItemsToInsert, (rows) =>
+          tx.habitItem.createMany({ data: rows as never, skipDuplicates }),
+        );
+        await insert(completionsToInsert, (rows) =>
+          tx.occurrenceCompletion.createMany({
+            data: rows as never,
+            skipDuplicates,
+          }),
         );
 
         // Single-row, user-unique state: only restored on a full replace so an

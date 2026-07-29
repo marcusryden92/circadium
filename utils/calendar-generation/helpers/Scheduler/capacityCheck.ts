@@ -28,8 +28,9 @@ import {
 // remainder once it drops below 2*min), never the full duration — the
 // aggregate would pin `biggestFit < biggestRemaining` permanently true and
 // burn the whole expansion budget. taskIsSplittable already excludes plans AND
-// habits (a habit's `splitting` is reinterpreted as flexible-block bounds, not
-// the multi-chunk loop), so a habit sizes on its full duration here.
+// recurring occurrences (an occurrence's `splitting` is reinterpreted as
+// flexible-block bounds, not the multi-chunk loop), so an occurrence sizes on
+// its full duration here.
 export function placementBlockMinutes(item: Planner): number {
   if (taskIsSplittable(item)) {
     const settings = parseTaskSplitting(item.splitting)!;

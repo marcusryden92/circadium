@@ -123,13 +123,12 @@ describe("FitTightnessStrategy", () => {
     );
   });
 
-  it("habit occurrences score neutral regardless of slot size", () => {
-    const habit = makePlanner("habit-1|2026-01-05", {
-      plannerType: "habit",
+  it("recurring occurrences score neutral regardless of slot size", () => {
+    const occurrence = makePlanner("task-1|2026-01-05T00:00", {
       duration: 30,
     });
-    expect(strategy.score(habit, makeSlot(35), context)).toBe(
-      strategy.score(habit, makeSlot(240), context),
+    expect(strategy.score(occurrence, makeSlot(35), context)).toBe(
+      strategy.score(occurrence, makeSlot(240), context),
     );
   });
 

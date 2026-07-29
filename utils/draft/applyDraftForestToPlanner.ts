@@ -9,12 +9,32 @@ import type { DraftForest } from "./plannerForestToJson";
 import { draftTreesEqual } from "./diffDraftTree";
 import { fallbackCalendarColor, isHexColor } from "@/utils/colorUtils";
 import { serializeTaskSplitting } from "@/utils/taskSplitting";
+import { serializePlanRecurrence } from "@/utils/planRecurrence";
 
 // Splitting rides the full-tree contract like deadline/priority: the node's
 // value (null when absent) becomes the row value. completedSegments is never
 // part of the draft contract — retained rows keep theirs untouched.
 function splittingColumn(node: DraftNode): string | null {
   return node.splitting ? serializeTaskSplitting(node.splitting) : null;
+}
+
+// The flexible repeat rule rides top-level task/goal roots only, splitting-
+// style null semantics: the node's value (null when absent) becomes the row
+// value, so a retained root re-emitted without it stops repeating. Plans keep
+// their own recurrence outside the contract (spread-preserved), and every
+// descendant stamps null — a nested rule is inert and gets healed away.
+function recurrenceColumn(
+  node: DraftNode,
+  rootType: PlannerType,
+): string | null {
+  if (rootType === PlannerType.plan) return null;
+  const rule = node.recurrence ?? null;
+  if (!rule) return null;
+  return serializePlanRecurrence({
+    freq: rule.freq,
+    interval: rule.interval >= 1 ? Math.floor(rule.interval) : 1,
+    until: rule.until ?? null,
+  });
 }
 
 // The daily limit rides top-level goal roots only, splitting-style null
@@ -35,13 +55,14 @@ function goalDayCapColumn(
 // Readiness the apply layer stamps across a whole subtree — it cascades from
 // the root, matching the manual toggle and the create defaults. A task/plan
 // root is ready unless the assistant explicitly set it false; a goal root
-// stays gated on subtasks + a deadline, matching the manual "Mark ready".
+// stays gated on subtasks + a deadline OR a repeat rule (each period's end
+// bounds a recurring goal's occurrences), matching the manual "Mark ready".
 function resolveAppliedReady(node: DraftNode, rootType: PlannerType): boolean {
   if (rootType === PlannerType.goal) {
     return (
       node.isReady === true &&
       node.children.length > 0 &&
-      node.deadline !== null
+      (node.deadline !== null || (node.recurrence ?? null) !== null)
     );
   }
   return node.isReady !== false;
@@ -107,16 +128,13 @@ export function applyDraftForestToPlanner({
   let current = planner;
 
   // 1. Deleted roots: every triaged top-level row (what plannerForestToJson
-  // sent out) whose id no longer appears in the working forest. Habits are
-  // never sent, so they must never be considered deleted here — the filter
+  // sent out) whose id no longer appears in the working forest. The filter
   // must mirror plannerForestToJson exactly.
   const workingIds = new Set(
     workingForest.goals.map((g) => g.id).filter((id) => id.length > 0),
   );
   const canonicalRootIds = planner
-    .filter(
-      (p) => !p.parentId && p.isTriaged && p.plannerType !== PlannerType.habit,
-    )
+    .filter((p) => !p.parentId && p.isTriaged)
     .map((p) => p.id);
   for (const rootId of canonicalRootIds) {
     if (!workingIds.has(rootId)) {
@@ -291,6 +309,10 @@ function applyTreeToExistingRoot({
           categoryId: null,
           splitting: splittingColumn(node),
           maxMinutesPerDay: null,
+          // Recurrence is root-only, like categoryId — clearing retained
+          // descendants heals rows that predate that invariant.
+          recurrence: null,
+          recurrenceExceptions: null,
           updatedAt: now,
         }
       : {
@@ -334,6 +356,26 @@ function applyTreeToExistingRoot({
     processNode(child, rootId, (i + 1) * SORT_ORDER_STEP);
   });
 
+  // Recurrence and a deadline are mutually exclusive on flexible roots (each
+  // occurrence derives its deadline from its own period end); a retained plan
+  // keeps its own fixed-anchor recurrence outside the contract. Changing or
+  // clearing the rule drops the per-period skip exceptions — their keys only
+  // mean anything under the rule that minted them.
+  const nextRecurrence =
+    resolvedRootType === PlannerType.plan
+      ? rootRow.recurrence
+      : recurrenceColumn(workingTree, resolvedRootType);
+  const nextRecurrenceExceptions =
+    resolvedRootType === PlannerType.plan
+      ? rootRow.recurrenceExceptions
+      : nextRecurrence === rootRow.recurrence
+        ? rootRow.recurrenceExceptions
+        : null;
+  const nextDeadline =
+    resolvedRootType !== PlannerType.plan && nextRecurrence
+      ? null
+      : workingTree.deadline;
+
   // Root row: update the fields the assistant may have changed. Preserve
   // sortOrder, parentId, locationId — those are part of root's position/identity
   // in the outer tree, not its subtask structure.
@@ -342,13 +384,15 @@ function applyTreeToExistingRoot({
     title: workingTree.title,
     plannerType: resolvedRootType,
     duration: Math.max(1, Math.floor(workingTree.duration)),
-    deadline: workingTree.deadline,
+    deadline: nextDeadline,
     priority: workingTree.priority,
     isReady: appliedReady,
     categoryId: nextCategoryId,
     color: nextColor,
     splitting: splittingColumn(workingTree),
     maxMinutesPerDay: goalDayCapColumn(workingTree, resolvedRootType),
+    recurrence: nextRecurrence,
+    recurrenceExceptions: nextRecurrenceExceptions,
     updatedAt: now,
   };
 
@@ -440,6 +484,7 @@ function buildNewRootRows(
     });
   }
 
+  const newRootRecurrence = recurrenceColumn(node, rootType);
   const rootRow: Planner = {
     id: rootId,
     title: node.title,
@@ -448,9 +493,9 @@ function buildNewRootRows(
     isReady: rootIsReady,
     isTriaged: true,
     duration: Math.max(1, Math.floor(node.duration)),
-    deadline: node.deadline,
+    deadline: newRootRecurrence ? null : node.deadline,
     starts: null,
-    recurrence: null,
+    recurrence: newRootRecurrence,
     recurrenceExceptions: null,
     splitting: splittingColumn(node),
     completedSegments: null,

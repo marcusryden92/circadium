@@ -6,18 +6,14 @@ export interface DraftForest {
 }
 
 // The full working set sent to the assistant: every triaged top-level row and
-// its subtree. Untriaged rows are Capture-inbox jots — noise for planning —
-// and the apply path leaves them untouched. Habits are excluded too: the
-// assistant can't author them (the draft contract has no cadence/window
-// fields), and a habit round-tripped as a goal would silently retype to a task
-// on save (resolveRetainedRootType) and orphan its completion log. The apply
-// path's deletion set must exclude habits by the SAME rule, or an untouched
-// habit reads as a deleted root. Top-level order is not semantic; goals match
-// by id everywhere downstream.
+// its subtree (recurring tasks and goals included — the recurrence rule rides
+// the node contract). Untriaged rows are Capture-inbox jots — noise for
+// planning — and the apply path leaves them untouched. The apply path's
+// deletion set must mirror this filter exactly, or an excluded row reads as a
+// deleted root. Top-level order is not semantic; goals match by id everywhere
+// downstream.
 export function plannerForestToJson(planner: Planner[]): DraftForest {
-  const roots = planner.filter(
-    (p) => !p.parentId && p.isTriaged && p.plannerType !== "habit",
-  );
+  const roots = planner.filter((p) => !p.parentId && p.isTriaged);
   return {
     goals: roots
       .map((root) => plannerTreeToJson(planner, root.id))

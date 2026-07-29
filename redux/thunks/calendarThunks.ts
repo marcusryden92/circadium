@@ -27,7 +27,7 @@ import {
   prunePlannerDetours,
 } from "@/utils/precedence/prunePrecedenceInputs";
 import { deriveExternalBusyEvents } from "@/utils/external-calendar/deriveExternalBusyEvents";
-import { deriveHabitCompletions } from "@/utils/habits/deriveHabitCompletions";
+import { deriveOccurrenceCompletions } from "@/utils/deriveOccurrenceCompletions";
 
 type CalendarPayload = {
   planner?: Planner[] | ((prev: Planner[]) => Planner[]);
@@ -128,10 +128,11 @@ export const updateAllCalendarStates =
       state.externalCalendar.events,
     );
 
-    // Logged habit completions, derived fresh so a just-completed occurrence is
-    // skipped (and rendered frozen) on the next regen. Outside the OCC sync.
-    const habitCompletions = deriveHabitCompletions(
-      state.habitCompletions.rows,
+    // Logged occurrence completions, derived fresh so a just-completed
+    // occurrence is skipped (and rendered frozen) on the next regen. Outside
+    // the OCC sync.
+    const occurrenceCompletions = deriveOccurrenceCompletions(
+      state.occurrenceCompletions.rows,
     );
 
     // Source state lands immediately (optimistic UI); engine output follows
@@ -179,7 +180,7 @@ export const updateAllCalendarStates =
             queues: newQueues,
             dependencies: newDependencies,
             externalBusyEvents,
-            habitCompletions,
+            occurrenceCompletions,
             previousEngineMessages,
           },
         },

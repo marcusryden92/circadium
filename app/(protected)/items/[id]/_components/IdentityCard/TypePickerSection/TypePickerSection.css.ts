@@ -5,7 +5,7 @@ import { space, radii } from "@/lib/theme/scales";
 export const typePicker = style({
   position: "relative",
   display: "inline-grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+  gridTemplateColumns: "1fr 1fr 1fr",
   padding: space["1"],
   borderRadius: radii.pill,
   background: vars.glass.bgSoft,
@@ -18,7 +18,7 @@ export const typePickerThumb = style({
   top: 3,
   bottom: 3,
   left: 3,
-  width: "calc(25% - 1.5px)",
+  width: "calc(33.333% - 2px)",
   borderRadius: radii.pill,
   background: vars.ink,
   transition: "transform 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -26,7 +26,6 @@ export const typePickerThumb = style({
   selectors: {
     "&[data-position='1']": { transform: "translateX(100%)" },
     "&[data-position='2']": { transform: "translateX(200%)" },
-    "&[data-position='3']": { transform: "translateX(300%)" },
   },
 });
 

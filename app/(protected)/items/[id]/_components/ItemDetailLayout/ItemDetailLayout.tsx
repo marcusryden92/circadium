@@ -28,6 +28,7 @@ import {
   readyDependents,
 } from "@/utils/precedence/readinessBlockers";
 import { setGoalIsReady } from "@/utils/goal-handlers/toggleGoalIsReady";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import type { Planner } from "@/types/prisma";
 import { DependencyGatePopover, type GateEntry } from "./DependencyGatePopover";
 import {
@@ -273,7 +274,11 @@ export default function ItemDetailLayout({
   const readyBlockers: string[] = [];
   if (isGoal) {
     if (subtasks.length === 0) readyBlockers.push("at least one subtask");
-    if (!item.deadline) readyBlockers.push("a deadline");
+    // A repeat rule stands in for the deadline: each period's end bounds that
+    // period's occurrence, so a recurring goal needs no date of its own.
+    if (!item.deadline && !plannerHasFlexibleRecurrence(item)) {
+      readyBlockers.push("a deadline or a repeat rule");
+    }
   }
   const canMarkReady = readyBlockers.length === 0;
 

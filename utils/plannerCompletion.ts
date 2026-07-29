@@ -1,16 +1,18 @@
 import { Planner, PlannerType } from "@/types/prisma";
 import { parseCompletedSegments, splitIsExhausted } from "./taskSplitting";
+import { plannerHasFlexibleRecurrence } from "./planRecurrence";
 
-// Completion never applies to plans or habits. The item-detail type picker can
-// retype a completed item to plan/habit, leaving stale completion times on the
-// row, so completion checks must gate on type rather than the timestamps alone.
-// (A habit is never wholesale-completed — completion lives per-occurrence in
-// HabitCompletion.) Split tasks auto-complete when their segments cover the
-// duration.
+// Completion never applies to plans or flexibly recurring items. The
+// item-detail type picker can retype a completed item to plan (and a repeat
+// rule can be added to a completed task), leaving stale completion times on
+// the row, so completion checks must gate on shape rather than the timestamps
+// alone. (A recurring item is never wholesale-completed — completion lives
+// per-occurrence in OccurrenceCompletion.) Split tasks auto-complete when
+// their segments cover the duration.
 function completionApplies(item: Planner): boolean {
   return (
     item.plannerType !== PlannerType.plan &&
-    item.plannerType !== PlannerType.habit
+    !plannerHasFlexibleRecurrence(item)
   );
 }
 

@@ -6,6 +6,10 @@ import {
   parseTaskSplitting,
   type TaskSplittingSettings,
 } from "@/utils/taskSplitting";
+import {
+  parsePlanRecurrence,
+  type PlanRecurrenceRule,
+} from "@/utils/planRecurrence";
 
 // The JSON shape sent to the AI and rendered in the right pane of the draft
 // modal. `sortOrder` is intentionally omitted — sibling order is array order,
@@ -34,6 +38,13 @@ export interface DraftNode {
   // day. Top-level goal roots only (children carry null); full-tree contract
   // like splitting: a retained goal re-emitted without it clears it.
   maxMinutesPerDay?: number | null;
+  // Flexible repeat rule for top-level task/goal roots: one auto-placed
+  // occurrence per period (the whole subtree for a goal). Splitting-style
+  // null contract — a retained root re-emitted without it stops repeating.
+  // Children always carry null, and PLAN recurrence never rides this field
+  // (a plan's fixed-anchor repeat + exceptions stay outside the contract,
+  // spread-preserved on retained rows).
+  recurrence?: PlanRecurrenceRule | null;
   children: DraftNode[];
 }
 
@@ -49,6 +60,8 @@ export function plannerTreeToJson(
     categoryId: root.categoryId ?? null,
     color: root.color ?? null,
     maxMinutesPerDay: root.maxMinutesPerDay ?? null,
+    recurrence:
+      root.plannerType === "plan" ? null : parsePlanRecurrence(root.recurrence),
   };
 }
 
@@ -66,6 +79,7 @@ export function buildDraftNode(planner: Planner[], node: Planner): DraftNode {
     color: null,
     splitting: parseTaskSplitting(node.splitting),
     maxMinutesPerDay: null,
+    recurrence: null,
     children: orderedChildren.map((child) => buildDraftNode(planner, child)),
   };
 }

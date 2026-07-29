@@ -10,7 +10,6 @@ export function plannerTypeBadgeTone(type: string): PlannerTypeTone {
     case "plan":
       return "info";
     case "task":
-    case "habit":
       return "type";
     case "travel":
     case "template":

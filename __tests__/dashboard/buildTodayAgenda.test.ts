@@ -1,20 +1,20 @@
-import { buildTodayAgenda } from "@/app/(protected)/dashboard/_data/buildTodayAgenda";
+﻿import { buildTodayAgenda } from "@/app/(protected)/dashboard/_data/buildTodayAgenda";
 import type { Planner, SimpleEvent } from "@/types/prisma";
 
-// Regression #6: a habit is never wholesale-completed on its row
-// (plannerCompletedEnd is null for habits), so a completed occurrence's
+// Regression #6: a flexibly recurring item is never wholesale-completed on its
+// row (plannerCompletedEnd is null for it), so a completed occurrence's
 // completion must be read off the frozen event tile. Otherwise a completed
-// habit that ended earlier today reads as incomplete and gets a "LATE" (warn)
-// badge on the dashboard.
+// occurrence that ended earlier today reads as incomplete and gets a "LATE"
+// (warn) badge on the dashboard.
 
 const USER_ID = "test-user";
 
-function habitPlanner(id: string): Planner {
+function recurringTask(id: string): Planner {
   return {
     id,
     title: "Meditate",
     parentId: null,
-    plannerType: "habit",
+    plannerType: "task",
     isReady: true,
     isTriaged: true,
     duration: 30,
@@ -43,7 +43,7 @@ function habitPlanner(id: string): Planner {
   };
 }
 
-function habitEvent(args: {
+function occurrenceEvent(args: {
   id: string;
   start: Date;
   end: Date;
@@ -64,7 +64,7 @@ function habitEvent(args: {
     extendedProps: {
       id: `xp-${args.id}`,
       eventId: args.id,
-      plannerType: "habit",
+      plannerType: "task",
       eventType: "planner",
       completedStartTime: args.completed ? args.start.toISOString() : null,
       completedEndTime: args.completed ? args.end.toISOString() : null,
@@ -73,17 +73,17 @@ function habitEvent(args: {
   } as unknown as SimpleEvent;
 }
 
-describe("buildTodayAgenda habit completion", () => {
-  it("marks a completed habit occurrence as completed (no LATE warn)", () => {
+describe("buildTodayAgenda occurrence completion", () => {
+  it("marks a completed recurring occurrence as completed (no LATE warn)", () => {
     const now = new Date(2026, 0, 5, 14, 0, 0); // Jan 5, 2pm local
 
-    const completed = habitEvent({
+    const completed = occurrenceEvent({
       id: "habit-1|2026-01-05T00:00",
       start: new Date(2026, 0, 5, 10, 0, 0),
       end: new Date(2026, 0, 5, 11, 0, 0),
       completed: true,
     });
-    const live = habitEvent({
+    const live = occurrenceEvent({
       id: "habit-1|2026-01-06T00:00",
       start: new Date(2026, 0, 5, 9, 0, 0),
       end: new Date(2026, 0, 5, 9, 30, 0),
@@ -95,7 +95,7 @@ describe("buildTodayAgenda habit completion", () => {
       calendar: [completed, live],
       travelEvents: [],
       templates: [],
-      planners: [habitPlanner("habit-1")],
+      planners: [recurringTask("habit-1")],
       categories: [],
       locations: [],
       inheritedLocationMap: new Map(),

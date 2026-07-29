@@ -125,20 +125,20 @@ export const SCHEDULING_CONFIG = {
    */
   PLACEMENT_BUFFER_DAYS: 3,
   /**
-   * How far ahead habit occurrences are enumerated as scheduling candidates.
-   * Kept at or below the initial slot horizon (HORIZON_CHUNK_DAYS) so every
-   * occurrence's placement window is already materialized on the first slot
-   * build — a habit occurrence that can't place in an already-materialized
-   * window is a genuine "missed" window (a silent skip), never a trigger for
-   * horizon expansion it can't benefit from.
+   * How far ahead recurring-item occurrences are enumerated as scheduling
+   * candidates. Kept at or below the initial slot horizon
+   * (HORIZON_CHUNK_DAYS) so every occurrence's placement window is already
+   * materialized on the first slot build — an occurrence that can't place in
+   * an already-materialized window is a genuine "missed" window (a silent
+   * skip), never a trigger for horizon expansion it can't benefit from.
    */
-  HABIT_HORIZON_DAYS: 14,
+  RECURRENCE_HORIZON_DAYS: 14,
   /**
    * Earliest-deadline-first tier (see compareSchedulingOrder): items whose
    * own-or-inherited deadline falls within EDF_HORIZON_DAYS sort by slack
    * (time to deadline minus required placement block) ascending — above the
    * score tier, below the category-constrained tier — so a task due tomorrow
-   * is never out-prioritized by deadline-free higher-priority work. Habit
+   * is never out-prioritized by deadline-free higher-priority work. Recurring
    * occurrences are excluded: their synthetic period deadline is a placement
    * window, not a commitment. EDF_TIER_ENABLED is the kill switch for A/B
    * comparison against a real calendar.

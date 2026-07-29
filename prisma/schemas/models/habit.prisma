@@ -1,0 +1,59 @@
+// Habit tracker: a user-defined behavior tracked through the completion
+// history of the repeating planner items assigned to it. Pure tracking layer —
+// the engine never reads these rows; scheduling comes from each item's own
+// recurrence. Written by direct actions OUTSIDE the OCC diff sync (viewState /
+// occurrence-completion pattern) — never bumps User.dataVersion.
+
+// Habit buckets are the habits surface's own grouping, deliberately DISTINCT
+// from the item Category tree — a bucket is a shelf for habits, not a role.
+model HabitBucket {
+  id        String  @id @default(uuid())
+  userId    String
+  name      String
+  color     String?
+  sortOrder Int     @default(0)
+  createdAt String
+  updatedAt String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habits    Habit[]
+
+  @@index([userId])
+  @@map("HabitBuckets")
+}
+
+model Habit {
+  id        String  @id @default(uuid())
+  userId    String
+  name      String
+  color     String?
+  bucketId  String? // SetNull keeps the habit (unsorted) when its bucket goes
+  sortOrder Int     @default(0)
+  createdAt String
+  updatedAt String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket    HabitBucket? @relation(fields: [bucketId], references: [id], onDelete: SetNull)
+  items     HabitItem[]
+
+  @@index([userId])
+  @@map("Habits")
+}
+
+// One tracked planner item per row. An item may feed several habits; a habit
+// tracks a given item at most once. Only repeating items (a task/goal with a
+// flexible rule, or a recurring plan) are eligible — enforced in the actions,
+// not the schema.
+model HabitItem {
+  id        String @id @default(uuid())
+  habitId   String
+  plannerId String
+  userId    String
+  createdAt String
+  habit     Habit   @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  planner   Planner @relation(fields: [plannerId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, plannerId])
+  @@index([userId])
+  @@index([plannerId])
+  @@map("HabitItems")
+}

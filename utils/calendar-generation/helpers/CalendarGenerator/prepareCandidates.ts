@@ -9,7 +9,7 @@ import { sortByPriorityAndConstraints } from "../PrioritySorter";
 import type { PlannerSchedulingConstraints } from "./buildPlannerConstraintsMap";
 import { taskIsCompleted } from "../../../taskHelpers";
 import { getScheduledLeafSequence } from "../../../goalPageHandlers";
-import { isOccurrenceEventId } from "../../../planRecurrence";
+import { plannerHasFlexibleRecurrence } from "../../../planRecurrence";
 
 export function prepareCandidates(
   planners: Planner[],
@@ -45,12 +45,12 @@ export function prepareCandidates(
   // readiness via the cascade).
   const preCandidates = planners.filter((item) => {
     if (taskIsCompleted(item) || memoizedEventIds.has(item.id)) return false;
-    // Habit occurrences (synthetic `${habitId}|${periodKey}` rows injected by
-    // expandHabits) are first-class candidates; a bare habit row is not — it is
-    // only a template for its occurrences.
-    if (item.plannerType === PlannerType.habit) {
-      return isOccurrenceEventId(item.id) && item.isReady !== false;
-    }
+    // A flexibly recurring base row is only a template for its per-period
+    // occurrence clones (expandRecurringItems) — never a candidate itself.
+    // The clones need no branch of their own: their recurrence is nulled at
+    // mint time, so a task clone flows through as a ready root task and a
+    // goal clone as a ready root goal.
+    if (plannerHasFlexibleRecurrence(item)) return false;
     if (item.plannerType === PlannerType.goal) {
       return !item.parentId && item.isReady === true;
     }

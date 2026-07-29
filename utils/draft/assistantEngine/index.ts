@@ -61,6 +61,25 @@ import {
   type DraftPrecedenceOpsResult,
   type DraftQueueUpdate,
 } from "@/utils/draft/draftPrecedenceOps";
+import {
+  draftHabitsStateEqual,
+  normalizeDraftHabitsState,
+  pruneDraftHabits,
+  type DraftHabitsState,
+} from "@/utils/draft/draftHabits";
+import {
+  addDraftHabitBuckets,
+  addDraftHabitItems,
+  addDraftHabits,
+  deleteDraftHabitBuckets,
+  deleteDraftHabits,
+  removeDraftHabitItems,
+  updateDraftHabitBuckets,
+  updateDraftHabits,
+  type DraftHabitBucketUpdate,
+  type DraftHabitOpsResult,
+  type DraftHabitUpdate,
+} from "@/utils/draft/draftHabitOps";
 import { createBrowserAnthropicClient } from "./anthropicClient";
 
 // The assistant's tool-use loop, running IN THE BROWSER on the user's own
@@ -127,6 +146,12 @@ export interface StreamDraftArgs {
   currentForest: DraftForest;
   currentTemplates: DraftTemplate[];
   currentPrecedence: DraftPrecedenceState;
+  currentHabits: DraftHabitsState;
+  // Canonical plan roots whose recurrence parses — habit items must repeat,
+  // and plan recurrence lives outside the forest contract, so eligibility for
+  // plans is checked against this set (static per turn: the assistant can't
+  // edit plan recurrence).
+  recurringPlanIds: string[];
   history: StreamChatMessage[];
   focus: StreamDraftFocus | null;
   categories: StreamDraftCategory[];
@@ -153,6 +178,8 @@ export interface StreamDraftArgs {
   onWindows: (state: DraftWindowsState) => void;
   // Queue/dependency ops emit the full authoritative state — same contract.
   onPrecedence: (state: DraftPrecedenceState) => void;
+  // Habit-tracker ops emit the full authoritative state — same contract.
+  onHabits: (state: DraftHabitsState) => void;
   // show_goals: display-only request to bring goals into the tree pane.
   onShow: (payload: { goalIds: string[]; all: boolean }) => void;
   // Tool activity (e.g. the model fetching goal trees) — for a progress hint
@@ -172,6 +199,7 @@ interface AssistantTurnInput {
   currentForest: DraftForest;
   currentTemplates: DraftTemplate[];
   currentPrecedence: DraftPrecedenceState;
+  currentHabits: DraftHabitsState;
   focus: StreamDraftFocus | null;
   categories: StreamDraftCategory[];
   locations: DraftLocationRef[];
@@ -205,6 +233,21 @@ function buildGoalIndex(
         parts.push(categoryNameById.get(goal.categoryId) ?? goal.categoryId);
       }
       if (goal.deadline) parts.push(`due ${goal.deadline}`);
+      if (goal.recurrence) {
+        parts.push(
+          `repeats ${
+            goal.recurrence.interval > 1
+              ? `every ${goal.recurrence.interval} ${
+                  goal.recurrence.freq === "daily"
+                    ? "days"
+                    : goal.recurrence.freq === "weekly"
+                      ? "weeks"
+                      : "months"
+                }`
+              : goal.recurrence.freq
+          }`,
+        );
+      }
       const n = countDescendants(goal);
       parts.push(n === 0 ? "no subtasks" : `${n} subtask${n === 1 ? "" : "s"}`);
       return `- ${parts.join(" | ")}`;
@@ -325,10 +368,60 @@ function buildPrecedenceList(
   return lines.join("\n");
 }
 
+// Habit trackers are a small flat structure — like templates, the full state
+// rides in the prompt and there is nothing to fetch. Buckets are the habits
+// surface's own grouping (a separate entity from item categories).
+function buildHabitsList(
+  habits: DraftHabitsState,
+  forest: DraftForest,
+): string {
+  if (habits.buckets.length === 0 && habits.habits.length === 0) {
+    return "(no habits or buckets yet)";
+  }
+  const titleById = new Map(forest.goals.map((g) => [g.id, g.title]));
+  const bucketNameById = new Map(habits.buckets.map((b) => [b.id, b.name]));
+  const lines: string[] = [];
+  if (habits.buckets.length > 0) {
+    lines.push("Buckets:");
+    for (const bucket of habits.buckets) {
+      lines.push(
+        `- ${bucket.id}: "${bucket.name}"${bucket.color ? ` | ${bucket.color}` : ""}`,
+      );
+    }
+  } else {
+    lines.push("Buckets: (none yet)");
+  }
+  if (habits.habits.length === 0) {
+    lines.push("Habits: (none yet)");
+    return lines.join("\n");
+  }
+  lines.push("Habits:");
+  for (const habit of habits.habits) {
+    const parts = [`${habit.id}: "${habit.name}"`];
+    if (habit.bucketId) {
+      parts.push(
+        `bucket "${bucketNameById.get(habit.bucketId) ?? habit.bucketId}"`,
+      );
+    }
+    if (habit.color) parts.push(habit.color);
+    const items = habit.itemPlannerIds.map(
+      (id) => `${id} "${titleById.get(id) ?? "unknown"}"`,
+    );
+    parts.push(
+      items.length === 0
+        ? "tracks nothing yet"
+        : `tracks: ${items.join(", ")}`,
+    );
+    lines.push(`- ${parts.join(" | ")}`);
+  }
+  return lines.join("\n");
+}
+
 function buildSystemPrompt({
   currentForest,
   currentTemplates,
   currentPrecedence,
+  currentHabits,
   focus,
   categories,
   locations,
@@ -435,6 +528,18 @@ Queues and dependencies sequence the user's work. A queue is an ordered list of 
 - A queue's optional category: members without their own category inherit it for scheduling (its time windows and location apply to them). Set it when the queue clearly belongs to one area of the user's life.
 - When the user describes sequential work ("first X, then Y", "after the kitchen is done"), use a queue for a named ordered stream of whole items and dependencies for one-off prerequisite links between otherwise independent items.
 - Only delete a queue or remove members when the user asks. When the user speaks of these, say "queue" and "depends on" — never "queueId", "member", "plannerId", "predecessor", or "successor".
+
+HABITS (buckets first, then each habit: id: "name" | bucket | color | tracked items)
+${buildHabitsList(currentHabits, currentForest)}
+
+Habits are trackers, not schedulable items: a habit watches the occurrence completions of the repeating top-level items linked to it and shows the user a month grid of green completion circles plus streaks on the Habits page. Scheduling comes from the items themselves. Habit rules:
+- BUCKETS are the habits page's own shelves — a separate thing from the user's categories/roles. Bucket ids and category ids are never interchangeable. add_habit_buckets / update_habit_buckets / delete_habit_buckets manage them (name, optional hex color); deleting a bucket keeps its habits, unsorted. Create a bucket before filing habits into it (its id is reported back).
+- add_habits creates trackers (name, optional bucketId, optional hex color, optional initial itemPlannerIds). Ids are minted by the app and reported back.
+- update_habits patches name/color/bucketId, or replaces the tracked-item set wholesale via itemPlannerIds; add_habit_items / remove_habit_items adjust the set incrementally.
+- Tracked items must be TOP-LEVEL items that REPEAT (a task/goal with a repeat rule, or a recurring plan — ids from the goal index; draft ids work too). One-off items and subtasks are refused: a habit counts occurrences, so there must be occurrences to count. Every occurrence of every linked item counts as one instance in the habit's grid.
+- The natural "build a habit" flow: create (or find) a top-level task with a repeat rule sized to the behavior ("meditate 20min, repeats daily"), then a habit tracking it — the item is created with the goal tools, the tracker with the habit tools. A repeating goal works for multi-step routines ("weekly cleaning" with its subtasks). Ask which bucket fits if unclear, or leave the habit unsorted.
+- Deleting a habit never deletes the tracked items — only the tracker. Only delete when the user asks.
+- When the user speaks of these, say "habit", "tracks", and "bucket" — never "itemPlannerIds", "habitId", or "bucketId".
 ${focusBlock}${intentBlock}
 NODE STRUCTURE
 Each node in a goal tree has:
@@ -444,11 +549,12 @@ Each node in a goal tree has:
 - duration: minutes required for that leaf task. For a "goal" node, duration is a rough estimate (children sum to the real total).
 - deadline: ISO date string or null.
 - priority: integer 1-7 (higher = more important); 4 is neutral.
-- isReady: top-level goals only — true marks the goal ready for scheduling, and requires at least one subtask AND a deadline (the app blocks it otherwise). Default a goal you create to ready (isReady true) whenever it has subtasks and a deadline, so it starts scheduling immediately and the user doesn't have to turn it on by hand. If it has no deadline or no subtasks, leave it unready and, in plain words, tell the user what it still needs before it can be scheduled. OMIT this field (or use null) on all child nodes; readiness cascades from the root (every row in a subtree carries the root's value, stamped on save).
+- isReady: top-level goals only — true marks the goal ready for scheduling, and requires at least one subtask AND a deadline or repeat rule (the app blocks it otherwise). Default a goal you create to ready (isReady true) whenever it meets that, so it starts scheduling immediately and the user doesn't have to turn it on by hand. If it falls short, leave it unready and, in plain words, tell the user what it still needs before it can be scheduled. OMIT this field (or use null) on all child nodes; readiness cascades from the root (every row in a subtree carries the root's value, stamped on save).
 - categoryId: top-level goals only — one of the user's category ids, or null. Echo it verbatim for retained goals (null on a retained goal means "leave as is"); pick a fitting category for new goals, or null if none fits. Never set it on child nodes; they inherit.
 - color: top-level goals only — a 6-digit hex color for the whole goal (its subtasks inherit it on the calendar). Give every NEW goal a fitting color and vary colors across goals so the calendar doesn't come out all one shade. Good palette: #1976D2 blue, #2E7D32 green, #F77F00 orange, #6C5CE7 violet, #16A085 teal, #E63946 red, #FFB703 amber, #1D3557 navy, #8E44AD purple, #D81B60 pink. Echo the existing color verbatim for retained goals (null means "leave as is"). Never set it on child nodes; they inherit.
 - splitting: schedulable leaves only (never plans, never nodes with subtasks) — {minMinutes, maxMinutes, maxMinutesPerDay, minSpacingMinutes} or null. Non-null makes the scheduler place the item as flexibly sized chunks (each between min and max, at most maxMinutesPerDay per day when set; maxMinutesPerDay null = no daily limit) instead of one continuous block — right for long, interruptible work like "read the textbook, 12h". minSpacingMinutes (optional; null = no forced gap) keeps at least that many minutes of break between consecutive chunks of the item. minMinutes >= 5 and maxMinutes >= minMinutes, or maxMinutes 0 meaning no upper bound (chunks grow to fill the free time they land in). Echo it verbatim for retained nodes in propose_goals — a re-emitted tree that drops it turns chunking off. When the user speaks of it, call it splitting into chunks — never say "splitting field".
 - maxMinutesPerDay: top-level goals only — the goal's daily limit: at most this many minutes of the goal's whole subtree are scheduled on any one day (an integer, or null for no limit). Use it when the user wants a big goal spread out ("no more than 2 hours of this per day"). Echo it verbatim for retained goals in propose_goals — a re-emitted tree that drops it removes the limit. Never set it on child nodes. When the user speaks of it, call it the daily limit — never say "maxMinutesPerDay".
+- recurrence: top-level tasks and goals only — {freq "daily"|"weekly"|"monthly", interval, until} or null. Non-null makes the item REPEAT flexibly: the scheduler places one occurrence per period wherever it fits (the whole subtask sequence each period for a goal) instead of scheduling it once. This is how habits-like behavior is built ("meditate 20min daily", "clean weekly"). A repeating item has NO deadline — the rule replaces it (each occurrence is bounded by its own period), and setting one clears any deadline automatically. Echo it verbatim for retained items in propose_goals — a re-emitted tree that drops it stops the repetition. Never set it on child nodes (they repeat with their goal) and never on plans (a plan repeats on its fixed schedule, managed in the app). When the user speaks of it, say "repeats weekly" — never "recurrence field".
 - children: ordered array of sub-nodes. Empty for leaves.
 
 ID PRESERVATION (IMPORTANT)
@@ -465,7 +571,7 @@ Reading:
 - get_goal_trees: fetch complete trees by id. Required before propose_goals may modify a goal (proposals are complete-tree replacements; editing blind would silently delete subtasks). The focused goal (if any) is already provided. Tool results are NOT retained between user messages — re-fetch each message.
 
 Editing — deterministic operations. PREFER these for small changes; each applies immediately to the user's review pane as a pending change (nothing is saved without their confirmation):
-- update_items: change fields (title, plannerType task/goal, duration, deadline, priority, isReady; categoryId on top-level goals only; splitting on schedulable leaves — an object turns chunked scheduling on or adjusts it, null turns it off; maxMinutesPerDay on top-level goals only — the daily limit, null removes it) on items by id. No fetch needed. Use this to convert an item's type — you no longer need propose_goals just to change a task into a goal or a plan into a task. Readiness (isReady) gates scheduling for every item: tasks and plans are ready by default and you can mark one not ready to keep it off the calendar; a goal can only be readied once it has subtasks and a deadline.
+- update_items: change fields (title, plannerType task/goal, duration, deadline, priority, isReady; categoryId on top-level goals only; splitting on schedulable leaves — an object turns chunked scheduling on or adjusts it, null turns it off; maxMinutesPerDay on top-level goals only — the daily limit, null removes it; recurrence on top-level tasks/goals only — an object makes the item repeat flexibly and clears its deadline, null stops the repetition) on items by id. No fetch needed. Use this to convert an item's type — you no longer need propose_goals just to change a task into a goal or a plan into a task. Readiness (isReady) gates scheduling for every item: tasks and plans are ready by default and you can mark one not ready to keep it off the calendar; a goal can only be readied once it has subtasks and a deadline or repeat rule.
 - move_item: move or reorder an item within its own goal (new parent + position). Cross-goal moves and moving top-level goals are not supported.
 - add_items: insert new subtasks under an existing parent. Added items are assigned draft ids on insertion — fetch the goal tree if you need to reference them.
 - delete_items: remove items (with their subtrees) or whole goals by id.
@@ -475,6 +581,7 @@ Editing — deterministic operations. PREFER these for small changes; each appli
 - add_queues / update_queues / delete_queues: manage queues (ordered work streams). add_queues may include initial members in order; ids are minted by the app and reported back.
 - add_queue_members / move_queue_member / remove_queue_members: manage a queue's members by top-level item id. Adds append unless atIndex is given; moves address the position after the item is lifted out.
 - add_dependencies / remove_dependencies: prerequisite links between top-level items ({predecessorId, successorId} — the first must finish before the second starts).
+- add_habit_buckets / update_habit_buckets / delete_habit_buckets: manage the habit page's buckets (its own grouping — not categories). add_habits / update_habits / delete_habits: manage habit trackers (name, bucket, color, tracked-item set); add_habit_items / remove_habit_items adjust one habit's tracked items (repeating top-level items only). Ids are minted by the app and reported back.
 
 Building:
 - propose_goals: create new top-level goals, or restructure a goal wholesale. Complete trees ONLY for goals you create or modify — never re-emit untouched goals, and never use this for small edits (use the editing tools instead). Emit each goal's id as its FIRST field; new nodes omit id (draft ids are assigned and reported back). deletedGoalIds removes whole goals. The order of the goals array is not meaningful.
@@ -482,7 +589,7 @@ Building:
 Display:
 - show_goals: bring existing goals into the user's tree pane without changing them. Pass ids, or all: true.
 
-The user's tree pane starts nearly empty: it displays only the focused goal, goals you change, and goals you show. Template changes appear on a separate Week tab that always shows the full weekly schedule; category and window changes appear on a Categories tab grouped by category; queue and dependency changes appear on a Queues tab.
+The user's tree pane starts nearly empty: it displays only the focused goal, goals you change, and goals you show. Template changes appear on a separate Week tab that always shows the full weekly schedule; category and window changes appear on a Categories tab grouped by category; queue and dependency changes appear on a Queues tab; habit changes appear on a Habits tab.
 
 Always write at least one short sentence of prose before calling any tool — never reply with a bare tool call. If the user is only asking a question, answer in prose (using the reading tools if needed) and don't make changes.`;
 }
@@ -557,6 +664,20 @@ const proposeGoalsTool: Anthropic.Tool = {
             type: ["integer", "null"],
             description:
               "Top-level goals only: the goal's daily limit — max minutes of its subtree scheduled on any one day. Echo verbatim for retained goals; dropping it removes the limit. Never set on child nodes.",
+          },
+          recurrence: {
+            type: ["object", "null"],
+            description:
+              "Top-level tasks/goals only: flexible repeat rule — the scheduler places one occurrence per period (a repeating item has no deadline). Echo verbatim for retained items; dropping it stops the repetition. Never set on child nodes or plans.",
+            properties: {
+              freq: {
+                type: "string",
+                enum: ["daily", "weekly", "monthly"],
+              },
+              interval: { type: "integer", minimum: 1 },
+              until: { type: ["string", "null"] },
+            },
+            required: ["freq"],
           },
           children: {
             type: "array",
@@ -653,6 +774,20 @@ const updateItemsTool: Anthropic.Tool = {
               type: ["integer", "null"],
               description:
                 "Top-level goals only: the goal's daily limit in minutes; null removes it.",
+            },
+            recurrence: {
+              type: ["object", "null"],
+              description:
+                "Top-level tasks/goals only: an object makes the item repeat flexibly (clearing its deadline); null stops the repetition.",
+              properties: {
+                freq: {
+                  type: "string",
+                  enum: ["daily", "weekly", "monthly"],
+                },
+                interval: { type: "integer", minimum: 1 },
+                until: { type: ["string", "null"] },
+              },
+              required: ["freq"],
             },
           },
           required: ["id"],
@@ -1158,6 +1293,186 @@ const removeDependenciesTool: Anthropic.Tool = {
   } as Anthropic.Tool["input_schema"],
 };
 
+const addHabitBucketsTool: Anthropic.Tool = {
+  name: "add_habit_buckets",
+  description:
+    "Create habit buckets — the Habits page's own grouping shelves, separate from the user's categories. Ids are minted by the app and reported back.",
+  input_schema: {
+    type: "object",
+    properties: {
+      buckets: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            color: {
+              type: ["string", "null"],
+              description: "Optional 6-digit hex color.",
+            },
+          },
+          required: ["name"],
+        },
+      },
+    },
+    required: ["buckets"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const updateHabitBucketsTool: Anthropic.Tool = {
+  name: "update_habit_buckets",
+  description: "Patch habit buckets by id: name, color (null clears).",
+  input_schema: {
+    type: "object",
+    properties: {
+      updates: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            color: { type: ["string", "null"] },
+          },
+          required: ["id"],
+        },
+      },
+    },
+    required: ["updates"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const deleteHabitBucketsTool: Anthropic.Tool = {
+  name: "delete_habit_buckets",
+  description:
+    "Delete habit buckets by id. Habits in the bucket are kept — they become unsorted.",
+  input_schema: {
+    type: "object",
+    properties: {
+      bucketIds: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["bucketIds"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const addHabitsTool: Anthropic.Tool = {
+  name: "add_habits",
+  description:
+    "Create habit trackers. A habit watches the occurrence completions of the REPEATING top-level items linked to it (a task/goal with a repeat rule, or a recurring plan). Ids are minted by the app and reported back.",
+  input_schema: {
+    type: "object",
+    properties: {
+      habits: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            bucketId: {
+              type: ["string", "null"],
+              description:
+                "One of the habit bucket ids (NOT a category id), or null for unsorted.",
+            },
+            color: {
+              type: ["string", "null"],
+              description: "Optional 6-digit hex color.",
+            },
+            itemPlannerIds: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Repeating top-level item ids this habit tracks (draft ids work too).",
+            },
+          },
+          required: ["name"],
+        },
+      },
+    },
+    required: ["habits"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const updateHabitsTool: Anthropic.Tool = {
+  name: "update_habits",
+  description:
+    "Patch habit trackers by id: name, color (null clears), bucketId (a habit bucket id, null unsorts), or replace the tracked-item set wholesale via itemPlannerIds. For incremental item changes prefer add_habit_items / remove_habit_items.",
+  input_schema: {
+    type: "object",
+    properties: {
+      updates: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            color: { type: ["string", "null"] },
+            bucketId: { type: ["string", "null"] },
+            itemPlannerIds: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+          required: ["id"],
+        },
+      },
+    },
+    required: ["updates"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const deleteHabitsTool: Anthropic.Tool = {
+  name: "delete_habits",
+  description:
+    "Delete habit trackers by id. The tracked items themselves are never deleted — only the tracker.",
+  input_schema: {
+    type: "object",
+    properties: {
+      habitIds: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["habitIds"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const addHabitItemsTool: Anthropic.Tool = {
+  name: "add_habit_items",
+  description:
+    "Add tracked items (repeating top-level item ids) to one habit. Items already tracked are skipped; non-repeating items are refused.",
+  input_schema: {
+    type: "object",
+    properties: {
+      habitId: { type: "string" },
+      itemIds: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["habitId", "itemIds"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const removeHabitItemsTool: Anthropic.Tool = {
+  name: "remove_habit_items",
+  description: "Remove tracked items from one habit.",
+  input_schema: {
+    type: "object",
+    properties: {
+      habitId: { type: "string" },
+      itemIds: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["habitId", "itemIds"],
+  } as Anthropic.Tool["input_schema"],
+};
+
 function parseGoalIds(input: unknown): string[] {
   const goalIds = (input as { goalIds?: unknown } | null)?.goalIds;
   if (!Array.isArray(goalIds)) return [];
@@ -1194,6 +1509,8 @@ export async function runAssistantTurn({
   currentForest,
   currentTemplates,
   currentPrecedence,
+  currentHabits,
+  recurringPlanIds,
   history,
   focus,
   categories,
@@ -1208,6 +1525,7 @@ export async function runAssistantTurn({
   onTemplates,
   onWindows,
   onPrecedence,
+  onHabits,
   onShow,
   onStatus,
   onDone,
@@ -1259,6 +1577,12 @@ export async function runAssistantTurn({
   const initialPrune = pruneDraftPrecedence(currentPrecedence, currentForest);
   let workingPrecedence: DraftPrecedenceState = initialPrune.state;
 
+  // Habit trackers ride the same full-state contract and the same
+  // prune-with-the-forest rule (a deleted item must not linger as tracked).
+  const initialHabitPrune = pruneDraftHabits(currentHabits, currentForest);
+  let workingHabits: DraftHabitsState = initialHabitPrune.state;
+  const recurringPlanIdSet = new Set(recurringPlanIds);
+
   const existingGoalIds = new Set(
     currentForest.goals.map((g) => g.id).filter((id) => id.length > 0),
   );
@@ -1282,6 +1606,7 @@ export async function runAssistantTurn({
     currentForest,
     currentTemplates,
     currentPrecedence: workingPrecedence,
+    currentHabits: workingHabits,
     focus,
     categories,
     locations,
@@ -1325,6 +1650,11 @@ export async function runAssistantTurn({
         if (state) onPrecedence(state);
         break;
       }
+      case "habits": {
+        const state = normalizeDraftHabitsState(data);
+        if (state) onHabits(state);
+        break;
+      }
       case "status": {
         const { tool, count } = data as { tool?: unknown; count?: unknown };
         onStatus?.({
@@ -1359,6 +1689,9 @@ export async function runAssistantTurn({
 
   if (initialPrune.changed) {
     send("precedence", workingPrecedence);
+  }
+  if (initialHabitPrune.changed) {
+    send("habits", workingHabits);
   }
 
   const isProposalGoalAllowed = (goal: unknown): boolean => {
@@ -1413,6 +1746,11 @@ export async function runAssistantTurn({
     if (pruned.changed) {
       workingPrecedence = pruned.state;
       send("precedence", workingPrecedence);
+    }
+    const habitPruned = pruneDraftHabits(workingHabits, workingForest);
+    if (habitPruned.changed) {
+      workingHabits = habitPruned.state;
+      send("habits", workingHabits);
     }
   };
 
@@ -1537,6 +1875,32 @@ export async function runAssistantTurn({
     return parts.join(" ") || "Nothing changed.";
   };
 
+  // Habit sibling — same full-state contract as templates/windows/precedence.
+  const applyHabitOpResult = (
+    result: DraftHabitOpsResult,
+    appliedVerb: string,
+  ): string => {
+    const changed = !draftHabitsStateEqual(workingHabits, result.state);
+    workingHabits = result.state;
+    if (changed) {
+      send("habits", workingHabits);
+    }
+    const parts: string[] = [];
+    if (changed) {
+      parts.push(
+        `${appliedVerb} — the user sees it as a pending change on the Habits tab.`,
+      );
+    }
+    if (result.failures.length > 0) {
+      parts.push(
+        `Failed: ${result.failures
+          .map((f) => `${f.id ?? "(no id)"}: ${f.reason}`)
+          .join("; ")}.`,
+      );
+    }
+    return parts.join(" ") || "Nothing changed.";
+  };
+
   // Template sibling of applyOpResult. The event carries the full
   // authoritative array — small list, last write wins, no caller folding.
   const applyTemplateOpResult = (
@@ -1614,6 +1978,14 @@ export async function runAssistantTurn({
             removeQueueMembersTool,
             addDependenciesTool,
             removeDependenciesTool,
+            addHabitBucketsTool,
+            updateHabitBucketsTool,
+            deleteHabitBucketsTool,
+            addHabitsTool,
+            updateHabitsTool,
+            deleteHabitsTool,
+            addHabitItemsTool,
+            removeHabitItemsTool,
             proposeGoalsTool,
             showGoalsTool,
           ],
@@ -2099,6 +2471,137 @@ export async function runAssistantTurn({
             content = applyPrecedenceOpResult(
               removeDraftDependencies(workingPrecedence, items),
               `Removed ${items.length} dependenc${items.length === 1 ? "y" : "ies"}`,
+            );
+            break;
+          }
+          case "add_habit_buckets": {
+            const items = (
+              Array.isArray(input?.buckets) ? input.buckets : []
+            ).slice(0, MAX_OP_ITEMS);
+            send("status", { tool: tu.name, count: items.length });
+            const result = addDraftHabitBuckets(workingHabits, items);
+            const mintedNote =
+              result.added.length > 0
+                ? ` Assigned ids: ${result.added
+                    .map((b) => `"${b.name}" = ${b.id}`)
+                    .join(", ")}.`
+                : "";
+            content =
+              applyHabitOpResult(
+                result,
+                `Created ${result.added.length} bucket(s)`,
+              ) + mintedNote;
+            break;
+          }
+          case "update_habit_buckets": {
+            const updates = (
+              Array.isArray(input?.updates) ? input.updates : []
+            ).slice(0, MAX_OP_ITEMS) as DraftHabitBucketUpdate[];
+            send("status", { tool: tu.name, count: updates.length });
+            content = applyHabitOpResult(
+              updateDraftHabitBuckets(workingHabits, updates),
+              `Updated ${updates.length} bucket(s)`,
+            );
+            break;
+          }
+          case "delete_habit_buckets": {
+            const bucketIds = parseStringArray(input?.bucketIds).slice(
+              0,
+              MAX_OP_ITEMS,
+            );
+            send("status", { tool: tu.name, count: bucketIds.length });
+            content = applyHabitOpResult(
+              deleteDraftHabitBuckets(workingHabits, bucketIds),
+              `Deleted ${bucketIds.length} bucket(s) (their habits are now unsorted)`,
+            );
+            break;
+          }
+          case "add_habits": {
+            const items = (
+              Array.isArray(input?.habits) ? input.habits : []
+            ).slice(0, MAX_OP_ITEMS);
+            send("status", { tool: tu.name, count: items.length });
+            const result = addDraftHabits(
+              workingHabits,
+              items,
+              workingForest,
+              recurringPlanIdSet,
+            );
+            const mintedNote =
+              result.added.length > 0
+                ? ` Assigned ids: ${result.added
+                    .map((h) => `"${h.name}" = ${h.id}`)
+                    .join(", ")}.`
+                : "";
+            content =
+              applyHabitOpResult(
+                result,
+                `Created ${result.added.length} habit(s)`,
+              ) + mintedNote;
+            break;
+          }
+          case "update_habits": {
+            const updates = (
+              Array.isArray(input?.updates) ? input.updates : []
+            ).slice(0, MAX_OP_ITEMS) as DraftHabitUpdate[];
+            send("status", { tool: tu.name, count: updates.length });
+            content = applyHabitOpResult(
+              updateDraftHabits(
+                workingHabits,
+                updates,
+                workingForest,
+                recurringPlanIdSet,
+              ),
+              `Updated ${updates.length} habit(s)`,
+            );
+            break;
+          }
+          case "delete_habits": {
+            const habitIds = parseStringArray(input?.habitIds).slice(
+              0,
+              MAX_OP_ITEMS,
+            );
+            send("status", { tool: tu.name, count: habitIds.length });
+            content = applyHabitOpResult(
+              deleteDraftHabits(workingHabits, habitIds),
+              `Deleted ${habitIds.length} habit(s)`,
+            );
+            break;
+          }
+          case "add_habit_items": {
+            const itemIds = parseStringArray(input?.itemIds).slice(
+              0,
+              MAX_OP_ITEMS,
+            );
+            send("status", { tool: tu.name, count: itemIds.length });
+            content = applyHabitOpResult(
+              addDraftHabitItems(
+                workingHabits,
+                {
+                  habitId:
+                    typeof input?.habitId === "string" ? input.habitId : "",
+                  itemIds,
+                },
+                workingForest,
+                recurringPlanIdSet,
+              ),
+              `Added ${itemIds.length} tracked item(s)`,
+            );
+            break;
+          }
+          case "remove_habit_items": {
+            const itemIds = parseStringArray(input?.itemIds).slice(
+              0,
+              MAX_OP_ITEMS,
+            );
+            send("status", { tool: tu.name, count: itemIds.length });
+            content = applyHabitOpResult(
+              removeDraftHabitItems(workingHabits, {
+                habitId:
+                  typeof input?.habitId === "string" ? input.habitId : "",
+                itemIds,
+              }),
+              `Removed ${itemIds.length} tracked item(s)`,
             );
             break;
           }

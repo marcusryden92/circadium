@@ -22,10 +22,12 @@ import {
   applyEventStartEdit,
 } from "@/utils/calendarEventHandlers";
 import {
+  occurrenceKey as makeOccurrenceKey,
   occurrenceKeyFromEventId,
   plannerIdFromEventId,
   planIsRecurring,
   hasMovedException,
+  isRecurrenceOccurrenceId,
 } from "@/utils/planRecurrence";
 import {
   isChunkEventId,
@@ -33,16 +35,16 @@ import {
 } from "@/utils/taskSplitting";
 import { RecurrenceScopeModal } from "../RecurrenceScopeModal";
 import { PlannerType } from "@/types/prisma";
-import { useDispatch } from "react-redux";
-import type { AppDispatch } from "@/redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/redux/store";
 import {
-  logHabitCompletion,
-  unlogHabitCompletion,
-} from "@/actions/habitCompletions";
+  logOccurrenceCompletion,
+  unlogOccurrenceCompletion,
+} from "@/actions/occurrenceCompletions";
 import {
-  upsertHabitCompletion,
-  removeHabitCompletion,
-} from "@/redux/slices/habitCompletionsSlice";
+  upsertOccurrenceCompletion,
+  removeOccurrenceCompletion,
+} from "@/redux/slices/occurrenceCompletionsSlice";
 import { hoverActions, actionGroup, iconButton } from "./EventContent.css";
 
 interface EventContentProps {
@@ -57,9 +59,12 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const { plannerType, completedStartTime, completedEndTime } =
     event.extendedProps;
   const elementRef = useRef<HTMLDivElement>(null);
-  // Serializes habit complete/uncomplete writes so a rapid double-click can't
-  // leave the DB reflecting the earlier click via out-of-order network writes.
-  const habitWriteChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  // Serializes occurrence complete/uncomplete writes so a rapid double-click
+  // can't leave the DB reflecting the earlier click via out-of-order writes.
+  const occurrenceWriteChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  const completionRows = useSelector(
+    (s: RootState) => s.occurrenceCompletions.rows,
+  );
   const [elementHeight, setElementHeight] = useState<number>(0);
   const [elementWidth, setElementWidth] = useState<number>(0);
   const [showPopover, setShowPopover] = useState<boolean>(false);
@@ -72,6 +77,41 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
     deltaMs: number;
   } | null>(null);
 
+  const occurrenceKey = occurrenceKeyFromEventId(event.id);
+  const occurrencePlanId =
+    occurrenceKey !== null ? plannerIdFromEventId(event.id) : null;
+  const occurrencePlan = occurrencePlanId
+    ? planner.find((p) => p.id === occurrencePlanId)
+    : undefined;
+  const isRecurringOccurrence =
+    !!occurrencePlan && planIsRecurring(occurrencePlan);
+  // A per-period occurrence of a flexibly recurring task/goal: completes to
+  // the out-of-band occurrence log, never to row-level completion columns.
+  const isFlexibleOccurrence =
+    isRecurrenceOccurrenceId(event.id) &&
+    !!occurrencePlan &&
+    occurrencePlan.plannerType !== PlannerType.plan;
+  // Plans check off to the same log ("did this actually happen?"), keyed by
+  // the occurrence key for recurring plans and by the anchor instant for
+  // one-offs. Purely a record — the engine never reads plan completions.
+  const isPlanTile =
+    plannerType === PlannerType.plan && !event.extendedProps.isTemplateItem;
+  const planRow = isPlanTile
+    ? planner.find((p) => p.id === plannerIdFromEventId(event.id))
+    : undefined;
+  const planCheckKey = isPlanTile
+    ? (occurrenceKey ??
+      (planRow?.starts ? makeOccurrenceKey(new Date(planRow.starts)) : null))
+    : null;
+  const planCheckPlannerId = planRow?.id ?? null;
+  const planCheckedOff =
+    isPlanTile &&
+    planCheckKey !== null &&
+    completionRows.some(
+      (r) =>
+        r.plannerId === planCheckPlannerId && r.occurrenceKey === planCheckKey,
+    );
+
   // Completion is derived from the event data; the override only bridges the
   // gap between the optimistic click and the regen/sync confirming it. State
   // seeded once from props would go stale when the event updates in place.
@@ -79,7 +119,9 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   // also reset when the instance starts rendering a DIFFERENT event — without
   // the event.id dep, completing a chunk marked whatever event inherited the
   // recycled instance (usually the neighbor) as completed too.
-  const propsCompleted = !!(completedStartTime && completedEndTime);
+  const propsCompleted = isPlanTile
+    ? planCheckedOff
+    : !!(completedStartTime && completedEndTime);
   const [optimisticCompleted, setOptimisticCompleted] = useState<
     boolean | null
   >(null);
@@ -96,16 +138,9 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const endTime = new Date(event.end);
 
   const displayPostponeButton =
-    !isCompleted && floorMinutes(currentTime) > floorMinutes(startTime);
-
-  const occurrenceKey = occurrenceKeyFromEventId(event.id);
-  const occurrencePlanId =
-    occurrenceKey !== null ? plannerIdFromEventId(event.id) : null;
-  const occurrencePlan = occurrencePlanId
-    ? planner.find((p) => p.id === occurrencePlanId)
-    : undefined;
-  const isRecurringOccurrence =
-    !!occurrencePlan && planIsRecurring(occurrencePlan);
+    !isCompleted &&
+    !isPlanTile &&
+    floorMinutes(currentTime) > floorMinutes(startTime);
   // A moved one-off always means "just this one", so it skips the scope prompt
   // and goes straight to the plain delete confirm.
   const isMovedOneOff =
@@ -141,34 +176,48 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   };
 
   const onComplete = () => {
-    // Habit occurrences complete to the out-of-band completion log, not to
-    // Planner.completedStartTime — the row is a template, not a single task.
-    if (event.extendedProps.plannerType === PlannerType.habit) {
-      const plannerId = plannerIdFromEventId(event.id);
-      const occurrenceKey = occurrenceKeyFromEventId(event.id);
-      if (!occurrenceKey) return;
+    // Recurrence occurrences complete to the out-of-band occurrence log, not
+    // to Planner.completedStartTime — the row is a template for its periods,
+    // not a single task. Plan tiles write the same log as a pure check-off
+    // record (no regen: the engine never reads plan completions, and the tile
+    // re-renders off the slice).
+    if (isFlexibleOccurrence || isPlanTile) {
+      const plannerId = isPlanTile
+        ? planCheckPlannerId
+        : plannerIdFromEventId(event.id);
+      const logKey = isPlanTile ? planCheckKey : occurrenceKey;
+      if (!plannerId || !logKey) return;
       const nextCompleted = !isCompleted;
       // A not-yet-started occurrence can't be completed — logging it would
       // freeze a phantom tile at a future window (carving a real slot) that the
       // stats layer can't count until the period elapses.
       if (nextCompleted && startTime > currentTime) return;
       setOptimisticCompleted(nextCompleted);
-      habitWriteChainRef.current = habitWriteChainRef.current
+      const regenAfterWrite = isFlexibleOccurrence;
+      occurrenceWriteChainRef.current = occurrenceWriteChainRef.current
         .catch(() => {})
         .then(() =>
           nextCompleted
-            ? logHabitCompletion({
+            ? logOccurrenceCompletion({
                 plannerId,
-                occurrenceKey,
+                occurrenceKey: logKey,
                 start: startTime.toISOString(),
                 end: endTime.toISOString(),
               }).then((row) => {
-                dispatch(upsertHabitCompletion(row));
-                updateAll();
+                dispatch(upsertOccurrenceCompletion(row));
+                if (regenAfterWrite) updateAll();
               })
-            : unlogHabitCompletion({ plannerId, occurrenceKey }).then(() => {
-                dispatch(removeHabitCompletion({ plannerId, occurrenceKey }));
-                updateAll();
+            : unlogOccurrenceCompletion({
+                plannerId,
+                occurrenceKey: logKey,
+              }).then(() => {
+                dispatch(
+                  removeOccurrenceCompletion({
+                    plannerId,
+                    occurrenceKey: logKey,
+                  }),
+                );
+                if (regenAfterWrite) updateAll();
               }),
         )
         .catch(() => setOptimisticCompleted(null));
@@ -281,24 +330,26 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
             </button>
             <div className={actionGroup}>
               {(event.extendedProps.plannerType === PlannerType.goal ||
+                event.extendedProps.plannerType === PlannerType.task ||
+                isPlanTile) && (
+                <button
+                  onClick={onComplete}
+                  className={iconButton}
+                  aria-label={isPlanTile ? "Mark done" : "Complete"}
+                >
+                  <Check size={14} strokeWidth={2.2} />
+                </button>
+              )}
+              {(event.extendedProps.plannerType === PlannerType.goal ||
                 event.extendedProps.plannerType === PlannerType.task) && (
-                <>
-                  <button
-                    onClick={onComplete}
-                    className={iconButton}
-                    aria-label="Complete"
-                  >
-                    <Check size={14} strokeWidth={2.2} />
-                  </button>
-                  <button
-                    disabled={!displayPostponeButton}
-                    onClick={onPostpone}
-                    className={iconButton}
-                    aria-label="Postpone"
-                  >
-                    <ArrowRight size={14} strokeWidth={2} />
-                  </button>
-                </>
+                <button
+                  disabled={!displayPostponeButton}
+                  onClick={onPostpone}
+                  className={iconButton}
+                  aria-label="Postpone"
+                >
+                  <ArrowRight size={14} strokeWidth={2} />
+                </button>
               )}
             </div>
           </div>

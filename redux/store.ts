@@ -4,7 +4,8 @@ import engineOutputSlice from "./slices/engineOutputSlice";
 import userSlice from "./slices/userSlice";
 import schedulingSettingsSlice from "./slices/schedulingSettingsSlice";
 import externalCalendarSlice from "./slices/externalCalendarSlice";
-import habitCompletionsSlice from "./slices/habitCompletionsSlice";
+import occurrenceCompletionsSlice from "./slices/occurrenceCompletionsSlice";
+import habitsSlice from "./slices/habitsSlice";
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
@@ -16,7 +17,8 @@ const store = configureStore({
     engineOutput: engineOutputSlice.reducer,
     schedulingSettings: schedulingSettingsSlice.reducer,
     externalCalendar: externalCalendarSlice.reducer,
-    habitCompletions: habitCompletionsSlice.reducer,
+    occurrenceCompletions: occurrenceCompletionsSlice.reducer,
+    habits: habitsSlice.reducer,
   },
 });
 

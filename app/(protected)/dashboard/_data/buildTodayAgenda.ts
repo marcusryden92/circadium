@@ -5,11 +5,14 @@ import type {
   Category,
   TravelEvent,
 } from "@/types/prisma";
-import { EventType, PlannerType } from "@/types/prisma";
+import { EventType } from "@/types/prisma";
 import type { SerializedLocation } from "@/redux/slices/schedulingSettingsSlice";
 import { endOfDay, startOfDay } from "@/utils/dateUtils";
 import { plannerCompletedEnd } from "@/utils/plannerCompletion";
-import { plannerIdFromEventId } from "@/utils/planRecurrence";
+import {
+  isRecurrenceOccurrenceId,
+  plannerIdFromEventId,
+} from "@/utils/planRecurrence";
 import {
   getEffectiveCategoryId,
   type InheritedLocationInfo,
@@ -77,13 +80,13 @@ export function buildTodayAgenda(args: {
     const category = effectiveCategoryId
       ? categoryById.get(effectiveCategoryId)
       : undefined;
-    // A habit is never wholesale-completed on its row (plannerCompletedEnd is
-    // null for habits); a completed occurrence carries its completion on the
-    // frozen event tile, so resolve it from the event, not the template row.
-    const completed =
-      planner.plannerType === PlannerType.habit
-        ? Boolean(event.extendedProps?.completedEndTime)
-        : Boolean(plannerCompletedEnd(planner));
+    // A recurring item is never wholesale-completed on its row
+    // (plannerCompletedEnd is null for it); a completed occurrence carries its
+    // completion on the frozen event tile, so resolve occurrence tiles from
+    // the event, not the base row.
+    const completed = isRecurrenceOccurrenceId(event.id)
+      ? Boolean(event.extendedProps?.completedEndTime)
+      : Boolean(plannerCompletedEnd(planner));
 
     const deadline = planner.deadline ? new Date(planner.deadline) : null;
     const pastDeadline =

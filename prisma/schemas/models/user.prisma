@@ -44,7 +44,10 @@ model User {
   externalEvents          ExternalEvent[]
   googleCalendarConnection GoogleCalendarConnection?
   microsoftCalendarConnection MicrosoftCalendarConnection?
-  habitCompletions        HabitCompletion[]
+  occurrenceCompletions   OccurrenceCompletion[]
+  habitBuckets            HabitBucket[]
+  habits                  Habit[]
+  habitItems              HabitItem[]
 
   @@map("users")
 }

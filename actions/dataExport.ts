@@ -38,6 +38,11 @@ export async function exportUserData(): Promise<
       externalSources,
       externalEvents,
       googleConnection,
+      microsoftConnection,
+      occurrenceCompletions,
+      habitBuckets,
+      habits,
+      habitItems,
     ] = await Promise.all([
       db.user.findUnique({
         where: { id: userId },
@@ -85,6 +90,14 @@ export async function exportUserData(): Promise<
         where: { userId },
         select: { email: true, createdAt: true, updatedAt: true },
       }),
+      db.microsoftCalendarConnection.findUnique({
+        where: { userId },
+        select: { email: true, createdAt: true, updatedAt: true },
+      }),
+      db.occurrenceCompletion.findMany({ where: { userId } }),
+      db.habitBucket.findMany({ where: { userId } }),
+      db.habit.findMany({ where: { userId } }),
+      db.habitItem.findMany({ where: { userId } }),
     ]);
 
     return {
@@ -115,6 +128,11 @@ export async function exportUserData(): Promise<
         externalCalendarSources: externalSources,
         externalCalendarEvents: externalEvents,
         googleCalendarConnection: googleConnection,
+        microsoftCalendarConnection: microsoftConnection,
+        occurrenceCompletions,
+        habitBuckets,
+        habits,
+        habitItems,
       },
     };
   } catch (error) {

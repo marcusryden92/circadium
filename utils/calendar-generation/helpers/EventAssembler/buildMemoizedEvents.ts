@@ -1,5 +1,8 @@
 import { SimpleEvent, EventType, PlannerType } from "@/types/prisma";
-import { plannerIdFromEventId } from "../../../planRecurrence";
+import {
+  isRecurrenceOccurrenceId,
+  plannerIdFromEventId,
+} from "../../../planRecurrence";
 
 // Plans are excluded from memoization: a plan is deterministic from its own
 // planner row (starts + duration), so pinning the old emit here would make
@@ -13,11 +16,11 @@ import { plannerIdFromEventId } from "../../../planRecurrence";
 // and an uncompleted past chunk must vanish so its minutes reschedule instead
 // of freezing as if they happened.
 //
-// Habit occurrences are excluded on the same principle: an occurrence is
-// deterministic from (habit row + completion log), so a past UNCOMPLETED
+// Recurring occurrences are excluded on the same principle: an occurrence is
+// deterministic from (planner row + completion log), so a past UNCOMPLETED
 // occurrence must vanish (a "missed" window), and a COMPLETED one re-derives
-// fresh from the log via buildHabitCompletedEvents — never frozen from the
-// previous emit.
+// fresh from the log via buildOccurrenceCompletedEvents — never frozen from
+// the previous emit.
 export function buildMemoizedEvents(
   previousCalendar: SimpleEvent[],
   currentDate: Date,
@@ -34,7 +37,7 @@ export function buildMemoizedEvents(
         e.extendedProps?.eventType !== EventType.travel &&
         e.extendedProps?.eventType !== EventType.category &&
         e.extendedProps?.plannerType !== PlannerType.plan &&
-        e.extendedProps?.plannerType !== PlannerType.habit &&
+        !isRecurrenceOccurrenceId(e.id) &&
         !splitPlannerIds.has(plannerIdFromEventId(e.id)),
     );
     pastEvents.forEach((e) => memoizedEventIds.add(e.id));
