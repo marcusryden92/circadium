@@ -61,8 +61,6 @@ Circadium has a built-in assistant that can set up and restructure your whole pl
 
 You review everything it proposes in a side-by-side diff — Goals / Week / Categories / Queues tabs — before saving. Nothing touches your real data until you click Save.
 
-**Bring your own key.** The assistant runs on *your* Anthropic API key, encrypted on your own device and calling Anthropic directly from your browser. The key never touches Circadium's servers.
-
 ---
 
 ## First run
