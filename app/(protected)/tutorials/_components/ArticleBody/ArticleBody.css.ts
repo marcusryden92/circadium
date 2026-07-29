@@ -10,7 +10,7 @@ export const paragraph = style([
     color: vars.inkSoft,
     lineHeight: 1.65,
     fontWeight: 450,
-    margin: `0 0 ${space["4"]}`,
+    margin: `0 0 ${space["4"]}px`,
     transition: themeTransition,
   },
 ]);
@@ -19,7 +19,7 @@ export const subhead = style([
   display.panelTitle,
   {
     color: vars.ink,
-    margin: `${space["7"]} 0 ${space["3"]}`,
+    margin: `${space["7"]}px 0 ${space["3"]}px`,
     selectors: {
       "&:first-child": { marginTop: 0 },
     },
@@ -31,7 +31,7 @@ const listBase = style({
   display: "flex",
   flexDirection: "column",
   gap: space["2"],
-  margin: `0 0 ${space["4"]}`,
+  margin: `0 0 ${space["4"]}px`,
   paddingLeft: space["5"],
 });
 
@@ -57,14 +57,14 @@ export const terms = style({
   display: "flex",
   flexDirection: "column",
   gap: space["3"],
-  margin: `0 0 ${space["5"]}`,
+  margin: `0 0 ${space["5"]}px`,
 });
 
 export const termRow = style({
   display: "flex",
   flexDirection: "column",
   gap: space["1.5"],
-  padding: `${space["4"]} ${space["4.5"]}`,
+  padding: `${space["4"]}px ${space["4.5"]}px`,
   borderRadius: radii.md,
   border: `1px solid ${vars.glass.stroke}`,
   background: vars.glass.bgSoft,
@@ -94,8 +94,8 @@ export const note = style({
   display: "flex",
   gap: space["2.5"],
   alignItems: "flex-start",
-  margin: `${space["5"]} 0 ${space["4"]}`,
-  padding: `${space["4"]} ${space["4.5"]}`,
+  margin: `${space["5"]}px 0 ${space["4"]}px`,
+  padding: `${space["4"]}px ${space["4.5"]}px`,
   borderRadius: radii.md,
   border: `1px solid ${vars.glass.stroke}`,
   borderLeft: `3px solid ${vars.accent.primary}`,

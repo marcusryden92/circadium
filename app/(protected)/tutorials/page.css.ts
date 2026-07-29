@@ -216,9 +216,9 @@ export const articleScroll = style({
   overflowY: "auto",
   overflowX: "hidden",
   scrollbarGutter: "stable",
-  padding: `${space["2.5"]} 0 ${space["12"]}`,
+  padding: `${space["2.5"]}px 0 ${space["12"]}px`,
   "@media": {
-    [media.mobile]: { padding: `${space["1"]} 0 ${space["10"]}` },
+    [media.mobile]: { padding: `${space["1"]}px 0 ${space["10"]}px` },
   },
 });
 
@@ -226,9 +226,9 @@ export const articleInner = style({
   width: "100%",
   maxWidth: contentWidth.sm,
   margin: "0 auto",
-  padding: `${space["4"]} ${space["6"]}`,
+  padding: `${space["4"]}px ${space["6"]}px`,
   "@media": {
-    [media.mobile]: { padding: `${space["2"]} 0` },
+    [media.mobile]: { padding: `${space["2"]}px 0` },
   },
 });
 
@@ -258,7 +258,7 @@ export const articleSummary = style([
   text.bodyLg,
   {
     color: vars.muted,
-    margin: `${space["2.5"]} 0 0`,
+    margin: `${space["2.5"]}px 0 0`,
     lineHeight: 1.5,
     fontWeight: 500,
     transition: themeTransition,
@@ -268,7 +268,7 @@ export const articleSummary = style([
 export const articleDivider = style({
   height: 1,
   background: vars.rule,
-  margin: `${space["5"]} 0 ${space["6"]}`,
+  margin: `${space["5"]}px 0 ${space["6"]}px`,
   transition: themeTransition,
 });
 
@@ -289,7 +289,7 @@ export const pagerButton = style({
   gap: space["1.5"],
   width: "100%",
   minWidth: 0,
-  padding: `${space["3.5"]} ${space["4"]}`,
+  padding: `${space["3.5"]}px ${space["4"]}px`,
   borderRadius: radii.md,
   border: `1px solid ${vars.glass.stroke}`,
   background: vars.glass.bgSoft,
@@ -382,7 +382,7 @@ export const sheetList = style({
 export const sheetSectionHead = style([
   fieldLabel,
   {
-    padding: `${space["3"]} ${space["2"]} ${space["1.5"]}`,
+    padding: `${space["3"]}px ${space["2"]}px ${space["1.5"]}px`,
   },
 ]);
 
@@ -393,7 +393,7 @@ export const sheetRow = style([
     alignItems: "center",
     gap: space["2.5"],
     width: "100%",
-    padding: `${space["2.5"]} ${space["2"]}`,
+    padding: `${space["2.5"]}px ${space["2"]}px`,
     borderRadius: radii.sm,
     border: "none",
     background: "transparent",
