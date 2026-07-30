@@ -20,8 +20,21 @@ const mockCreateClient = createBrowserAnthropicClient as jest.Mock;
 
 interface ScriptedTurn {
   events: unknown[];
-  finalMessage: { stop_reason: string; content: unknown[] };
+  finalMessage: {
+    stop_reason: string;
+    content: unknown[];
+    usage?: Record<string, number>;
+  };
 }
+
+// The real finalMessage always carries a usage block (the loop reads it for
+// dev telemetry); default one in so scripted turns don't have to.
+const DEFAULT_USAGE = {
+  input_tokens: 0,
+  output_tokens: 0,
+  cache_creation_input_tokens: 0,
+  cache_read_input_tokens: 0,
+};
 
 function installScript(turns: ScriptedTurn[]): jest.Mock {
   const stream = jest.fn();
@@ -33,7 +46,8 @@ function installScript(turns: ScriptedTurn[]): jest.Mock {
           yield event;
         }
       },
-      finalMessage: () => Promise.resolve(turn.finalMessage),
+      finalMessage: () =>
+        Promise.resolve({ usage: DEFAULT_USAGE, ...turn.finalMessage }),
     }));
   });
   mockCreateClient.mockReturnValue({ messages: { stream } });
@@ -240,5 +254,119 @@ describe("runAssistantTurn", () => {
     ][]) {
       expect(payload.proposal.goals).toHaveLength(0);
     }
+  });
+
+  it("keeps the system prompt byte-identical across turns with different data and dates", async () => {
+    const streamA = installScript([
+      {
+        events: [textDelta("hi")],
+        finalMessage: { stop_reason: "end_turn", content: [] },
+      },
+    ]);
+    await runAssistantTurn({
+      ...baseArgs(makeForest()),
+      today: "2026-01-01",
+      ...collectCallbacks(),
+    });
+    const callA = (streamA.mock.calls as [unknown][])[0][0] as {
+      system: { text: string; cache_control?: unknown }[];
+      messages: { content: { text?: string }[] }[];
+    };
+
+    const forestB: DraftForest = {
+      goals: [
+        node({
+          id: "goal-b",
+          title: "Run a marathon",
+          plannerType: "goal",
+          deadline: "2027-05-01",
+          children: [node({ id: "b1", title: "Buy shoes" })],
+        }),
+      ],
+    };
+    const streamB = installScript([
+      {
+        events: [textDelta("hi")],
+        finalMessage: { stop_reason: "end_turn", content: [] },
+      },
+    ]);
+    await runAssistantTurn({
+      ...baseArgs(forestB),
+      today: "2026-09-09",
+      categories: [
+        {
+          id: "cat-1",
+          name: "Fitness",
+          color: "#2E7D32",
+          parentId: null,
+          locationId: null,
+          isStrict: false,
+          useTimeWindows: false,
+          confineToOwnWindows: false,
+          timeSlots: [],
+        },
+      ],
+      ...collectCallbacks(),
+    });
+    const callB = (streamB.mock.calls as [unknown][])[0][0] as {
+      system: { text: string }[];
+    };
+
+    // The cached system prefix is a single text block, byte-identical
+    // regardless of the turn's data or date.
+    expect(Array.isArray(callA.system)).toBe(true);
+    expect(callA.system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(callA.system[0].text).toBe(callB.system[0].text);
+    // Dynamic data lives in the final user message, never the system prefix.
+    expect(callA.system[0].text).not.toContain("2026-01-01");
+    expect(callA.system[0].text).not.toContain("Learn Spanish");
+    const finalUserContent =
+      callA.messages[callA.messages.length - 1].content;
+    const contextText = finalUserContent[0].text ?? "";
+    expect(contextText).toContain("2026-01-01");
+    expect(contextText).toContain("Learn Spanish");
+  });
+
+  it("marks the request with at most four cache_control breakpoints", async () => {
+    const stream = installScript([
+      {
+        events: [textDelta("hi")],
+        finalMessage: { stop_reason: "end_turn", content: [] },
+      },
+    ]);
+    await runAssistantTurn({
+      ...baseArgs(makeForest()),
+      history: [
+        { role: "user", content: "first" },
+        { role: "assistant", content: "sure" },
+        { role: "user", content: "second" },
+      ],
+      ...collectCallbacks(),
+    });
+    const params = (stream.mock.calls as [unknown][])[0][0] as {
+      system: { cache_control?: unknown }[];
+      messages: { content: unknown }[];
+    };
+
+    // bp1: the system block.
+    expect(params.system[0].cache_control).toEqual({ type: "ephemeral" });
+
+    let markers = 0;
+    for (const block of params.system) if (block.cache_control) markers++;
+    for (const message of params.messages) {
+      if (Array.isArray(message.content)) {
+        for (const block of message.content as { cache_control?: unknown }[]) {
+          if (block.cache_control) markers++;
+        }
+      }
+    }
+    expect(markers).toBeLessThanOrEqual(4);
+
+    // The moving intra-turn marker sits on the last block of the last message.
+    const lastMessage = params.messages[params.messages.length - 1];
+    const lastContent = lastMessage.content as { cache_control?: unknown }[];
+    expect(lastContent[lastContent.length - 1].cache_control).toEqual({
+      type: "ephemeral",
+    });
   });
 });

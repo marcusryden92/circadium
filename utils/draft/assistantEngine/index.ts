@@ -195,7 +195,7 @@ export type RunAssistantTurnArgs = StreamDraftArgs & {
   baseURL?: string;
 };
 
-interface AssistantTurnInput {
+interface DynamicContextInput {
   currentForest: DraftForest;
   currentTemplates: DraftTemplate[];
   currentPrecedence: DraftPrecedenceState;
@@ -204,7 +204,6 @@ interface AssistantTurnInput {
   categories: StreamDraftCategory[];
   locations: DraftLocationRef[];
   today: string;
-  intent: string | null;
 }
 
 function countDescendants(node: DraftNode): number {
@@ -417,41 +416,7 @@ function buildHabitsList(
   return lines.join("\n");
 }
 
-function buildSystemPrompt({
-  currentForest,
-  currentTemplates,
-  currentPrecedence,
-  currentHabits,
-  focus,
-  categories,
-  locations,
-  today,
-  intent,
-}: AssistantTurnInput): string {
-  const categoryList = buildCategoryList(categories, locations);
-
-  const locationList =
-    locations.length > 0
-      ? locations.map((l) => `- ${l.id}: ${l.name}`).join("\n")
-      : "(the user has no locations yet)";
-
-  const focusedGoal = focus?.rootId
-    ? currentForest.goals.find((g) => g.id === focus.rootId)
-    : undefined;
-  const focusBlock = focusedGoal
-    ? `
-FOCUSED GOAL
-The user currently has this goal open${
-        focus?.itemId && focus.itemId !== focus.rootId
-          ? ` (specifically the node with id ${focus.itemId})`
-          : ""
-      }. Its complete tree (already fetched for you — no need to call get_goal_trees for it):
-${JSON.stringify(focusedGoal, null, 2)}
-
-Scope your work to this goal unless the user asks for something broader.
-`
-    : "";
-
+function buildStaticInstructions(intent: string | null): string {
   const intentBlock =
     intent === "onboarding"
       ? `
@@ -476,18 +441,8 @@ STYLE
 The chat renders markdown — bold, lists, and inline code are fine; avoid headings and tables in casual replies. Keep responses short and conversational; the tree pane shows the details, so don't enumerate what the user can already see there.
 Speak in plain, everyday language — never the app's internal field names. The user has no idea what "isReady", "categoryId", "plannerType", "duration", "parentId", or a node id mean, and hearing them is confusing. Never say things like "isReady is false" or "I set categoryId". Say "this goal isn't ready to schedule yet", "I filed it under Work", "I set it to 30 minutes", "I made it a task". Talk about goals, tasks, deadlines, roles, and being ready to schedule — not database fields or ids.
 
-Today's date is ${today}. Ground all deadlines relative to it.
-
-GOAL INDEX (id | type | title | category | deadline | size)
-${buildGoalIndex(currentForest, categories)}
-
-This index is a summary. Use search_items to find specific items (including subtasks) by name, and get_goal_trees to read a goal's complete tree.
-
-USER CATEGORIES (nesting = hierarchy; each line: id: name | color | @location | flags; "window" lines are that category's time windows)
-${categoryList}
-
-USER LOCATIONS (id: name) — read-only; you cannot create locations, only reference these ids
-${locationList}
+LIVE STATE
+Every user message ends with a <current_state> block carrying the user's live planning data as of that message — today's date, the GOAL INDEX (one line per top-level goal), USER CATEGORIES and their time windows, USER LOCATIONS, WEEKLY TEMPLATES, QUEUES AND DEPENDENCIES, HABITS, and the focused goal if one is open. Always read the latest one and ground all deadlines relative to its date; it supersedes any state mentioned earlier in the conversation. The goal index there is a summary — use search_items to find specific items (including subtasks) by name, and get_goal_trees to read a goal's complete tree.
 
 Categories organize the library: top-level categories are the user's ROLES (the hats they wear in life — the user-facing word is "role"); sub-categories group work within a role. Category rules:
 - add_categories creates categories: parentId null makes a new role, a parent id nests beneath it. Ids are minted by the app and reported back. Give a new role a hex color from the palette below; sub-categories may inherit (null).
@@ -496,28 +451,22 @@ Categories organize the library: top-level categories are the user's ROLES (the 
 - The scheduling flags: useTimeWindows (whether its windows constrain scheduling), isStrict (its windows are reserved exclusively for its own items), confineToOwnWindows (its items schedule ONLY in its own windows instead of also using ancestors'). isStrict and confineToOwnWindows reshape the whole schedule — only change them when the user explicitly asks.
 - Do not rename or recolor categories the user didn't ask you to touch, and never invent a taxonomy wholesale without being asked — the hierarchy is the user's own mental model.
 
-WEEKLY TEMPLATES (id | day start +duration | title | location | color)
-${buildTemplateList(currentTemplates, locations)}
-
 Templates are fixed weekly-recurring blocks of occupied time; goals and tasks are schedulable work the engine places into the remaining gaps. Template rules:
 - One template = one block on one weekday, recurring every week. "Gym three times a week" = three templates on distinct days.
 - startDay is 0-6 with 0 = Sunday. startTime is "HH:MM" 24h; duration is minutes. A block spanning midnight keeps its start day and runs past it: sleep 23:00-07:00 is startTime "23:00", duration 480.
 - Overlapping templates are allowed but usually a mistake — flag overlaps in prose.
 - color: optional 6-digit hex. Reuse one color for every block of the same activity. Good palette picks: #1976D2 blue, #2E7D32 green, #F77F00 orange, #6C5CE7 violet, #16A085 teal, #E63946 red, #FFB703 amber, #1D3557 navy.
 - locationId: one of the user's location ids, or omit for "Anywhere".
-- The full current template list is always shown above — there is nothing to fetch. Template ids are minted by the app and reported back when you add.
+- The full current template list rides in the live state block with each message — there is nothing to fetch. Template ids are minted by the app and reported back when you add.
 
 Category time windows bound WHEN a category's goals and tasks may be scheduled (work items only during work hours, etc.). Window rules:
 - One window = one day + one range: "HH:MM" 24h. startTime < endTime is within-day; startTime > endTime is overnight and runs into the next morning (e.g. 23:00-07:00). Use "23:59" for a window that ends exactly at midnight.
 - Windows must NEVER overlap — not within a category and not across categories (two categories cannot both claim the same hours). Plan the week as non-overlapping blocks. The tool result flags any overlap your change creates; fix it immediately with update_time_windows or delete_time_windows before ending your turn.
 - Windows only take effect while the category's windows flag is on. Adding a window to a category with windows off turns the flag on automatically — mention that to the user.
 - strict: a strict category reserves its windows exclusively for its own items; other work is pushed out. This reshapes the whole schedule — only change strict when the user explicitly asks.
-- The full window list is always shown above under USER CATEGORIES — there is nothing to fetch. Window ids are minted by the app and reported back when you add.
+- The full window list rides in the live state block with each message, under USER CATEGORIES — there is nothing to fetch. Window ids are minted by the app and reported back when you add.
 - Windows constrain scheduling; templates occupy time. "I work 9-17" as occupied time is a template; "work tasks should happen 9-17" is a window on the Work category.
 - WORD CHOICE decides the tool, not the topic. If the user says "window" or "category window" (even "Work category windows"), use the window tools (add_time_windows / update_time_windows) and NEVER add_templates. If they say "template", "block", or "commitment", use the template tools. When genuinely ambiguous, ask which they mean rather than guessing.
-
-QUEUES AND DEPENDENCIES (queues with their members in schedule order; after the blank line, the prerequisite edges)
-${buildPrecedenceList(currentPrecedence, currentForest, categories)}
 
 Queues and dependencies sequence the user's work. A queue is an ordered list of top-level items scheduled strictly first-to-last; a dependency says one top-level item must finish before another starts. Rules:
 - Only TOP-LEVEL tasks and goals qualify (ids from the goal index; draft ids work too) — never subtasks, never plans. An item can belong to at most ONE queue.
@@ -529,9 +478,6 @@ Queues and dependencies sequence the user's work. A queue is an ordered list of 
 - When the user describes sequential work ("first X, then Y", "after the kitchen is done"), use a queue for a named ordered stream of whole items and dependencies for one-off prerequisite links between otherwise independent items.
 - Only delete a queue or remove members when the user asks. When the user speaks of these, say "queue" and "depends on" — never "queueId", "member", "plannerId", "predecessor", or "successor".
 
-HABITS (buckets first, then each habit: id: "name" | bucket | color | tracked items)
-${buildHabitsList(currentHabits, currentForest)}
-
 Habits are trackers, not schedulable items: a habit watches the occurrence completions of the repeating top-level items linked to it and shows the user a month grid of green completion circles plus streaks on the Habits page. Scheduling comes from the items themselves. Habit rules:
 - BUCKETS are the habits page's own shelves — a separate thing from the user's categories/roles. Bucket ids and category ids are never interchangeable. add_habit_buckets / update_habit_buckets / delete_habit_buckets manage them (name, optional hex color); deleting a bucket keeps its habits, unsorted. Create a bucket before filing habits into it (its id is reported back).
 - add_habits creates trackers (name, optional bucketId, optional hex color, optional initial itemPlannerIds). Ids are minted by the app and reported back.
@@ -540,7 +486,7 @@ Habits are trackers, not schedulable items: a habit watches the occurrence compl
 - The natural "build a habit" flow: create (or find) a top-level task with a repeat rule sized to the behavior ("meditate 20min, repeats daily"), then a habit tracking it — the item is created with the goal tools, the tracker with the habit tools. A repeating goal works for multi-step routines ("weekly cleaning" with its subtasks). Ask which bucket fits if unclear, or leave the habit unsorted.
 - Deleting a habit never deletes the tracked items — only the tracker. Only delete when the user asks.
 - When the user speaks of these, say "habit", "tracks", and "bucket" — never "itemPlannerIds", "habitId", or "bucketId".
-${focusBlock}${intentBlock}
+${intentBlock}
 NODE STRUCTURE
 Each node in a goal tree has:
 - id: existing planner UUID. Echo it verbatim for retained nodes; OMIT the field (or set null) for new nodes.
@@ -592,6 +538,93 @@ Display:
 The user's tree pane starts nearly empty: it displays only the focused goal, goals you change, and goals you show. Template changes appear on a separate Week tab that always shows the full weekly schedule; category and window changes appear on a Categories tab grouped by category; queue and dependency changes appear on a Queues tab; habit changes appear on a Habits tab.
 
 Always write at least one short sentence of prose before calling any tool — never reply with a bare tool call. If the user is only asking a question, answer in prose (using the reading tools if needed) and don't make changes.`;
+}
+
+// The static instructions are byte-stable across turns and conversations
+// (only the intent variant differs), so they are computed once and cached as
+// the request's first prefix breakpoint — see withCacheBreakpoints. Onboarding
+// sessions get their own cached prefix.
+const STATIC_INSTRUCTIONS_DEFAULT = buildStaticInstructions(null);
+const STATIC_INSTRUCTIONS_ONBOARDING = buildStaticInstructions("onboarding");
+
+// 5-minute ephemeral cache. Loop iterations are seconds apart and consecutive
+// user turns usually land within the window; a 1h TTL is a possible follow-up
+// (it doubles the cache-write cost).
+const EPHEMERAL_CACHE: Anthropic.CacheControlEphemeral = { type: "ephemeral" };
+
+// The system is a single cached text block. Render order is tools -> system ->
+// messages, so this one breakpoint caches the 33 tool schemas AND the static
+// instructions together (~12-13k tokens, well above the cacheable minimum).
+const SYSTEM_BLOCKS_DEFAULT: Anthropic.TextBlockParam[] = [
+  { type: "text", text: STATIC_INSTRUCTIONS_DEFAULT, cache_control: EPHEMERAL_CACHE },
+];
+const SYSTEM_BLOCKS_ONBOARDING: Anthropic.TextBlockParam[] = [
+  {
+    type: "text",
+    text: STATIC_INSTRUCTIONS_ONBOARDING,
+    cache_control: EPHEMERAL_CACHE,
+  },
+];
+
+// The data-shaped half of the prompt: everything that changes turn to turn.
+// Delivered trailing the final user message (not in the system prompt) so a
+// state change never invalidates the cached system + history prefix. The
+// focused goal is serialized compact — the pretty-printed form meaningfully
+// inflates large trees.
+function buildDynamicContext({
+  currentForest,
+  currentTemplates,
+  currentPrecedence,
+  currentHabits,
+  focus,
+  categories,
+  locations,
+  today,
+}: DynamicContextInput): string {
+  const categoryList = buildCategoryList(categories, locations);
+
+  const locationList =
+    locations.length > 0
+      ? locations.map((l) => `- ${l.id}: ${l.name}`).join("\n")
+      : "(the user has no locations yet)";
+
+  const focusedGoal = focus?.rootId
+    ? currentForest.goals.find((g) => g.id === focus.rootId)
+    : undefined;
+  const focusBlock = focusedGoal
+    ? `
+FOCUSED GOAL
+The user currently has this goal open${
+        focus?.itemId && focus.itemId !== focus.rootId
+          ? ` (specifically the node with id ${focus.itemId})`
+          : ""
+      }. Its complete tree (already fetched for you — no need to call get_goal_trees for it):
+${JSON.stringify(focusedGoal)}
+
+Scope your work to this goal unless the user asks for something broader.
+`
+    : "";
+
+  return `Today's date is ${today}. Ground all deadlines relative to it.
+
+GOAL INDEX (id | type | title | category | deadline | size)
+${buildGoalIndex(currentForest, categories)}
+
+USER CATEGORIES (nesting = hierarchy; each line: id: name | color | @location | flags; "window" lines are that category's time windows)
+${categoryList}
+
+USER LOCATIONS (id: name) — read-only; you cannot create locations, only reference these ids
+${locationList}
+
+WEEKLY TEMPLATES (id | day start +duration | title | location | color)
+${buildTemplateList(currentTemplates, locations)}
+
+QUEUES AND DEPENDENCIES (queues with their members in schedule order; after the blank line, the prerequisite edges)
+${buildPrecedenceList(currentPrecedence, currentForest, categories)}
+
+HABITS (buckets first, then each habit: id: "name" | bucket | color | tracked items)
+${buildHabitsList(currentHabits, currentForest)}
+${focusBlock}`;
 }
 
 const getGoalTreesTool: Anthropic.Tool = {
@@ -1505,6 +1538,53 @@ function describeAssistantError(err: unknown): string {
   return err instanceof Error ? err.message : "Unknown error";
 }
 
+// Stamp cache_control on the last content block of a message, normalizing a
+// string content into a single text block. The cast covers the ThinkingBlock
+// variant of the union (no cache_control field) — we never emit thinking
+// blocks, and every block we mark (text / tool_use / tool_result) supports it.
+function markLastBlock(
+  content: Anthropic.MessageParam["content"],
+): Anthropic.ContentBlockParam[] {
+  if (typeof content === "string") {
+    return [{ type: "text", text: content, cache_control: EPHEMERAL_CACHE }];
+  }
+  if (content.length === 0) return content;
+  const lastIndex = content.length - 1;
+  return content.map((block, i) =>
+    i === lastIndex
+      ? ({ ...block, cache_control: EPHEMERAL_CACHE } as Anthropic.ContentBlockParam)
+      : block,
+  );
+}
+
+// Produce a cache-marked COPY of the pristine messages array (never mutate the
+// original — markers must not accumulate across iterations). Two message-level
+// write breakpoints, plus bp1 on the system block = 3 total, under the 4-marker
+// cap. Cache READS happen automatically against the longest matching prefix; a
+// breakpoint only controls where a cache entry is WRITTEN:
+//   - historyBoundaryIndex: the last pure-history message before the
+//     context-bearing final user message, so the NEXT user turn (whose history
+//     extends this one byte-identically) reads the whole prior conversation
+//     from cache. Skipped (< 0) when there is no prior history.
+//   - the last message: extends the write frontier to the end of the current
+//     transcript, so the NEXT loop iteration reads everything this one wrote.
+// Caveat: cache lookback spans the last 20 content blocks, so a single
+// iteration appending >20 blocks (a very large parallel tool batch) can miss
+// the previous entry and re-bill that stretch — acceptable.
+function withCacheBreakpoints(
+  messages: Anthropic.MessageParam[],
+  historyBoundaryIndex: number,
+): Anthropic.MessageParam[] {
+  const markIndices = new Set<number>();
+  if (historyBoundaryIndex >= 0) markIndices.add(historyBoundaryIndex);
+  markIndices.add(messages.length - 1);
+  return messages.map((message, i) =>
+    markIndices.has(i)
+      ? { ...message, content: markLastBlock(message.content) }
+      : message,
+  );
+}
+
 export async function runAssistantTurn({
   currentForest,
   currentTemplates,
@@ -1602,7 +1682,11 @@ export async function runAssistantTurn({
   const fetchedGoalIds = new Set<string>();
   if (focus?.rootId) fetchedGoalIds.add(focus.rootId);
 
-  const systemPrompt = buildSystemPrompt({
+  // The system is the byte-stable cached prefix (tools + static instructions);
+  // all turn-varying data rides trailing the final user message instead.
+  const systemBlocks =
+    intent === "onboarding" ? SYSTEM_BLOCKS_ONBOARDING : SYSTEM_BLOCKS_DEFAULT;
+  const dynamicContext = buildDynamicContext({
     currentForest,
     currentTemplates,
     currentPrecedence: workingPrecedence,
@@ -1611,7 +1695,6 @@ export async function runAssistantTurn({
     categories,
     locations,
     today,
-    intent: intent ?? null,
   });
 
   // Callback dispatch replacing the old SSE emit — same event names and
@@ -1935,6 +2018,41 @@ export async function runAssistantTurn({
         content: m.content,
       }));
 
+    // Deliver the live state trailing the final user message rather than in the
+    // system prompt: history is prose-only (rebuilt each send), so the shared
+    // prefix (tools + static system + prior history) stays byte-stable and
+    // cacheable across user turns. The dynamic block leads with a supersedence
+    // note so an earlier turn's context (gone from history) can't mislead.
+    const contextBlock: Anthropic.TextBlockParam = {
+      type: "text",
+      text: `<current_state>\nThis is the user's live planning data as of this message; it supersedes any state described earlier in the conversation.\n\n${dynamicContext}\n</current_state>`,
+    };
+    if (messages.length > 0) {
+      const last = messages[messages.length - 1];
+      const userText = typeof last.content === "string" ? last.content : "";
+      messages[messages.length - 1] = {
+        role: last.role,
+        content: userText
+          ? [contextBlock, { type: "text", text: userText }]
+          : [contextBlock],
+      };
+    } else {
+      messages.push({ role: "user", content: [contextBlock] });
+    }
+    // The pure-history boundary: the message before the context-bearing final
+    // user message. Fixed for the turn (messages only grows via push), and < 0
+    // when there is no prior history (nothing to cache across turns yet).
+    const historyBoundaryIndex = messages.length - 2;
+
+    // Per-send usage totals, logged in dev to verify caching engages
+    // (cache_read_input_tokens should be > 0 from iteration 2 onward).
+    const usageTotals = {
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+    };
+
     let stopReason: string | null = null;
 
     // Prose segments before and after a tool call are separate content
@@ -1952,8 +2070,11 @@ export async function runAssistantTurn({
         {
           model: MODEL,
           max_tokens: MAX_TOKENS,
-          system: systemPrompt,
-          messages,
+          // Output tokens are the priciest; medium effort consolidates tool
+          // calls and terses replies. One-line revert if quality drops.
+          output_config: { effort: "medium" },
+          system: systemBlocks,
+          messages: withCacheBreakpoints(messages, historyBoundaryIndex),
           tools: [
             searchItemsTool,
             getGoalTreesTool,
@@ -2071,6 +2192,23 @@ export async function runAssistantTurn({
 
       const finalMessage = await anthropicStream.finalMessage();
       stopReason = finalMessage.stop_reason;
+
+      const usage = finalMessage.usage;
+      usageTotals.input_tokens += usage.input_tokens ?? 0;
+      usageTotals.output_tokens += usage.output_tokens ?? 0;
+      usageTotals.cache_creation_input_tokens +=
+        usage.cache_creation_input_tokens ?? 0;
+      usageTotals.cache_read_input_tokens += usage.cache_read_input_tokens ?? 0;
+      if (process.env.NODE_ENV !== "production") {
+        console.debug(
+          `[assistant] iter ${turn}: in=${usage.input_tokens ?? 0} out=${
+            usage.output_tokens ?? 0
+          } cacheWrite=${usage.cache_creation_input_tokens ?? 0} cacheRead=${
+            usage.cache_read_input_tokens ?? 0
+          }`,
+        );
+      }
+
       if (finalMessage.stop_reason !== "tool_use") break;
 
       const toolUses = finalMessage.content.filter(
@@ -2668,6 +2806,12 @@ export async function runAssistantTurn({
 
       messages.push({ role: "assistant", content: finalMessage.content });
       messages.push({ role: "user", content: results });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.debug(
+        `[assistant] send totals: in=${usageTotals.input_tokens} out=${usageTotals.output_tokens} cacheWrite=${usageTotals.cache_creation_input_tokens} cacheRead=${usageTotals.cache_read_input_tokens}`,
+      );
     }
 
     send("done", { stopReason });
