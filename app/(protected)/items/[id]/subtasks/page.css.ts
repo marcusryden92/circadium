@@ -2,7 +2,6 @@
 import { media } from "@/lib/theme/scales";
 import { DURATIONS } from "@/lib/theme/transitions";
 
-
 export const layout = style({
   display: "flex",
   flexDirection: "row",
@@ -71,9 +70,7 @@ export const legacyCardDisabled = style({
   pointerEvents: "none",
 });
 
-export const cardBody = style({
-  padding: "12px 0",
-});
+export const cardBody = style({});
 
 // When the subtask list wrapper renders null (no subtasks), AddSubtask is the
 // only child â€” pin it to the bottom so the empty space sits above it rather

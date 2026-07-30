@@ -4,7 +4,11 @@ import { space, radii, media, zIndex } from "@/lib/theme/scales";
 import { listRow } from "@/lib/theme/recipes.css";
 import { text } from "@/lib/theme/typography.css";
 import { colorMixAlpha } from "@/lib/theme/effects";
-import { themeTransition, interactiveTransition, DURATIONS } from "@/lib/theme/transitions";
+import {
+  themeTransition,
+  interactiveTransition,
+  DURATIONS,
+} from "@/lib/theme/transitions";
 
 // Quick-shake when a locked completion checkbox is clicked. Subtle horizontal
 // jiggle paired with a red flash on the circle gives the user immediate "no"
@@ -411,6 +415,7 @@ export const addSubtaskTrigger = style([
 
 export const addRowRoot = style({
   paddingTop: space["4"],
+  paddingBottom: space["4"],
   paddingRight: space["3.5"],
   marginTop: space["2"],
   borderTop: `1px solid ${vars.rule}`,

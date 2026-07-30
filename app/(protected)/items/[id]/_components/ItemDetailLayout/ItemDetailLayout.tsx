@@ -197,6 +197,18 @@ export default function ItemDetailLayout({
       ? Math.round((completedDuration / totalDuration) * 100)
       : 0;
 
+  // Recurring completion history lives in the occurrence log (keyed on the
+  // item's tree), and deleting the item cascade-removes it. Surface the count
+  // so the delete confirm can warn that history goes with it.
+  const completionRows = useSelector(
+    (state: RootState) => state.occurrenceCompletions.rows,
+  );
+  const loggedHistoryCount = useMemo(() => {
+    if (!item || !plannerHasFlexibleRecurrence(item)) return 0;
+    const treeIds = new Set(getTaskTreeIds(planner, item.id));
+    return completionRows.filter((r) => treeIds.has(r.plannerId)).length;
+  }, [item, planner, completionRows]);
+
   // Transient hint shown under the Ready button — only set when the user
   // attempts a blocked toggle. Declared up here so the hook order stays stable
   // across the early returns below.
@@ -564,6 +576,14 @@ export default function ItemDetailLayout({
                     {" "}
                     This will also delete {totalSubtasks} subtask
                     {totalSubtasks !== 1 ? "s" : ""}.
+                  </>
+                )}
+                {loggedHistoryCount > 0 && (
+                  <>
+                    {" "}
+                    Its {loggedHistoryCount} completed instance
+                    {loggedHistoryCount !== 1 ? "s" : ""} of history will be
+                    erased too.
                   </>
                 )}
               </>

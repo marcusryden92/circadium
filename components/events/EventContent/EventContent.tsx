@@ -24,7 +24,6 @@ import {
 import {
   occurrenceKey as makeOccurrenceKey,
   occurrenceKeyFromEventId,
-  occurrenceKeyToDate,
   plannerIdFromEventId,
   planIsRecurring,
   hasMovedException,
@@ -190,21 +189,22 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
       if (!plannerId || !logKey) return;
       const nextCompleted = !isCompleted;
 
-      // The engine schedules recurring occurrences forward (at or after now),
-      // so gating completion on the tile's own start would make "check off the
-      // thing I already did today" impossible — its slot is almost always
-      // ahead. Gate on the PERIOD instead: the current period is completable
-      // even when its engine slot sits later, but a future PERIOD (next week's
-      // weekly occurrence) still can't be pre-completed. When the slot is ahead
-      // of now, freeze the logged window ending at now (back-dated by its
-      // length) so the completed tile lands in the past rather than carving a
-      // phantom future slot the stats layer can't count. Plan check-offs keep
-      // the strict rule: you can't mark a future plan as having happened.
+      // A future plan can't be checked off — "did this actually happen?" is
+      // only meaningful once it has.
+      if (nextCompleted && isPlanTile && startTime > currentTime) return;
+
+      // Recurring occurrences are scheduled forward, so a per-period slot is
+      // almost always ahead of now; they MUST be completable ahead of time or a
+      // repeating task could never be checked off (the occurrence tile is its
+      // only completion surface). Completing one early DISPLAYS it at now — when
+      // you actually did it — mirroring a regular task completed ahead of its
+      // slot. The occurrenceKey still pins the completion to its original
+      // period, and the habit's streak/rate grade by period (not by this
+      // window), so doing today's and tomorrow's both today keeps BOTH periods
+      // credited. The engine skips a logged period, so there is no double-book.
       let logStart = startTime;
       let logEnd = endTime;
-      if (nextCompleted && startTime > currentTime) {
-        if (isPlanTile) return;
-        if (occurrenceKeyToDate(logKey) > currentTime) return;
+      if (nextCompleted && isFlexibleOccurrence && startTime > currentTime) {
         logEnd = currentTime;
         logStart = new Date(
           currentTime.getTime() - (endTime.getTime() - startTime.getTime()),
@@ -318,6 +318,30 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
     applyEventStartEdit(updatePlannerArray, event.id, newStart);
   };
 
+  // A completed recurring occurrence stores its window in the occurrence log,
+  // not on the planner row, so "when I did it" is editable right here by
+  // re-logging under the same period key — the frozen tile re-derives from the
+  // log on the next regen (occurrence-completed tiles are never memoized).
+  const isCompletedFlexibleOccurrence = isFlexibleOccurrence && isCompleted;
+  const relogOccurrenceWindow = (newStart: Date, newEnd: Date) => {
+    const plannerId = plannerIdFromEventId(event.id);
+    if (!plannerId || occurrenceKey === null || newEnd <= newStart) return;
+    occurrenceWriteChainRef.current = occurrenceWriteChainRef.current
+      .catch(() => {})
+      .then(() =>
+        logOccurrenceCompletion({
+          plannerId,
+          occurrenceKey,
+          start: newStart.toISOString(),
+          end: newEnd.toISOString(),
+        }).then((row) => {
+          dispatch(upsertOccurrenceCompletion(row));
+          updateAll();
+        }),
+      )
+      .catch(() => {});
+  };
+
   return (
     <EventWrapper
       event={event}
@@ -386,8 +410,20 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
           onDelete={onDelete}
           onComplete={onComplete}
           onPostpone={onPostpone}
-          onEditStartTime={canEditStart ? onEditStartTime : undefined}
-          onEditEndTime={canEditEnd ? onEditEndTime : undefined}
+          onEditStartTime={
+            canEditStart
+              ? onEditStartTime
+              : isCompletedFlexibleOccurrence
+                ? (newStart) => relogOccurrenceWindow(newStart, endTime)
+                : undefined
+          }
+          onEditEndTime={
+            canEditEnd
+              ? onEditEndTime
+              : isCompletedFlexibleOccurrence
+                ? (newEnd) => relogOccurrenceWindow(startTime, newEnd)
+                : undefined
+          }
           setShowPopover={setShowPopover}
         />
       )}

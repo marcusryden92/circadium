@@ -5,10 +5,14 @@ import { format } from "date-fns";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { getTaskTreeIds } from "@/utils/goalPageHandlers";
 import { bucketEventsByDay, getDuration } from "@/utils/calendarUtils";
-import { plannerIdFromEventId } from "@/utils/planRecurrence";
+import {
+  plannerHasFlexibleRecurrence,
+  plannerIdFromEventId,
+} from "@/utils/planRecurrence";
 import { formatDurationCompact, relativeDayLabel } from "@/utils/timeFormatting";
 import { Button } from "@/components/ui";
 import { useItem } from "../_components/ItemContext";
+import { RecurringInstances } from "../_components/RecurringCompletion";
 import type { SimpleEvent } from "@/types/prisma";
 import {
   root,
@@ -70,6 +74,11 @@ export default function ItemSchedulePage() {
   const isGoalWithSubtasks =
     item.plannerType === "goal" && treeIds.size > 1;
 
+  // A flexibly recurring task/goal has no single scheduled block — it recurs
+  // per period. Its schedule surface is the per-period instance list (status +
+  // completion), not the raw event stream.
+  const isRecurring = plannerHasFlexibleRecurrence(item);
+
   const renderBucket = (bucket: { dayKey: string; date: Date; events: SimpleEvent[] }) => {
     const rel = relativeDayLabel(bucket.date);
     return (
@@ -97,6 +106,17 @@ export default function ItemSchedulePage() {
       </div>
     );
   };
+
+  if (isRecurring) {
+    return (
+      <div className={root}>
+        <section>
+          <div className={sectionLabel}>Instances</div>
+          <RecurringInstances item={item} />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className={root}>

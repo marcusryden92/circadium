@@ -197,7 +197,7 @@ export default function ItemOverviewPage() {
           <div className={progressMeta}>
             <span className={progressMetaStrong}>Repeats</span>
             {"  ·  "}
-            check off each occurrence on the calendar
+            check off each period in the Schedule tab or on the calendar
           </div>
         )}
         {isTask && !isSplitTask && !isRecurring && (

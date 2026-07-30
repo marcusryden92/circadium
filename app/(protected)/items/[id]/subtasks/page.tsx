@@ -10,8 +10,10 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { BottomSheet } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { getRootParentId } from "@/utils/goalPageHandlers";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { useItem } from "../_components/ItemContext";
 import { EditDrawer } from "./_components/EditDrawer";
+import { RecurringGoalCompletionBar } from "../_components/RecurringCompletion";
 import {
   layout,
   treePane,
@@ -46,17 +48,27 @@ export default function ItemSubtasksPage() {
       setFocusedTask(focusParam);
     }
     router.replace(pathname, { scroll: false });
-  }, [focusParam, isLoaded, planner, item.id, setFocusedTask, router, pathname]);
+  }, [
+    focusParam,
+    isLoaded,
+    planner,
+    item.id,
+    setFocusedTask,
+    router,
+    pathname,
+  ]);
 
   if (!isGoal) {
     return <div className={`${card} ${legacyCardDisabled}`} />;
   }
 
   const drawerOpen = !!focusedTask;
+  const isRecurring = plannerHasFlexibleRecurrence(item);
 
   return (
     <div className={layout}>
       <div className={treePane}>
+        {isRecurring && <RecurringGoalCompletionBar goal={item} />}
         <div className={`${card} ${cardBody}`}>
           <RootTaskListWrapper subtasksLength={totalSubtasks}>
             <TaskList id={item.id} />

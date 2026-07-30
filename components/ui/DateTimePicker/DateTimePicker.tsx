@@ -11,6 +11,7 @@ import {
   wrap,
   triggerBoxed,
   triggerBare,
+  triggerBareSm,
   triggerIcon,
   triggerText,
   triggerPlaceholder,
@@ -69,6 +70,9 @@ export interface DateTimePickerProps {
   onChange: (next: string) => void;
   mode?: "datetime" | "date";
   variant?: "boxed" | "bare";
+  // "sm" shrinks the bare trigger to list-row metadata scale (no effect on
+  // boxed).
+  size?: "sm" | "md";
   weekStartsOn?: WeekDayIntegers;
   placeholder?: string;
   clearable?: boolean;
@@ -81,6 +85,7 @@ export function DateTimePicker({
   onChange,
   mode = "datetime",
   variant = "boxed",
+  size = "md",
   weekStartsOn = 1,
   placeholder,
   clearable = true,
@@ -140,7 +145,11 @@ export function DateTimePicker({
         <Popover.Trigger asChild>
           <button
             type="button"
-            className={variant === "bare" ? triggerBare : triggerBoxed}
+            className={
+              variant === "bare"
+                ? `${triggerBare}${size === "sm" ? ` ${triggerBareSm}` : ""}`
+                : triggerBoxed
+            }
             aria-label={ariaLabel}
             disabled={disabled}
           >

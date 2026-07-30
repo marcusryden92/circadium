@@ -50,6 +50,14 @@ export const triggerBare = style([
   },
 ]);
 
+// Compact bare trigger for list rows (item-detail completion): reads as
+// secondary metadata beside the row's title rather than a command-bar field.
+export const triggerBareSm = style({
+  height: 22,
+  fontSize: 12.5,
+  padding: "0 24px 0 0",
+});
+
 export const triggerIcon = style({
   color: vars.muted,
   flexShrink: 0,

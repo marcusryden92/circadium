@@ -17,6 +17,7 @@ import TaskHeader from "./task-item-subcomponents/TaskHeader";
 import DraggableItem from "@/components/draggable/DraggableItem";
 
 import { getRootParentId, getSubtasksById } from "@/utils/goalPageHandlers";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { toggleSubtaskCompletion } from "@/utils/goal-handlers/subtaskCompletion";
 import { moveToEdge, moveToMiddle } from "@/utils/goal-handlers/moveItem";
 import { sortSiblings } from "@/utils/goal-handlers/sortOrderKeys";
@@ -57,6 +58,12 @@ const TaskItem: React.FC<TaskItemProps> = React.memo(({ planner, task }) => {
   const rootId = getRootParentId(planner, task.id);
   const rootItem = rootId ? planner.find((p) => p.id === rootId) : undefined;
   const completionLocked = rootItem ? !rootItem.isReady : false;
+  // A recurring goal completes per period, not per row — its leaves are checked
+  // off in the "Manage completion" modal, so the inline row checkbox is hidden
+  // here to avoid the inert row-level toggle.
+  const rootIsRecurring = rootItem
+    ? plannerHasFlexibleRecurrence(rootItem)
+    : false;
 
   const handleToggleComplete = useCallback(
     (e: React.MouseEvent) => {
@@ -279,6 +286,12 @@ const TaskItem: React.FC<TaskItemProps> = React.memo(({ planner, task }) => {
                 <ChevronDown size={14} strokeWidth={2.4} />
               )}
             </button>
+          ) : rootIsRecurring ? (
+            <span
+              className={iconBtn({ size: "sm" })}
+              aria-hidden
+              style={{ pointerEvents: "none", opacity: 0 }}
+            />
           ) : (
             <button
               type="button"

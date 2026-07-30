@@ -219,6 +219,40 @@ describe("occurrence completion", () => {
     expect(week0!.extendedProps?.completedStartTime).toBe(completedStart);
     expect(occ.find((e) => e.id === OCC1)).toBeDefined();
   });
+
+  it("keeps a completed leaf's history after it is given children (structure-proof)", () => {
+    const goal = makePlanner("rec-goal", {
+      plannerType: "goal",
+      recurrence: JSON.stringify({ freq: "weekly", interval: 1 }),
+      isReady: true,
+    });
+    const leaf = makePlanner("leaf-a", { parentId: "rec-goal", duration: 60 });
+    const completedStart = "2026-01-09T15:00:00.000Z";
+    const completions: OccurrenceCompletionInput[] = [
+      {
+        plannerId: "leaf-a",
+        occurrenceKey: WEEK0_KEY,
+        start: completedStart,
+        end: "2026-01-09T16:00:00.000Z",
+      },
+    ];
+    const leafOccId = occurrenceEventId("leaf-a", WEEK0_KEY);
+
+    // Baseline: the completed leaf freezes its history tile.
+    const before = run([goal, leaf], [], completions);
+    expect(before.events.find((e) => e.id === leafOccId)?.start).toBe(
+      completedStart,
+    );
+
+    // Give the completed leaf a child so it is no longer bottom-layer — the
+    // logged history must still render (the log is the durable record).
+    const child = makePlanner("child-a", { parentId: "leaf-a", duration: 30 });
+    const after = run([goal, leaf, child], [], completions);
+    const frozen = after.events.find((e) => e.id === leafOccId);
+    expect(frozen).toBeDefined();
+    expect(frozen!.start).toBe(completedStart);
+    expect(frozen!.extendedProps?.completedStartTime).toBe(completedStart);
+  });
 });
 
 describe("recurring task edge cases", () => {

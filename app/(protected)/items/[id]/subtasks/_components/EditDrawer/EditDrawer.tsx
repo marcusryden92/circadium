@@ -33,6 +33,7 @@ import { formatMinutesToHours } from "@/utils/taskArrayUtils";
 import { canLinkAsDetour } from "@/utils/precedence/detourLinks";
 import { isValidPrecedenceEndpoint } from "@/utils/precedence/endpoints";
 import { plannerIsCompleted } from "@/utils/plannerCompletion";
+import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import {
   SplittingFields,
   DEFAULT_SPLITTING_SETTINGS,
@@ -121,6 +122,16 @@ export function EditDrawer() {
     if (!rootId) return false;
     const root = planner.find((p) => p.id === rootId);
     return root ? !root.isReady : false;
+  }, [planner, task]);
+
+  // A recurring goal completes per period, not per row — its leaves are checked
+  // off in the "Manage completion" modal, so hide the row-level completion
+  // controls here (they would write inert row columns the engine ignores).
+  const rootIsRecurring = useMemo(() => {
+    if (!task) return false;
+    const rootId = getRootParentId(planner, task.id);
+    const root = rootId ? planner.find((p) => p.id === rootId) : undefined;
+    return root ? plannerHasFlexibleRecurrence(root) : false;
   }, [planner, task]);
 
   // Linkable detour targets: triaged root goals/tasks, excluding this item's
@@ -469,7 +480,7 @@ export function EditDrawer() {
           </FieldStack>
         ) : (
           <>
-            {isLeaf && splitSettings && (
+            {isLeaf && !rootIsRecurring && splitSettings && (
               <div className={completeSection}>
                 <span className={fieldLabel}>Completed</span>
                 <div className={splitCompletedRow}>
@@ -500,7 +511,7 @@ export function EditDrawer() {
               </div>
             )}
 
-            {isLeaf && !splitSettings && (
+            {isLeaf && !rootIsRecurring && !splitSettings && (
               <div className={completeSection}>
                 <div className={completeHeader}>
                   <button
