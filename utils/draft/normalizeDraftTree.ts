@@ -2,6 +2,7 @@ import type { DraftNode } from "./plannerTreeToJson";
 import { normalizeTaskSplittingSettings } from "@/utils/taskSplitting";
 import { clampPriority, PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import type { PlanRecurrenceRule } from "@/utils/planRecurrence";
+import { normalizeAllowedTimesSettings } from "@/utils/allowedTimes";
 
 // Model-supplied repeat rule -> a valid PlanRecurrenceRule or null. Kept local
 // (rather than reusing parsePlanRecurrence, which takes a JSON string) because
@@ -66,6 +67,14 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
       ? Math.floor(node.maxMinutesPerDay)
       : null;
   const recurrence = normalizeDraftRecurrence(node.recurrence);
+  // Kept as the raw ISO string (like deadline) only when it parses to a real
+  // date, so a garbage value reads as "no bound" instead of a false diff.
+  const earliestStartDate =
+    typeof node.earliestStartDate === "string" &&
+    !isNaN(new Date(node.earliestStartDate).getTime())
+      ? node.earliestStartDate
+      : null;
+  const allowedTimes = normalizeAllowedTimesSettings(node.allowedTimes);
 
   const rawChildren = Array.isArray(node.children) ? node.children : [];
   const children = rawChildren
@@ -88,6 +97,8 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
     splitting,
     maxMinutesPerDay,
     recurrence,
+    earliestStartDate,
+    allowedTimes,
     children,
   };
 }

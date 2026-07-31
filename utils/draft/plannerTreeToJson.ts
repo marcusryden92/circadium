@@ -10,6 +10,10 @@ import {
   parsePlanRecurrence,
   type PlanRecurrenceRule,
 } from "@/utils/planRecurrence";
+import {
+  parseAllowedTimes,
+  type AllowedTimesSettings,
+} from "@/utils/allowedTimes";
 
 // The JSON shape sent to the AI and rendered in the right pane of the draft
 // modal. `sortOrder` is intentionally omitted — sibling order is array order,
@@ -45,6 +49,15 @@ export interface DraftNode {
   // (a plan's fixed-anchor repeat + exceptions stay outside the contract,
   // spread-preserved on retained rows).
   recurrence?: PlanRecurrenceRule | null;
+  // Placement bounds for tasks and goals (never plans). UNLIKE the root-only
+  // fields above, these ride EVERY node and inherit down the tree — a leaf is
+  // bound by its own values AND every ancestor's, so buildDraftNode emits them
+  // for every node and update_items can set them at any depth. Full-tree
+  // contract like splitting: a retained node re-emitted without one clears it.
+  // `earliestStartDate` is an ISO string (like deadline); `allowedTimes` is the
+  // parsed {days, ranges} shape (like splitting carries the parsed object).
+  earliestStartDate?: string | null;
+  allowedTimes?: AllowedTimesSettings | null;
   children: DraftNode[];
 }
 
@@ -80,6 +93,13 @@ export function buildDraftNode(planner: Planner[], node: Planner): DraftNode {
     splitting: parseTaskSplitting(node.splitting),
     maxMinutesPerDay: null,
     recurrence: null,
+    // Per-node, inherited: emitted from every row's own columns (root override
+    // in plannerTreeToJson is not needed, unlike categoryId/color/recurrence).
+    // Never on plans (fixed anchors), mirroring plannerHasAllowedTimes.
+    earliestStartDate:
+      node.plannerType === "plan" ? null : node.earliestStartDate ?? null,
+    allowedTimes:
+      node.plannerType === "plan" ? null : parseAllowedTimes(node.allowedTimes),
     children: orderedChildren.map((child) => buildDraftNode(planner, child)),
   };
 }

@@ -284,6 +284,9 @@ const FIELD_LABELS: Record<string, string> = {
   categoryId: "category",
   splitting: "chunking",
   maxMinutesPerDay: "daily limit",
+  recurrence: "repeat rule",
+  earliestStartDate: "earliest start",
+  allowedTimes: "allowed times",
 };
 
 function formatChangedFields(fields: string[]): string {

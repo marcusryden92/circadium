@@ -10,6 +10,7 @@ import { draftTreesEqual } from "./diffDraftTree";
 import { fallbackCalendarColor, isHexColor } from "@/utils/colorUtils";
 import { serializeTaskSplitting } from "@/utils/taskSplitting";
 import { serializePlanRecurrence } from "@/utils/planRecurrence";
+import { serializeAllowedTimes } from "@/utils/allowedTimes";
 
 // Splitting rides the full-tree contract like deadline/priority: the node's
 // value (null when absent) becomes the row value. completedSegments is never
@@ -35,6 +36,25 @@ function recurrenceColumn(
     interval: rule.interval >= 1 ? Math.floor(rule.interval) : 1,
     until: rule.until ?? null,
   });
+}
+
+// Placement bounds ride EVERY node (per-node, inherited down the tree), unlike
+// the root-only fields above — but never apply to plans (fixed anchors). The
+// contract carries the ISO string / parsed {days, ranges}; serialize back to
+// the string columns, null when absent so a retained node re-emitted without
+// one clears it (this replaces the former spread-preserve-only behavior).
+function earliestStartColumn(
+  node: DraftNode,
+  type: PlannerType,
+): string | null {
+  if (type === PlannerType.plan) return null;
+  const value = node.earliestStartDate ?? null;
+  return value && !isNaN(new Date(value).getTime()) ? value : null;
+}
+
+function allowedTimesColumn(node: DraftNode, type: PlannerType): string | null {
+  if (type === PlannerType.plan) return null;
+  return node.allowedTimes ? serializeAllowedTimes(node.allowedTimes) : null;
 }
 
 // The daily limit rides top-level goal roots only, splitting-style null
@@ -285,6 +305,10 @@ function applyTreeToExistingRoot({
     const nodeId = canRetain ? node.id : uuidv4();
     if (!canRetain && node.id.length > 0) nodeIdMap?.set(node.id, nodeId);
     const existing = canonicalById.get(nodeId);
+    const nodeType = normalizePlannerType(
+      node.plannerType,
+      node.children.length > 0,
+    );
 
     node.children.forEach((child, i) => {
       processNode(child, nodeId, (i + 1) * SORT_ORDER_STEP);
@@ -294,10 +318,7 @@ function applyTreeToExistingRoot({
       ? {
           ...existing,
           title: node.title,
-          plannerType: normalizePlannerType(
-            node.plannerType,
-            node.children.length > 0,
-          ),
+          plannerType: nodeType,
           duration: Math.max(1, Math.floor(node.duration)),
           deadline: node.deadline,
           priority: node.priority,
@@ -313,16 +334,17 @@ function applyTreeToExistingRoot({
           // descendants heals rows that predate that invariant.
           recurrence: null,
           recurrenceExceptions: null,
+          // Placement bounds ride the contract per-node now: write (or clear)
+          // them instead of spread-preserving the old row value.
+          earliestStartDate: earliestStartColumn(node, nodeType),
+          allowedTimes: allowedTimesColumn(node, nodeType),
           updatedAt: now,
         }
       : {
           id: nodeId,
           title: node.title,
           parentId,
-          plannerType: normalizePlannerType(
-            node.plannerType,
-            node.children.length > 0,
-          ),
+          plannerType: nodeType,
           isReady: appliedReady,
           isTriaged: true,
           duration: Math.max(1, Math.floor(node.duration)),
@@ -333,8 +355,8 @@ function applyTreeToExistingRoot({
           splitting: splittingColumn(node),
           completedSegments: null,
           maxMinutesPerDay: null,
-          earliestStartDate: null,
-          allowedTimes: null,
+          earliestStartDate: earliestStartColumn(node, nodeType),
+          allowedTimes: allowedTimesColumn(node, nodeType),
           linkedItemId: null,
           notes: null,
           sortOrder,
@@ -393,6 +415,8 @@ function applyTreeToExistingRoot({
     maxMinutesPerDay: goalDayCapColumn(workingTree, resolvedRootType),
     recurrence: nextRecurrence,
     recurrenceExceptions: nextRecurrenceExceptions,
+    earliestStartDate: earliestStartColumn(workingTree, resolvedRootType),
+    allowedTimes: allowedTimesColumn(workingTree, resolvedRootType),
     updatedAt: now,
   };
 
@@ -441,6 +465,10 @@ function buildNewRootRows(
   function build(child: DraftNode, parentId: string, sortOrder: number): void {
     const childId = uuidv4();
     if (child.id.length > 0) nodeIdMap?.set(child.id, childId);
+    const childType = normalizePlannerType(
+      child.plannerType,
+      child.children.length > 0,
+    );
 
     child.children.forEach((grandchild, i) => {
       build(grandchild, childId, (i + 1) * SORT_ORDER_STEP);
@@ -450,10 +478,7 @@ function buildNewRootRows(
       id: childId,
       title: child.title,
       parentId,
-      plannerType: normalizePlannerType(
-        child.plannerType,
-        child.children.length > 0,
-      ),
+      plannerType: childType,
       isReady: rootIsReady,
       isTriaged: true,
       duration: Math.max(1, Math.floor(child.duration)),
@@ -464,8 +489,8 @@ function buildNewRootRows(
       splitting: splittingColumn(child),
       completedSegments: null,
       maxMinutesPerDay: null,
-      earliestStartDate: null,
-      allowedTimes: null,
+      earliestStartDate: earliestStartColumn(child, childType),
+      allowedTimes: allowedTimesColumn(child, childType),
       linkedItemId: null,
       notes: null,
       sortOrder,
@@ -500,8 +525,8 @@ function buildNewRootRows(
     splitting: splittingColumn(node),
     completedSegments: null,
     maxMinutesPerDay: goalDayCapColumn(node, rootType),
-    earliestStartDate: null,
-    allowedTimes: null,
+    earliestStartDate: earliestStartColumn(node, rootType),
+    allowedTimes: allowedTimesColumn(node, rootType),
     linkedItemId: null,
     notes: null,
     sortOrder: 0,

@@ -501,6 +501,8 @@ Each node in a goal tree has:
 - splitting: schedulable leaves only (never plans, never nodes with subtasks) — {minMinutes, maxMinutes, maxMinutesPerDay, minSpacingMinutes} or null. Non-null makes the scheduler place the item as flexibly sized chunks (each between min and max, at most maxMinutesPerDay per day when set; maxMinutesPerDay null = no daily limit) instead of one continuous block — right for long, interruptible work like "read the textbook, 12h". minSpacingMinutes (optional; null = no forced gap) keeps at least that many minutes of break between consecutive chunks of the item. minMinutes >= 5 and maxMinutes >= minMinutes, or maxMinutes 0 meaning no upper bound (chunks grow to fill the free time they land in). Echo it verbatim for retained nodes in propose_goals — a re-emitted tree that drops it turns chunking off. When the user speaks of it, call it splitting into chunks — never say "splitting field".
 - maxMinutesPerDay: top-level goals only — the goal's daily limit: at most this many minutes of the goal's whole subtree are scheduled on any one day (an integer, or null for no limit). Use it when the user wants a big goal spread out ("no more than 2 hours of this per day"). Echo it verbatim for retained goals in propose_goals — a re-emitted tree that drops it removes the limit. Never set it on child nodes. When the user speaks of it, call it the daily limit — never say "maxMinutesPerDay".
 - recurrence: top-level tasks and goals only — {freq "daily"|"weekly"|"monthly", interval, until} or null. Non-null makes the item REPEAT flexibly: the scheduler places one occurrence per period wherever it fits (the whole subtask sequence each period for a goal) instead of scheduling it once. This is how habits-like behavior is built ("meditate 20min daily", "clean weekly"). A repeating item has NO deadline — the rule replaces it (each occurrence is bounded by its own period), and setting one clears any deadline automatically. Echo it verbatim for retained items in propose_goals — a re-emitted tree that drops it stops the repetition. Never set it on child nodes (they repeat with their goal) and never on plans (a plan repeats on its fixed schedule, managed in the app). When the user speaks of it, say "repeats weekly" — never "recurrence field".
+- earliestStartDate: tasks and goals at ANY level (never plans) — an ISO date/time before which the item may not be scheduled, or null. Use it for "don't start until August". It inherits down the tree, so setting it on a goal holds back the whole subtree; a subtask may also carry its own. Echo it verbatim for retained nodes — a re-emitted tree that drops it removes the bound. When the user speaks of it, call it the earliest start date — never "earliestStartDate".
+- allowedTimes: tasks and goals at ANY level (never plans) — restricts WHEN the item may be scheduled: {days, ranges} or null. days is a list of weekdays (0=Sunday .. 6=Saturday; leave it out or list all seven for any day); ranges is a list of {startTime, endTime} 24h "HH:MM" windows (a range whose endTime is at or before startTime runs past midnight; "23:59" means end of day). Use it for "only mornings", "only weekends", "nothing after 6pm". Like the earliest start date it inherits down the tree. Echo it verbatim for retained nodes — a re-emitted tree that drops it lifts the restriction. When the user speaks of it, call it the allowed times or when it can be scheduled — never "allowedTimes".
 - children: ordered array of sub-nodes. Empty for leaves.
 
 ID PRESERVATION (IMPORTANT)
@@ -712,6 +714,37 @@ const proposeGoalsTool: Anthropic.Tool = {
             },
             required: ["freq"],
           },
+          earliestStartDate: {
+            type: ["string", "null"],
+            description:
+              "Tasks and goals at ANY depth (never plans): ISO date/time before which the item may not be scheduled, or null. Inherits down the tree (set on a goal, it holds back the whole subtree). Echo verbatim for retained nodes; dropping it removes the bound.",
+          },
+          allowedTimes: {
+            type: ["object", "null"],
+            description:
+              'Tasks and goals at ANY depth (never plans): restricts WHEN the item may be scheduled, or null. Inherits down the tree. Echo verbatim for retained nodes; dropping it lifts the restriction.',
+            properties: {
+              days: {
+                type: ["array", "null"],
+                items: { type: "integer", minimum: 0, maximum: 6 },
+                description:
+                  "Weekdays it may be scheduled (0=Sunday .. 6=Saturday); null or all seven = any day.",
+              },
+              ranges: {
+                type: ["array", "null"],
+                items: {
+                  type: "object",
+                  properties: {
+                    startTime: { type: "string" },
+                    endTime: { type: "string" },
+                  },
+                  required: ["startTime", "endTime"],
+                },
+                description:
+                  'Times of day it may be scheduled, 24h "HH:MM"; null = any time. A range whose endTime <= startTime runs past midnight; "23:59" means end of day.',
+              },
+            },
+          },
           children: {
             type: "array",
             items: { $ref: "#/$defs/draftNode" },
@@ -776,7 +809,7 @@ const searchItemsTool: Anthropic.Tool = {
 const updateItemsTool: Anthropic.Tool = {
   name: "update_items",
   description:
-    'Change fields on existing items by id — title, plannerType ("task" or "goal"; convert a leaf task into an empty goal or vice versa, or turn a plan into a task), duration (minutes), deadline (ISO date or null to clear), priority, isReady, categoryId (top-level goals only; null to clear), splitting (schedulable leaves only — an object enables/adjusts chunked scheduling, null turns it off), and maxMinutesPerDay (top-level goals only — the goal\'s daily limit in minutes, null to remove it). An item with subtasks is always a goal — that is enforced automatically, so you never set plannerType just to fix a parent. Structural changes (adding, moving, removing items) use the other tools.',
+    'Change fields on existing items by id — title, plannerType ("task" or "goal"; convert a leaf task into an empty goal or vice versa, or turn a plan into a task), duration (minutes), deadline (ISO date or null to clear), priority, isReady, categoryId (top-level goals only; null to clear), splitting (schedulable leaves only — an object enables/adjusts chunked scheduling, null turns it off), maxMinutesPerDay (top-level goals only — the goal\'s daily limit in minutes, null to remove it), earliestStartDate (tasks/goals at any level — ISO date before which it may not be scheduled, null to clear), and allowedTimes (tasks/goals at any level — which weekdays / times of day it may be scheduled, null to clear). An item with subtasks is always a goal — that is enforced automatically, so you never set plannerType just to fix a parent. Structural changes (adding, moving, removing items) use the other tools.',
   input_schema: {
     type: "object",
     properties: {
@@ -821,6 +854,37 @@ const updateItemsTool: Anthropic.Tool = {
                 until: { type: ["string", "null"] },
               },
               required: ["freq"],
+            },
+            earliestStartDate: {
+              type: ["string", "null"],
+              description:
+                "Tasks/goals at any level (never plans): ISO date/time before which it may not be scheduled; null clears it. Inherits down the tree.",
+            },
+            allowedTimes: {
+              type: ["object", "null"],
+              description:
+                "Tasks/goals at any level (never plans): which weekdays / times of day it may be scheduled; null clears it. Inherits down the tree.",
+              properties: {
+                days: {
+                  type: ["array", "null"],
+                  items: { type: "integer", minimum: 0, maximum: 6 },
+                  description:
+                    "Weekdays (0=Sunday .. 6=Saturday); null or all seven = any day.",
+                },
+                ranges: {
+                  type: ["array", "null"],
+                  items: {
+                    type: "object",
+                    properties: {
+                      startTime: { type: "string" },
+                      endTime: { type: "string" },
+                    },
+                    required: ["startTime", "endTime"],
+                  },
+                  description:
+                    'Times of day, 24h "HH:MM"; null = any time. endTime <= startTime runs past midnight; "23:59" = end of day.',
+                },
+              },
             },
           },
           required: ["id"],
@@ -881,6 +945,33 @@ const addItemsTool: Anthropic.Tool = {
               minSpacingMinutes: { type: ["integer", "null"] },
             },
             required: ["minMinutes", "maxMinutes"],
+          },
+          earliestStartDate: {
+            type: ["string", "null"],
+            description:
+              "Tasks/goals (never plans): ISO date/time before which it may not be scheduled; null = no bound. Inherits down the tree.",
+          },
+          allowedTimes: {
+            type: ["object", "null"],
+            description:
+              "Tasks/goals (never plans): which weekdays / times of day it may be scheduled; null = any. Inherits down the tree.",
+            properties: {
+              days: {
+                type: ["array", "null"],
+                items: { type: "integer", minimum: 0, maximum: 6 },
+              },
+              ranges: {
+                type: ["array", "null"],
+                items: {
+                  type: "object",
+                  properties: {
+                    startTime: { type: "string" },
+                    endTime: { type: "string" },
+                  },
+                  required: ["startTime", "endTime"],
+                },
+              },
+            },
           },
           children: {
             type: "array",

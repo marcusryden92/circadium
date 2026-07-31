@@ -12,6 +12,10 @@ import {
 } from "./draftPrecedence";
 import { normalizeTaskSplittingSettings } from "@/utils/taskSplitting";
 import { clampPriority } from "@/utils/plannerPriority";
+import {
+  normalizeAllowedTimesSettings,
+  parseEarliestStartDate,
+} from "@/utils/allowedTimes";
 
 // Deterministic operations on a DraftForest, executed server-side on the
 // assistant's working copy so the model states intent (ids + fields) and code
@@ -74,6 +78,14 @@ export interface DraftItemUpdate {
     freq: "daily" | "weekly" | "monthly";
     interval?: number;
     until?: string | null;
+  } | null;
+  // Placement bounds, settable on any task/goal node (per-node, inherited down
+  // the tree) — rejected on plans. null clears. earliestStartDate is an ISO
+  // string; allowedTimes is the {days, ranges} shape.
+  earliestStartDate?: string | null;
+  allowedTimes?: {
+    days?: number[] | null;
+    ranges?: { startTime: string; endTime: string }[] | null;
   } | null;
 }
 
@@ -337,6 +349,46 @@ export function updateDraftItems(
         // Mutually exclusive with a deadline: each occurrence is bounded by
         // its own period end.
         node.deadline = null;
+      }
+    }
+    if (update.earliestStartDate !== undefined) {
+      if (update.earliestStartDate === null) {
+        node.earliestStartDate = null;
+      } else {
+        if (node.plannerType === "plan") {
+          failures.push({
+            id,
+            reason:
+              "an earliest start date does not apply to plans (they have a fixed start time)",
+          });
+          continue;
+        }
+        const parsed = parseEarliestStartDate(update.earliestStartDate);
+        if (!parsed) {
+          failures.push({
+            id,
+            reason: "earliestStartDate must be an ISO date string or null",
+          });
+          continue;
+        }
+        node.earliestStartDate = update.earliestStartDate;
+      }
+    }
+    if (update.allowedTimes !== undefined) {
+      if (update.allowedTimes === null) {
+        node.allowedTimes = null;
+      } else {
+        if (node.plannerType === "plan") {
+          failures.push({
+            id,
+            reason:
+              "allowed times do not apply to plans (they have a fixed start time)",
+          });
+          continue;
+        }
+        // An all-days / no-ranges pattern normalizes to null (no restriction) —
+        // treated as a clear, not a rejection.
+        node.allowedTimes = normalizeAllowedTimesSettings(update.allowedTimes);
       }
     }
     if (update.isReady !== undefined) {

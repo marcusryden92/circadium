@@ -74,6 +74,8 @@ function diffNode(working: DraftNode, canonical: DraftNode): DiffNode {
     splitting: working.splitting ?? null,
     maxMinutesPerDay: working.maxMinutesPerDay ?? null,
     recurrence: working.recurrence ?? null,
+    earliestStartDate: working.earliestStartDate ?? null,
+    allowedTimes: working.allowedTimes ?? null,
     status,
     children: diffedChildren,
     changedFields,
@@ -94,6 +96,8 @@ export function markSubtree(node: DraftNode, status: DiffStatus): DiffNode {
     splitting: node.splitting ?? null,
     maxMinutesPerDay: node.maxMinutesPerDay ?? null,
     recurrence: node.recurrence ?? null,
+    earliestStartDate: node.earliestStartDate ?? null,
+    allowedTimes: node.allowedTimes ?? null,
     status,
     changedFields: [],
     children: node.children.map((c) => markSubtree(c, status)),
@@ -126,6 +130,36 @@ function recurrenceEqual(
   );
 }
 
+function allowedTimesEqual(
+  a: DraftNode["allowedTimes"],
+  b: DraftNode["allowedTimes"],
+): boolean {
+  const left = a ?? null;
+  const right = b ?? null;
+  if (left === null || right === null) return left === right;
+  // Both sides are normalized (sorted days, sorted ranges), so positional
+  // comparison is sound.
+  const daysEqual =
+    (left.days ?? null) === null || (right.days ?? null) === null
+      ? (left.days ?? null) === (right.days ?? null)
+      : left.days!.length === right.days!.length &&
+        left.days!.every((d, i) => d === right.days![i]);
+  if (!daysEqual) return false;
+  const leftRanges = left.ranges ?? null;
+  const rightRanges = right.ranges ?? null;
+  if (leftRanges === null || rightRanges === null) {
+    return leftRanges === rightRanges;
+  }
+  return (
+    leftRanges.length === rightRanges.length &&
+    leftRanges.every(
+      (r, i) =>
+        r.startTime === rightRanges[i].startTime &&
+        r.endTime === rightRanges[i].endTime,
+    )
+  );
+}
+
 function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
   const changed: string[] = [];
   if (a.title !== b.title) changed.push("title");
@@ -140,6 +174,10 @@ function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
   if ((a.maxMinutesPerDay ?? null) !== (b.maxMinutesPerDay ?? null))
     changed.push("maxMinutesPerDay");
   if (!recurrenceEqual(a.recurrence, b.recurrence)) changed.push("recurrence");
+  if ((a.earliestStartDate ?? null) !== (b.earliestStartDate ?? null))
+    changed.push("earliestStartDate");
+  if (!allowedTimesEqual(a.allowedTimes, b.allowedTimes))
+    changed.push("allowedTimes");
   return changed;
 }
 
