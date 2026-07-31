@@ -12,7 +12,6 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className={fieldBrand}>
           <Logo
             size="clamp(34px, 6vw, 100px)"
-            simple={false}
             tone="#f5f0e8"
             weight={300}
           />

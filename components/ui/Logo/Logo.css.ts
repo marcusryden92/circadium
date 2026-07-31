@@ -1,4 +1,4 @@
-import { style, styleVariants, createVar } from "@vanilla-extract/css";
+import { style, createVar } from "@vanilla-extract/css";
 import { vars } from "@/lib/theme/tokens.css";
 import { collapseTransition } from "@/lib/theme/transitions";
 
@@ -29,25 +29,14 @@ export const root = style({
   overflow: "hidden",
 });
 
-export const mark = styleVariants({
-  full: {
-    width: logoHeightVar,
-    height: logoHeightVar,
-    flexShrink: 0,
-    backgroundColor: toneVar,
-    WebkitMaskImage: "url(/logo.svg)",
-    maskImage: "url(/logo.svg)",
-    ...maskCommon,
-  },
-  minified: {
-    width: logoHeightVar,
-    height: logoHeightVar,
-    flexShrink: 0,
-    backgroundColor: toneVar,
-    WebkitMaskImage: "url(/logo_minified.svg)",
-    maskImage: "url(/logo_minified.svg)",
-    ...maskCommon,
-  },
+export const mark = style({
+  width: logoHeightVar,
+  height: logoHeightVar,
+  flexShrink: 0,
+  backgroundColor: toneVar,
+  WebkitMaskImage: "url(/logo.svg)",
+  maskImage: "url(/logo.svg)",
+  ...maskCommon,
 });
 
 export const text = style({

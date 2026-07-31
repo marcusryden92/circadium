@@ -13,6 +13,8 @@ import {
   weightVar,
 } from "./Logo.css";
 
+// The mark is minimal enough that one asset serves every size (no simple variant).
+
 // Canonical lockup proportions. Text and gap derive from the logo height so
 // every Circadium wordmark shares one ratio regardless of size. Refined ~1.15x
 // (logo sits just proud of the cap height).
@@ -23,8 +25,6 @@ type LogoProps = {
   // Logo height: a px number, or any CSS length (e.g. a clamp() for responsive
   // lockups). Text size and gap scale from it.
   size?: number | string;
-  // Simplified minified mark (default); false uses the full detailed logo.
-  simple?: boolean;
   // Tint for both the mark and the wordmark; defaults to ink.
   tone?: string;
   weight?: number;
@@ -40,7 +40,6 @@ type LogoProps = {
 
 export function Logo({
   size = 30,
-  simple = true,
   tone = vars.ink,
   weight = 500,
   wordmark = true,
@@ -66,7 +65,7 @@ export function Logo({
       title={title}
       aria-label={wordmark ? undefined : title ?? "Circadium"}
     >
-      <span className={simple ? mark.minified : mark.full} aria-hidden />
+      <span className={mark} aria-hidden />
       {wordmark && (
         <TextTag
           className={collapsed ? `${textStyle} ${textCollapsed}` : textStyle}
