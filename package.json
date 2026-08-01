@@ -21,6 +21,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:reset": "prisma migrate reset --force",
     "db:seed": "prisma db seed",
+    "db:clear": "ts-node --project prisma/tsconfig.seed.json prisma/clear-data.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {

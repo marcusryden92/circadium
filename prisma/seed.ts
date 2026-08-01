@@ -33,28 +33,32 @@ async function main() {
   // Basic admin account so the app has a predictable login during development.
   const passwordHash = await bcrypt.hash("password", 10);
 
+  const onboardedAt = null;
+
   await prisma.user.upsert({
-    where: { email: "admin@lifeplan.com" },
+    where: { email: "admin@circadium.app" },
     update: {
       name: "Admin User",
       // Demo data is seeded below, so skip first-run onboarding (which assumes
       // a blank calendar) and land straight on the dashboard with the dataset.
-      onboardedAt: new Date(),
+      onboardedAt: onboardedAt,
     },
     create: {
       id: userId,
-      email: "admin@lifeplan.com",
+      email: "admin@circadium.app",
       name: "Admin User",
       emailVerified: new Date(),
       password: passwordHash,
       role: UserRole.ADMIN,
-      onboardedAt: new Date(),
+      onboardedAt: onboardedAt,
     },
   });
 
   if (SEED_USER_ONLY) {
     console.log("Seeding completed: admin account only (SEED_USER_ONLY set).");
-    console.log(`  - User: admin@lifeplan.com (onboarded)`);
+    console.log(
+      `  - User: admin@circadium.app${onboardedAt !== null && " (onboarded)"}`,
+    );
     return;
   }
 

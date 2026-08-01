@@ -1,5 +1,4 @@
 import { style, createVar } from "@vanilla-extract/css";
-import { vars } from "@/lib/theme/tokens.css";
 import { collapseTransition } from "@/lib/theme/transitions";
 
 
@@ -40,7 +39,7 @@ export const mark = style({
 });
 
 export const text = style({
-  fontFamily: vars.font.display,
+  fontFamily: "var(--app-font-logo), system-ui, sans-serif",
   fontSize: fontSizeVar,
   fontWeight: weightVar,
   letterSpacing: "-0.02em",

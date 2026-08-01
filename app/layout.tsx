@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
-import { fontDisplay, fontUI } from "@/lib/theme/fonts";
+import { fontDisplay, fontUI, fontLogo } from "@/lib/theme/fonts";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import "@/lib/theme/global.css";
 import "./globals.css";
@@ -21,7 +21,10 @@ export default async function RootLayout({
 }>) {
   const session = await auth();
   return (
-    <html lang="en" className={`${fontDisplay.variable} ${fontUI.variable}`}>
+    <html
+      lang="en"
+      className={`${fontDisplay.variable} ${fontUI.variable} ${fontLogo.variable}`}
+    >
       <body
         className={inter.className}
         style={{

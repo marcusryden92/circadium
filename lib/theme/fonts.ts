@@ -1,4 +1,13 @@
 import localFont from "next/font/local";
+import { Poppins } from "next/font/google";
+
+export const fontLogo = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--app-font-logo",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
 
 export const fontDisplay = localFont({
   src: [

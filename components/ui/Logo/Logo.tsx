@@ -41,7 +41,7 @@ type LogoProps = {
 export function Logo({
   size = 30,
   tone = vars.ink,
-  weight = 500,
+  weight = 400,
   wordmark = true,
   textAs: TextTag = "span",
   collapsed = false,
@@ -63,7 +63,7 @@ export function Logo({
       className={className ? `${root} ${className}` : root}
       style={{ ...cssVars, ...style }}
       title={title}
-      aria-label={wordmark ? undefined : title ?? "Circadium"}
+      aria-label={wordmark ? undefined : (title ?? "Circadium")}
     >
       <span className={mark} aria-hidden />
       {wordmark && (
