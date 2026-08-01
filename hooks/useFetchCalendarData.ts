@@ -20,6 +20,7 @@ import {
 import { SimpleEvent } from "@/types/prisma";
 import { EventTemplate } from "@/types/prisma";
 import { fetchCalendarData } from "@/actions/calendar-actions/fetchCalendarData";
+import { retry } from "@/lib/retry";
 
 interface Data {
   planner: Planner[];
@@ -61,11 +62,16 @@ export function useFetchCalendarData(
       setError(null);
 
       try {
-        const response = await fetchCalendarData();
-
-        if (!response.success) {
-          throw new Error(response.error);
-        }
+        // Retry through a cold-start window: a failed first call would
+        // otherwise leave isLoaded false and strand the app on the loading
+        // screen until a manual refresh.
+        const response = await retry(async () => {
+          const result = await fetchCalendarData();
+          if (!result.success) {
+            throw new Error(result.error);
+          }
+          return result;
+        });
 
         const {
           planner,

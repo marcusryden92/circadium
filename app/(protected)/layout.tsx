@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { retry } from "@/lib/retry";
 import type { AiMode } from "@/generated/client";
 import { ProtectedProviders } from "./ProtectedProviders";
 
@@ -19,10 +20,12 @@ export default async function CircadiumLayout({
   try {
     const session = await auth();
     if (session?.user?.id) {
-      const user = await db.user.findUnique({
-        where: { id: session.user.id },
-        select: { onboardedAt: true, aiMode: true },
-      });
+      const user = await retry(() =>
+        db.user.findUnique({
+          where: { id: session.user.id },
+          select: { onboardedAt: true, aiMode: true },
+        }),
+      );
       needsOnboarding = user?.onboardedAt == null;
       aiMode = user?.aiMode ?? null;
     }

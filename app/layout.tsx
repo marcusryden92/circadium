@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { fontDisplay, fontUI, fontLogo } from "@/lib/theme/fonts";
@@ -19,7 +20,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  // The root layout sits above every error boundary, so an unhandled throw
+  // here (e.g. a cold-start auth/DB failure) blanks the whole tab. Degrade to
+  // a null session instead — SessionProvider re-fetches it client-side once
+  // the server is warm.
+  let session: Session | null = null;
+  try {
+    session = await auth();
+  } catch {
+    session = null;
+  }
   return (
     <html
       lang="en"
