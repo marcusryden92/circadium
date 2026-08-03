@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { themeLight } from "@/lib/theme";
 import { Logo } from "@/components/ui";
@@ -21,7 +22,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <Link href="/" className={backLink}>
           ← back
         </Link>
-        {children}
+        <Suspense>{children}</Suspense>
       </div>
     </div>
   );

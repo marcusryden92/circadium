@@ -19,7 +19,7 @@ import {
 // every Circadium wordmark shares one ratio regardless of size. Refined ~1.15x
 // (logo sits just proud of the cap height).
 const TEXT_RATIO = 0.86;
-const GAP_RATIO = 0.3;
+const GAP_RATIO = 0.2;
 
 type LogoProps = {
   // Logo height: a px number, or any CSS length (e.g. a clamp() for responsive

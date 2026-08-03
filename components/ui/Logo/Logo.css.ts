@@ -42,7 +42,7 @@ export const text = style({
   fontFamily: "var(--app-font-logo), system-ui, sans-serif",
   fontSize: fontSizeVar,
   fontWeight: weightVar,
-  letterSpacing: "-0.02em",
+  letterSpacing: "-0.07em",
   color: toneVar,
   margin: 0,
   minWidth: 0,

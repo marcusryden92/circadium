@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
-import { Poppins } from "next/font/google";
+import { Montserrat } from "next/font/google";
 
-export const fontLogo = Poppins({
+export const fontLogo = Montserrat({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--app-font-logo",

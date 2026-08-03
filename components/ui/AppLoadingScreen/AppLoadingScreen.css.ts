@@ -25,8 +25,8 @@ export const overlayHidden = style({
 });
 
 export const logo = style({
-  height: "25vh",
-  width: "25vh",
+  height: "15vh",
+  width: "15vh",
   color: vars.ink,
   flexShrink: 0,
 });
