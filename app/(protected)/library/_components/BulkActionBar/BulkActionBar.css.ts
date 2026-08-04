@@ -134,30 +134,15 @@ export const menuItemMuted = style({
   color: vars.muted,
 });
 
-export const swatchGroup = style({
-  display: "flex",
-  gap: space["1"],
-  marginBottom: space["1"],
+export const priorityPopup = style({
+  padding: space["2.5"],
 });
 
-export const swatch = style({
-  width: 18,
-  height: 18,
-  padding: 0,
-  border: `1px solid ${vars.rule}`,
-  borderRadius: radii["xs"],
-  cursor: "pointer",
-  transition: themeTransition,
-  selectors: {
-    "&:hover": {
-      transform: "scale(1.15)",
-    },
-  },
-});
-
+// Mirrors the item-detail PrioritySection pills so priority reads the same
+// everywhere it's picked.
 export const priorityRow = style({
   display: "flex",
-  gap: space["1"],
+  gap: space["1.5"],
 });
 
 export const priorityPill = style([
@@ -169,15 +154,23 @@ export const priorityPill = style([
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    border: `1px solid ${vars.rule}`,
+    border: `1px solid ${vars.glass.stroke}`,
     borderRadius: radii["pill"],
     background: "transparent",
-    color: vars.ink,
+    color: vars.inkSoft,
     cursor: "pointer",
+    fontWeight: 700,
+    fontVariantNumeric: "tabular-nums",
     transition: themeTransition,
     selectors: {
-      "&:hover": {
-        background: vars.interactive.hoverFill,
+      "&:hover": { background: vars.glass.bgSoft, borderColor: vars.rule },
+      '&[aria-pressed="true"]': {
+        background: vars.ink,
+        color: vars.paper,
+        borderColor: vars.ink,
+      },
+      '&[aria-pressed="true"]:hover': {
+        background: vars.inkSoft,
         borderColor: vars.inkSoft,
       },
     },

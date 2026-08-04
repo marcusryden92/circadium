@@ -1,4 +1,9 @@
-import { Planner, Queue, PlannerDependency } from "@/types/prisma";
+import {
+  Planner,
+  PlannerType,
+  Queue,
+  PlannerDependency,
+} from "@/types/prisma";
 
 import {
   getRootParentId,
@@ -144,8 +149,8 @@ function commitMove(
   precedence?: MovePrecedenceGuard,
 ): boolean {
   const proposed = applyMove(planner, movedId, parentId, key, reindexed);
+  const rootId = getRootParentId(proposed, movedId) ?? movedId;
   if (precedence) {
-    const rootId = getRootParentId(proposed, movedId) ?? movedId;
     const cycle = validateSubtreeOrder(
       proposed,
       precedence.queues,
@@ -159,10 +164,31 @@ function commitMove(
       return false;
     }
   }
-  updatePlannerArray(proposed);
+  updatePlannerArray(inheritRootColor(proposed, movedId, rootId));
   return true;
 }
 
+// A goal and its subtasks read as one block on the calendar, so a subtree
+// nested under a new root adopts that root's color.
+function inheritRootColor(
+  planner: Planner[],
+  movedId: string,
+  rootId: string,
+): Planner[] {
+  if (rootId === movedId) return planner;
+  const rootColor = planner.find((p) => p.id === rootId)?.color;
+  if (!rootColor) return planner;
+  const treeIds = new Set(getTaskTreeIds(planner, movedId));
+  const now = new Date().toISOString();
+  return planner.map((p) =>
+    treeIds.has(p.id) && p.color !== rootColor
+      ? { ...p, color: rootColor, updatedAt: now }
+      : p,
+  );
+}
+
+// A task that gains a child stops scheduling as its own block, so the new
+// parent is retyped to goal — matching addSubtask's goal-typed mints.
 function applyMove(
   planner: Planner[],
   movedId: string,
@@ -172,6 +198,8 @@ function applyMove(
 ): Planner[] {
   return planner.map((t) => {
     if (t.id === movedId) return { ...t, parentId, sortOrder: key };
+    if (t.id === parentId && t.plannerType === PlannerType.task)
+      return { ...t, plannerType: PlannerType.goal };
     const re = reindexed?.get(t.id);
     return re !== undefined && re !== t.sortOrder ? { ...t, sortOrder: re } : t;
   });

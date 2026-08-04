@@ -69,7 +69,16 @@ export function addSubtask({
       updatedAt: now.toISOString(),
     };
 
-    updatePlannerArray([...planner, newTask]);
+    // A task that gains a child stops scheduling as its own block — retype
+    // the parent to goal so the subtree behaves like one.
+    const nextPlanner =
+      task.plannerType === PlannerType.task
+        ? planner.map((p) =>
+            p.id === task.id ? { ...p, plannerType: PlannerType.goal } : p,
+          )
+        : planner;
+
+    updatePlannerArray([...nextPlanner, newTask]);
     resetTaskState();
     return newId;
   }

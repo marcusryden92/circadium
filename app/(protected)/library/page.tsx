@@ -63,6 +63,11 @@ import {
   setPriorityOnRoots,
 } from "@/utils/plannerBulkActions";
 import {
+  buildDemoteLossManifest,
+  demoteRootIntoGoal,
+} from "@/utils/goal-handlers/demoteRootIntoGoal";
+import { GoalPickerList } from "@/components/GoalPickerList";
+import {
   page,
   spacer,
   actionCluster,
@@ -103,6 +108,10 @@ import {
   headerCellIcon,
   headerCellIconIdle,
   showCompletedToggle,
+  draftHint,
+  draftNotice,
+  draftNoticeLink,
+  nestModalBody,
   emptyState,
   emptyStateTitle,
 } from "./page.css";
@@ -176,7 +185,8 @@ function SortHeader({
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { planner, categories, updatePlannerArray } = useCalendarProvider();
+  const { planner, categories, updatePlannerArray, queues, dependencies } =
+    useCalendarProvider();
   const isLoaded = useSelector(
     (state: RootState) => state.calendarSource.isLoaded,
   );
@@ -188,11 +198,15 @@ export default function LibraryPage() {
   const [selection, setSelection] = useState<Selection>({ kind: "all" });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTargetIds, setDeleteTargetIds] = useState<string[] | null>(null);
+  const [nestNotice, setNestNotice] = useState<string | null>(null);
+  const [nestPickerOpen, setNestPickerOpen] = useState(false);
+  const [nestTargetId, setNestTargetId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [readiness, setReadiness] = useState<Readiness>("all");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -303,6 +317,10 @@ export default function LibraryPage() {
       result = result.filter((i) => !plannerCompletedEnd(i));
     }
 
+    if (!showDrafts) {
+      result = result.filter((i) => i.isTriaged);
+    }
+
     if (typeFilter !== "all") {
       result = result.filter((i) => i.plannerType === typeFilter);
     }
@@ -367,10 +385,52 @@ export default function LibraryPage() {
     typeFilter,
     readiness,
     showCompleted,
+    showDrafts,
     sortKey,
     sortDir,
     now,
   ]);
+
+  const draftCount = useMemo(
+    () => rootItems.filter((i) => !i.isTriaged).length,
+    [rootItems],
+  );
+
+  const nestTargets = useMemo(
+    () =>
+      rootItems
+        .filter(
+          (i) =>
+            i.plannerType === "goal" &&
+            i.isTriaged &&
+            !plannerCompletedEnd(i) &&
+            !selectedIds.has(i.id),
+        )
+        .sort((a, b) => (a.title || "").localeCompare(b.title || "")),
+    [rootItems, selectedIds],
+  );
+
+  const selectedRoots = useMemo(
+    () => planner.filter((p) => selectedIds.has(p.id)),
+    [planner, selectedIds],
+  );
+
+  const sharedColor = useMemo(() => {
+    const first = selectedRoots[0]?.color ?? "";
+    return first && selectedRoots.every((p) => p.color === first) ? first : "";
+  }, [selectedRoots]);
+
+  const sharedPriority = useMemo(() => {
+    if (selectedRoots.length === 0) return null;
+    const first = selectedRoots[0].priority;
+    return selectedRoots.every((p) => p.priority === first) ? first : null;
+  }, [selectedRoots]);
+
+  useEffect(() => {
+    if (!nestNotice) return;
+    const id = window.setTimeout(() => setNestNotice(null), 8000);
+    return () => window.clearTimeout(id);
+  }, [nestNotice]);
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -450,6 +510,65 @@ export default function LibraryPage() {
     updatePlannerArray((prev) =>
       setPriorityOnRoots(prev, selectedTargets, priority),
     );
+  };
+
+  // Aggregated loss preview for the bulk nest confirm — the per-item version
+  // (NestIntoGoalCard) enumerates everything, but across N items that reads
+  // as a wall of text, so this collapses to counts.
+  const nestManifest = useMemo(() => {
+    if (!nestPickerOpen) return null;
+    let queueLeavers = 0;
+    const queueTitles = new Set<string>();
+    let inboundLosers = 0;
+    for (const id of selectedTargets) {
+      const manifest = buildDemoteLossManifest(
+        planner,
+        queues,
+        dependencies,
+        id,
+      );
+      if (manifest.queueTitle) {
+        queueLeavers += 1;
+        queueTitles.add(manifest.queueTitle);
+      }
+      if (manifest.inboundHostTitles.length > 0) inboundLosers += 1;
+    }
+    return { queueLeavers, queueTitles: [...queueTitles], inboundLosers };
+  }, [nestPickerOpen, selectedTargets, planner, queues, dependencies]);
+
+  const closeNestPicker = () => {
+    setNestPickerOpen(false);
+    setNestTargetId(null);
+  };
+
+  const confirmBulkNest = () => {
+    if (!nestTargetId) return;
+    handleNestUnder(nestTargetId);
+    closeNestPicker();
+  };
+
+  const handleNestUnder = (targetRootId: string) => {
+    let next = planner;
+    const failures: string[] = [];
+    for (const id of selectedTargets) {
+      if (id === targetRootId) continue;
+      const result = demoteRootIntoGoal(
+        next,
+        id,
+        targetRootId,
+        queues,
+        dependencies,
+      );
+      if (Array.isArray(result)) {
+        next = result;
+      } else {
+        const title = planner.find((p) => p.id === id)?.title || "Untitled";
+        failures.push(`"${title}" — ${result.error}`);
+      }
+    }
+    if (next !== planner) updatePlannerArray(next);
+    setSelectedIds(new Set());
+    setNestNotice(failures.length > 0 ? failures.join(" ") : null);
   };
 
   const confirmDelete = () => {
@@ -706,6 +825,24 @@ export default function LibraryPage() {
               <span className={spacer} />
 
               <label className={showCompletedToggle}>
+                <Switch checked={showDrafts} onCheckedChange={setShowDrafts} />
+                <span>Show drafts</span>
+              </label>
+              {draftCount > 0 && (
+                <span className={draftHint}>
+                  {draftCount === 1 ? "1 draft stays" : `${draftCount} drafts stay`}{" "}
+                  off the calendar until processed —{" "}
+                  <button
+                    type="button"
+                    className={draftNoticeLink}
+                    onClick={() => router.push("/capture")}
+                  >
+                    Open Capture
+                  </button>
+                </span>
+              )}
+
+              <label className={showCompletedToggle}>
                 <Switch
                   checked={showCompleted}
                   onCheckedChange={setShowCompleted}
@@ -769,6 +906,16 @@ export default function LibraryPage() {
               )}
             </div>
           </div>
+
+          {nestNotice && (
+            <div
+              className={draftNotice}
+              style={{ color: vars.status.warning }}
+              role="alert"
+            >
+              <span>{nestNotice}</span>
+            </div>
+          )}
 
           {!isLoaded ? (
             <div
@@ -897,13 +1044,72 @@ export default function LibraryPage() {
         <BulkActionBar
           count={selectedIds.size}
           categories={categories}
+          currentColor={sharedColor}
+          currentPriority={sharedPriority}
           onAssignCategory={handleAssignCategory}
           onSetColor={handleSetColor}
           onSetPriority={handleSetPriority}
+          onOpenNest={() => setNestPickerOpen(true)}
           onDelete={() => setDeleteTargetIds(selectedTargets)}
           onClear={() => setSelectedIds(new Set())}
         />
       )}
+
+      <ConfirmModal
+        open={nestPickerOpen}
+        title="Nest under a goal"
+        body={
+          <div className={nestModalBody}>
+            <div>
+              {selectedIds.size === 1
+                ? "The selected item and everything under it moves"
+                : `The ${selectedIds.size} selected items and everything under them move`}{" "}
+              inside the goal you pick, adopting its category and readiness.
+            </div>
+            <GoalPickerList
+              goals={nestTargets}
+              onSelect={setNestTargetId}
+              onSubmit={confirmBulkNest}
+            />
+            {nestManifest &&
+              (nestManifest.queueLeavers > 0 ||
+                nestManifest.inboundLosers > 0) && (
+                <div>
+                  {nestManifest.queueLeavers > 0 && (
+                    <div>
+                      {nestManifest.queueLeavers === 1
+                        ? "1 item leaves its queue"
+                        : `${nestManifest.queueLeavers} items leave their queues`}{" "}
+                      (
+                      {nestManifest.queueTitles
+                        .map((t) => `"${t}"`)
+                        .join(", ")}
+                      ).
+                    </div>
+                  )}
+                  {nestManifest.inboundLosers > 0 && (
+                    <div>
+                      Links into{" "}
+                      {nestManifest.inboundLosers === 1
+                        ? "1 item"
+                        : `${nestManifest.inboundLosers} items`}{" "}
+                      from other goals are removed.
+                    </div>
+                  )}
+                  <div>
+                    Dropped connections cannot be restored by promoting them
+                    back later.
+                  </div>
+                </div>
+              )}
+          </div>
+        }
+        confirmLabel="Nest"
+        cancelLabel="Cancel"
+        confirmDisabled={!nestTargetId}
+        onCancel={closeNestPicker}
+        onConfirm={confirmBulkNest}
+      />
 
       {isMobile && (
         <ScopeSheet

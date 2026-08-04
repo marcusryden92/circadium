@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { FolderOpen, Palette, SlidersHorizontal, Trash2, X } from "lucide-react";
+import {
+  FolderOpen,
+  ListTree,
+  Palette,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { CategoryDot } from "@/components/ui";
 import { useShellOverlay } from "@/components/ui/shell/ShellOverlayContext";
+import { PopoverColorPicker } from "@/components/events/PopoverColorPicker";
 import { pillBtn, popover as popoverRecipe } from "@/lib/theme";
-import { CALENDAR_COLOR_GROUPS } from "@/data/calendarColors";
 import { buildCategoryTree, type CategoryNode } from "@/utils/categoryUtils";
 import { PRIORITY_LEVELS } from "@/utils/plannerPriority";
 import type { Category } from "@/types/prisma";
@@ -20,13 +27,12 @@ import {
   menu,
   menuItem,
   menuItemMuted,
-  swatchGroup,
-  swatch,
+  priorityPopup,
   priorityRow,
   priorityPill,
 } from "./BulkActionBar.css";
 
-type MenuKey = "category" | "color" | "priority";
+type MenuKey = "category" | "priority";
 
 function flattenTree(
   nodes: CategoryNode[],
@@ -42,17 +48,25 @@ function flattenTree(
 export function BulkActionBar({
   count,
   categories,
+  currentColor,
+  currentPriority,
   onAssignCategory,
   onSetColor,
   onSetPriority,
+  onOpenNest,
   onDelete,
   onClear,
 }: {
   count: number;
   categories: Category[];
+  /** Color shared by every selected item, or "" when mixed. */
+  currentColor: string;
+  /** Priority shared by every selected item, or null when mixed. */
+  currentPriority: number | null;
   onAssignCategory: (categoryId: string | null) => void;
   onSetColor: (color: string) => void;
   onSetPriority: (priority: number) => void;
+  onOpenNest: () => void;
   onDelete: () => void;
   onClear: () => void;
 }) {
@@ -138,40 +152,16 @@ export function BulkActionBar({
         </Popover.Portal>
       </Popover.Root>
 
-      <Popover.Root {...menuProps("color")}>
-        <Popover.Trigger asChild>
+      <PopoverColorPicker
+        currentColor={currentColor}
+        onChange={onSetColor}
+        trigger={
           <button type="button" className={barBtnClass} aria-label="Set color">
             <Palette size={13} strokeWidth={2} aria-hidden />
             <span className={btnLabel}>Color</span>
           </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            className={popoverRecipe({ size: "sm" })}
-            aria-label="Set color"
-            {...contentProps}
-          >
-            {CALENDAR_COLOR_GROUPS.map((group) => (
-              <div key={group.name} className={swatchGroup}>
-                {group.colors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={swatch}
-                    style={{ background: color }}
-                    title={color}
-                    aria-label={`Set color to ${color}`}
-                    onClick={() => {
-                      onSetColor(color);
-                      setOpenMenu(null);
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+        }
+      />
 
       <Popover.Root {...menuProps("priority")}>
         <Popover.Trigger asChild>
@@ -186,7 +176,7 @@ export function BulkActionBar({
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
-            className={popoverRecipe({ size: "sm" })}
+            className={`${popoverRecipe({ size: "sm" })} ${priorityPopup}`}
             aria-label="Set priority"
             {...contentProps}
           >
@@ -196,6 +186,7 @@ export function BulkActionBar({
                   key={p}
                   type="button"
                   className={priorityPill}
+                  aria-pressed={currentPriority === p}
                   aria-label={`Priority ${p}`}
                   onClick={() => {
                     onSetPriority(p);
@@ -209,6 +200,16 @@ export function BulkActionBar({
           </Popover.Content>
         </Popover.Portal>
       </Popover.Root>
+
+      <button
+        type="button"
+        className={barBtnClass}
+        aria-label="Nest under a goal"
+        onClick={onOpenNest}
+      >
+        <ListTree size={13} strokeWidth={2} aria-hidden />
+        <span className={btnLabel}>Nest</span>
+      </button>
 
       <button
         type="button"

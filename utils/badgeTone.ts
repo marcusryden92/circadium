@@ -8,9 +8,9 @@ export function plannerTypeBadgeTone(type: string): PlannerTypeTone {
     case "goal":
       return "done";
     case "plan":
-      return "info";
-    case "task":
       return "type";
+    case "task":
+      return "info";
     case "travel":
     case "template":
       return "neutral";

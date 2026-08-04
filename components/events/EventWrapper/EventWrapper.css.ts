@@ -11,6 +11,7 @@ const tileBase = style({
   flexDirection: "column",
   justifyContent: "space-between",
   height: "100%",
+  overflow: "hidden",
   borderRadius: radii.sm,
   backdropFilter: backdropFilters.event,
   WebkitBackdropFilter: backdropFilters.event,

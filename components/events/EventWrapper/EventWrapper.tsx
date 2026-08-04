@@ -1,9 +1,11 @@
-import React, { ReactNode, useLayoutEffect } from "react";
+import React, { ReactNode, useLayoutEffect, useMemo } from "react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import { Pin } from "lucide-react";
+import { Lock, Pin } from "lucide-react";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { formatTime } from "@/utils/calendarUtils";
+import { plannerIdFromEventId } from "@/utils/planRecurrence";
+import { plannerHasAllowedTimes } from "@/utils/allowedTimes";
 import { handleDoubleClick } from "@/utils/calendarEventHandlers";
 import { colorMixAlpha } from "@/lib/theme";
 import { computeTemplateBorder } from "@/utils/colorUtils";
@@ -59,17 +61,42 @@ const EventWrapper: React.FC<EventWrapperProps> = ({
   setEventRect,
   children,
 }: EventWrapperProps) => {
-  const { userSettings } = useCalendarProvider();
+  const { userSettings, planner } = useCalendarProvider();
   const isMobile = useIsMobile();
+
+  // Constraints inherit down the tree, so the lock reflects the whole chain.
+  const hasTimeConstraints = useMemo(() => {
+    if (event.extendedProps?.eventType === "template") return false;
+    let node = planner.find((p) => p.id === plannerIdFromEventId(event.id));
+    while (node) {
+      if (node.earliestStartDate || plannerHasAllowedTimes(node)) return true;
+      const parentId = node.parentId;
+      node = parentId ? planner.find((p) => p.id === parentId) : undefined;
+    }
+    return false;
+  }, [planner, event.id, event.extendedProps?.eventType]);
+
+  // FullCalendar resizes the tile without a React render (slot reflow,
+  // overlapping-event packing), so the size states must track the element
+  // live — a stale height lets the time row render into a tile too short for
+  // it and clip mid-glyph.
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+    const measure = () => {
+      setElementHeight(element.offsetHeight);
+      setElementWidth(element.offsetWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   useLayoutEffect(() => {
     const element = elementRef.current;
-    if (element) {
-      setElementHeight(element.offsetHeight);
-      setElementWidth(element.offsetWidth);
-      element.style.zIndex = showPopover ? "30" : "";
-    }
-  }, [elementHeight, showPopover]);
+    if (element) element.style.zIndex = showPopover ? "30" : "";
+  }, [showPopover]);
 
   if (!event.start || !event.end) return null;
 
@@ -155,6 +182,15 @@ const EventWrapper: React.FC<EventWrapperProps> = ({
         </div>
         {showTime && (
           <span className={timeRow}>
+            {hasTimeConstraints && (
+              <Lock
+                size={9}
+                strokeWidth={2.2}
+                aria-label="Has time constraints"
+              >
+                <title>Scheduling is time-constrained</title>
+              </Lock>
+            )}
             <span>{formatTime(startTime)}</span>
             <span aria-hidden className={timeDash}>
               –

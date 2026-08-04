@@ -69,6 +69,9 @@ export function demoteRootIntoGoal(
     };
   }
 
+  // The subtree joins the target's calendar block, so it adopts its color.
+  const targetColor = target.color ?? null;
+
   const result = planner.map((p) => {
     if (p.id === rootId) {
       return {
@@ -82,11 +85,21 @@ export function demoteRootIntoGoal(
         categoryId: null,
         maxMinutesPerDay: null,
         isReady: targetReady,
+        color: targetColor ?? p.color,
         updatedAt: now,
       };
     }
-    if (treeIds.has(p.id) && (p.isReady === true) !== targetReady) {
-      return { ...p, isReady: targetReady, updatedAt: now };
+    if (treeIds.has(p.id)) {
+      const readyChanged = (p.isReady === true) !== targetReady;
+      const colorChanged = targetColor !== null && p.color !== targetColor;
+      if (readyChanged || colorChanged) {
+        return {
+          ...p,
+          isReady: targetReady,
+          color: colorChanged ? targetColor : p.color,
+          updatedAt: now,
+        };
+      }
     }
     return p;
   });

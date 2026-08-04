@@ -684,6 +684,55 @@ export const rowMenuItemDanger = style({
   },
 });
 
+export const draftNotice = style([
+  text.bodySm,
+  {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: space["2"],
+    padding: "8px 12px",
+    marginTop: space["3"],
+    borderRadius: radii.sm,
+    border: `1px solid ${vars.rule}`,
+    background: vars.interactive.hoverFill,
+    color: vars.inkSoft,
+    flexShrink: 0,
+  },
+]);
+
+export const draftHint = style([
+  text.bodySm,
+  {
+    color: vars.muted,
+    marginRight: space["3"],
+  },
+]);
+
+export const draftNoticeLink = style([
+  text.bodySm,
+  {
+    border: "none",
+    background: "none",
+    padding: 0,
+    color: vars.ink,
+    textDecoration: "underline",
+    textUnderlineOffset: 2,
+    cursor: "pointer",
+    fontWeight: 560,
+  },
+]);
+
+export const nestModalBody = style([
+  text.bodySm,
+  {
+    display: "flex",
+    flexDirection: "column",
+    gap: space["3"],
+    color: vars.inkSoft,
+  },
+]);
+
 export const emptyState = style([
   text.bodyLg,
   {

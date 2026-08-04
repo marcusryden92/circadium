@@ -459,7 +459,11 @@ export function EditDrawer() {
                 gap: space["2"],
               }}
             >
-              <Link2 size={13} strokeWidth={2} />
+              <Link2
+                size={13}
+                strokeWidth={2}
+                style={{ color: vars.swatches.violet }}
+              />
               <span style={{ flex: 1, fontWeight: 500 }}>
                 {linkedTarget?.title || "Untitled"}
               </span>
@@ -477,6 +481,12 @@ export function EditDrawer() {
               This subtask redirects the schedule into the linked item; its own
               duration and subtasks are ignored.
             </Caption>
+            {linkedTarget && !linkedTarget.isReady && (
+              <Caption style={{ color: vars.status.warning }}>
+                The linked item is not marked ready — its work is silently
+                skipped until it is.
+              </Caption>
+            )}
           </FieldStack>
         ) : (
           <>

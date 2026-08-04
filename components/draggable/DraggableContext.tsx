@@ -127,6 +127,23 @@ export const DraggableContextProvider = ({
     };
   }, []);
 
+  // Escape aborts an in-progress drag: with the clicked/hovered state cleared,
+  // the mouseup that follows fails handleMouseUp's guards and nothing commits.
+  useEffect(() => {
+    if (!displayDragBox && !currentlyClickedItem) return;
+
+    function cancelDrag(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setDisplayDragBox(false);
+      setCurrentlyClickedItem(null);
+      setCurrentlyHoveredItem(null);
+      setTouchDropTarget(null);
+    }
+
+    document.addEventListener("keydown", cancelDrag);
+    return () => document.removeEventListener("keydown", cancelDrag);
+  }, [displayDragBox, currentlyClickedItem]);
+
   // Context value with hover and click state setters
   const value: DraggableContextType = {
     currentlyHoveredItem,

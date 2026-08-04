@@ -333,7 +333,7 @@ export const linkedIcon = style({
   display: "inline-flex",
   alignItems: "center",
   flexShrink: 0,
-  color: vars.muted,
+  color: vars.swatches.violet,
 });
 
 export const iconRow = style({

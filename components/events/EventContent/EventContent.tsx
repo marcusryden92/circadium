@@ -360,8 +360,8 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
           would appear on tap and linger — mobile gets the bottom sheet. */}
       {!isMobile &&
         onHover &&
-        elementHeight > 40 &&
-        elementWidth > 70 &&
+        elementHeight > 34 &&
+        elementWidth > 90 &&
         !event.extendedProps.isTemplateItem && (
           <div className={hoverActions}>
             <button

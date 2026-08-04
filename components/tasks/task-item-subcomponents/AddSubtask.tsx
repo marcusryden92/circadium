@@ -40,33 +40,37 @@ const AddSubtask: React.FC<AddSubtaskProps> = ({
     return refs.current.get(parentId);
   };
 
+  // Duration survives consecutive adds — sibling subtasks usually share it.
   const resetTaskState = () => {
-    setTaskDuration(undefined);
     setTaskTitle("");
   };
 
   const handleAddSubtask = (task: Planner) => {
-    if (taskTitle)
+    if (taskTitle) {
       addSubtask({
         userId,
         planner,
         updatePlannerArray,
         task,
-        taskDuration: taskDuration || 5,
+        taskDuration: taskDuration ?? 15,
         taskTitle,
         resetTaskState,
       });
+      const ref = getRef(parentId ?? undefined);
+      ref?.current?.focus();
+    }
   };
 
   const handleKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
     task: Planner,
   ) => {
-    if (event.key === "Enter" && parentId) {
+    if (event.key === "Enter") {
       event.preventDefault();
       handleAddSubtask(task);
-      const ref = getRef(parentId);
-      ref?.current?.focus();
+    } else if (event.key === "Escape") {
+      setTaskTitle("");
+      event.currentTarget.blur();
     }
   };
 
@@ -83,7 +87,7 @@ const AddSubtask: React.FC<AddSubtaskProps> = ({
           style={isMainParent ? undefined : { maxWidth: 180 }}
         />
         <DurationField
-          minutes={taskDuration ?? 0}
+          minutes={taskDuration ?? 15}
           ariaLabel="Subtask duration"
           onCommit={setTaskDuration}
         />

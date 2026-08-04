@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import {
@@ -27,6 +27,9 @@ interface Props {
   customColors?: string[];
   /** Replace the grouped base palette with a single flat row. */
   palette?: string[];
+  /** Replace the default dot-and-label trigger with a custom element
+   *  (must accept a ref — it's rendered via Radix asChild). */
+  trigger?: ReactNode;
 }
 
 export function PopoverColorPicker({
@@ -34,6 +37,7 @@ export function PopoverColorPicker({
   onChange,
   customColors = [],
   palette,
+  trigger: customTrigger,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -48,14 +52,16 @@ export function PopoverColorPicker({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button type="button" aria-label="Pick color" className={trigger}>
-          <span
-            aria-hidden
-            className={triggerDot}
-            style={{ background: currentColor }}
-          />
-          <span className={triggerLabel}>Color</span>
-        </button>
+        {customTrigger ?? (
+          <button type="button" aria-label="Pick color" className={trigger}>
+            <span
+              aria-hidden
+              className={triggerDot}
+              style={{ background: currentColor }}
+            />
+            <span className={triggerLabel}>Color</span>
+          </button>
+        )}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
