@@ -2,7 +2,12 @@
 import { vars } from "@/lib/theme/tokens.css";
 import { space, radii, media } from "@/lib/theme/scales";
 import { formInput, iconBtn } from "@/lib/theme/recipes.css";
-import { display, text, fieldLabel as fieldLabelPreset } from "@/lib/theme/typography.css";
+import {
+  caption,
+  display,
+  text,
+  fieldLabel as fieldLabelPreset,
+} from "@/lib/theme/typography.css";
 import { themeTransition, interactiveTransition } from "@/lib/theme/transitions";
 
 const lockedShake = keyframes({
@@ -21,7 +26,7 @@ export const drawer = style({
   borderBottomRightRadius: radii["lg+2"],
   height: "100%",
   minHeight: 0,
-  overflow: "auto",
+  overflow: "hidden",
   transition: themeTransition,
   // Inside the mobile BottomSheet the side-column chrome comes off; the
   // sheet owns the border and radius.
@@ -48,10 +53,15 @@ export const drawerHeaderLabel = style([
 
 export const drawerClose = iconBtn();
 
+// The body is the only scroll region — header and footer stay pinned.
 export const drawerBody = style({
   display: "flex",
   flexDirection: "column",
   gap: space["3.5"],
+  flex: 1,
+  minHeight: 0,
+  overflowY: "auto",
+  scrollbarGutter: "stable",
   // Landscape phones: the sheet is short and viewport-wide, so pair the
   // fields into two columns instead of one long scroll.
   "@media": {
@@ -84,6 +94,45 @@ export const fieldLabel = style([
     transition: themeTransition,
   },
 ]);
+
+// Captioned field groups break the flat stack into scannable clusters. In the
+// landscape-phone grid the wrapper dissolves (display: contents) so fields
+// keep pairing into the two body columns; the caption row spans both.
+export const drawerSection = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: space["3"],
+  "@media": {
+    [media.landscapePhone]: {
+      display: "contents",
+    },
+  },
+});
+
+export const sectionHead = style({
+  display: "flex",
+  alignItems: "center",
+  gap: space["2"],
+  marginTop: space["1"],
+  "@media": {
+    [media.landscapePhone]: { gridColumn: "1 / -1" },
+  },
+});
+
+export const sectionHeadLabel = style([
+  caption,
+  {
+    color: vars.muted,
+    transition: themeTransition,
+  },
+]);
+
+export const sectionHeadRule = style({
+  flex: 1,
+  height: 1,
+  background: vars.rule,
+  transition: themeTransition,
+});
 
 export const splitToggleRow = style({
   display: "flex",
@@ -201,11 +250,9 @@ export const notesInput = style([
 
 export const drawerFooter = style({
   display: "flex",
-  position: "sticky",
   alignItems: "center",
   justifyContent: "space-between",
   gap: space["2"],
-  marginTop: "auto",
   paddingTop: space["4"],
   borderTop: `1px solid ${vars.rule}`,
   transition: themeTransition,

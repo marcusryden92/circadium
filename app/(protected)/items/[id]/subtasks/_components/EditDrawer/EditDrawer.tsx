@@ -75,6 +75,10 @@ import {
   drawerClose,
   drawerBody,
   drawerTitleInput,
+  drawerSection,
+  sectionHead,
+  sectionHeadLabel,
+  sectionHeadRule,
   fieldLabel,
   splitToggleRow,
   splitHint,
@@ -451,7 +455,12 @@ export function EditDrawer() {
         />
 
         {isLinked ? (
-          <FieldStack size="sm" label="Linked item">
+          <div className={drawerSection}>
+            <div className={sectionHead}>
+              <span className={sectionHeadLabel}>Connections</span>
+              <span className={sectionHeadRule} aria-hidden />
+            </div>
+            <FieldStack size="sm" label="Linked item">
             <div
               style={{
                 display: "flex",
@@ -487,7 +496,8 @@ export function EditDrawer() {
                 skipped until it is.
               </Caption>
             )}
-          </FieldStack>
+            </FieldStack>
+          </div>
         ) : (
           <>
             {isLeaf && !rootIsRecurring && splitSettings && (
@@ -566,108 +576,126 @@ export function EditDrawer() {
               </div>
             )}
 
-            <FieldStack size="sm" label="Duration">
-              <DurationField
-                minutes={task.duration ?? 0}
-                ariaLabel="Duration"
-                onCommit={setDuration}
-              />
-            </FieldStack>
+            <div className={drawerSection}>
+              <div className={sectionHead}>
+                <span className={sectionHeadLabel}>Scheduling</span>
+                <span className={sectionHeadRule} aria-hidden />
+              </div>
 
-            {isLeaf && task.plannerType !== "plan" && (
-              <FieldStack size="sm" label="Split into chunks">
-                <div className={splitToggleRow}>
-                  <Switch
-                    checked={splitSettings !== null}
-                    onCheckedChange={(checked) =>
-                      applySplitting(
-                        checked ? DEFAULT_SPLITTING_SETTINGS : null,
-                      )
-                    }
-                    aria-label="Split into chunks"
-                  />
-                  {!splitSettings && (
-                    <span className={splitHint}>
-                      Schedule as flexible chunks instead of one block
-                    </span>
-                  )}
-                </div>
-                {splitSettings && (
-                  <SplittingFields
-                    settings={splitSettings}
-                    duration={task.duration ?? 0}
-                    completed={splitCompleted}
-                    onChange={applySplitting}
-                    showCompleted={false}
-                  />
-                )}
-              </FieldStack>
-            )}
-
-            <FieldStack size="sm" label="Location">
-              <Combobox
-                value={task.locationId ?? null}
-                options={locationOptions}
-                onChange={onLocationChange}
-                renderValue={() =>
-                  currentLocation ? (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: space["1.5"],
-                      }}
-                    >
-                      <MapPin size={12} strokeWidth={2} />
-                      {currentLocation.name}
-                    </span>
-                  ) : (
-                    <Caption>Anywhere</Caption>
-                  )
-                }
-                ariaLabel="Location"
-              />
-            </FieldStack>
-
-            <FieldStack size="sm" label="Deadline">
-              <DateTimePicker
-                value={dateValue}
-                onChange={onDateInput}
-                weekStartsOn={weekStartDay}
-                ariaLabel="Deadline"
-              />
-            </FieldStack>
-
-            {task.plannerType !== "plan" && (
-              <FieldStack size="sm" label="Earliest start">
-                <DateTimePicker
-                  value={formatDatetimeLocal(task.earliestStartDate)}
-                  onChange={onEarliestStartInput}
-                  weekStartsOn={weekStartDay}
-                  ariaLabel="Earliest start"
+              <FieldStack size="sm" label="Duration">
+                <DurationField
+                  minutes={task.duration ?? 0}
+                  ariaLabel="Duration"
+                  onCommit={setDuration}
                 />
               </FieldStack>
-            )}
+
+              {isLeaf && task.plannerType !== "plan" && (
+                <FieldStack size="sm" label="Split into chunks">
+                  <div className={splitToggleRow}>
+                    <Switch
+                      checked={splitSettings !== null}
+                      onCheckedChange={(checked) =>
+                        applySplitting(
+                          checked ? DEFAULT_SPLITTING_SETTINGS : null,
+                        )
+                      }
+                      aria-label="Split into chunks"
+                    />
+                    {!splitSettings && (
+                      <span className={splitHint}>
+                        Schedule as flexible chunks instead of one block
+                      </span>
+                    )}
+                  </div>
+                  {splitSettings && (
+                    <SplittingFields
+                      settings={splitSettings}
+                      duration={task.duration ?? 0}
+                      completed={splitCompleted}
+                      onChange={applySplitting}
+                      showCompleted={false}
+                    />
+                  )}
+                </FieldStack>
+              )}
+
+              <FieldStack size="sm" label="Deadline">
+                <DateTimePicker
+                  value={dateValue}
+                  onChange={onDateInput}
+                  weekStartsOn={weekStartDay}
+                  ariaLabel="Deadline"
+                />
+              </FieldStack>
+
+              {task.plannerType !== "plan" && (
+                <FieldStack size="sm" label="Earliest start">
+                  <DateTimePicker
+                    value={formatDatetimeLocal(task.earliestStartDate)}
+                    onChange={onEarliestStartInput}
+                    weekStartsOn={weekStartDay}
+                    ariaLabel="Earliest start"
+                  />
+                </FieldStack>
+              )}
+
+              <FieldStack size="sm" label="Location">
+                <Combobox
+                  value={task.locationId ?? null}
+                  options={locationOptions}
+                  onChange={onLocationChange}
+                  renderValue={() =>
+                    currentLocation ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: space["1.5"],
+                        }}
+                      >
+                        <MapPin size={12} strokeWidth={2} />
+                        {currentLocation.name}
+                      </span>
+                    ) : (
+                      <Caption>Anywhere</Caption>
+                    )
+                  }
+                  ariaLabel="Location"
+                />
+              </FieldStack>
+            </div>
 
             {isLeaf && (
-              <FieldStack size="sm" label="Link external item">
-                <Combobox
-                  value={null}
-                  options={linkTargets.options}
-                  onChange={setLinkedItem}
-                  placeholder="Link a goal or task…"
-                  ariaLabel="Link external item"
-                />
-                <Caption>
-                  Splice another goal or task&apos;s work into this position in
-                  the sequence.
-                </Caption>
-              </FieldStack>
+              <div className={drawerSection}>
+                <div className={sectionHead}>
+                  <span className={sectionHeadLabel}>Connections</span>
+                  <span className={sectionHeadRule} aria-hidden />
+                </div>
+
+                <FieldStack size="sm" label="Link external item">
+                  <Combobox
+                    value={null}
+                    options={linkTargets.options}
+                    onChange={setLinkedItem}
+                    placeholder="Link a goal or task…"
+                    ariaLabel="Link external item"
+                  />
+                  <Caption>
+                    Splice another goal or task&apos;s work into this position
+                    in the sequence.
+                  </Caption>
+                </FieldStack>
+              </div>
             )}
           </>
         )}
 
-        <FieldStack size="sm" label="Notes">
+        <div className={drawerSection}>
+          <div className={sectionHead}>
+            <span className={sectionHeadLabel}>Notes</span>
+            <span className={sectionHeadRule} aria-hidden />
+          </div>
           <textarea
             className={notesInput}
             value={notesDraft ?? task.notes ?? ""}
@@ -677,19 +705,11 @@ export function EditDrawer() {
             rows={3}
             aria-label="Notes"
           />
-        </FieldStack>
+        </div>
       </div>
 
       <div className={drawerFooter}>
         <div className={footerActionGroup}>
-          <Button
-            variant="glass"
-            size="sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            aria-label="Delete subtask"
-          >
-            <Trash2 size={12} strokeWidth={2.2} />
-          </Button>
           <Button
             variant="glass"
             size="sm"
@@ -711,8 +731,14 @@ export function EditDrawer() {
             </Button>
           )}
         </div>
-        <Button variant="solid" size="sm" onClick={close}>
-          Done
+        <Button
+          variant="glass"
+          size="sm"
+          onClick={() => setShowDeleteConfirm(true)}
+          aria-label="Delete subtask"
+          title="Delete subtask"
+        >
+          <Trash2 size={12} strokeWidth={2.2} />
         </Button>
       </div>
 
