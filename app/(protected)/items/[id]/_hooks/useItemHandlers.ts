@@ -7,13 +7,38 @@ import {
 } from "@/utils/goalPageHandlers";
 import { toggleGoalIsReady } from "@/utils/goal-handlers/toggleGoalIsReady";
 import { assignCategoryToSubtrees } from "@/utils/plannerBulkActions";
+import { historyMessages } from "@/utils/historyMessages";
 import type { Planner, Category } from "@/types/prisma";
-import type { Dispatch, SetStateAction } from "react";
+
+type UpdatePlannerArrayFn = (
+  planner: Planner[] | ((prev: Planner[]) => Planner[]),
+  label: string,
+) => void;
+
+// Friendly names for the fields handleUpdateField reaches, so undo toasts
+// speak plain language instead of column names.
+const FIELD_LABELS: Partial<Record<keyof Planner, string>> = {
+  starts: "start time",
+  deadline: "deadline",
+  duration: "duration",
+  priority: "priority",
+  plannerType: "type",
+  recurrence: "repeat rule",
+  recurrenceExceptions: "occurrence exceptions",
+  allowedTimes: "allowed times",
+  earliestStartDate: "earliest start",
+  maxMinutesPerDay: "daily limit",
+  splitting: "splitting",
+  notes: "notes",
+  useParentLocation: "location inheritance",
+  completedStartTime: "completion time",
+  completedEndTime: "completion time",
+};
 
 export function useItemHandlers(
   item: Planner | undefined,
   planner: Planner[],
-  updatePlannerArray: Dispatch<SetStateAction<Planner[]>>,
+  updatePlannerArray: UpdatePlannerArrayFn,
   updateAll: () => void,
   categoryHasLocation: boolean = false,
   categories: Category[] = [],
@@ -29,16 +54,18 @@ export function useItemHandlers(
   const handleSaveTitle = useCallback(
     (newTitle: string) => {
       if (!item || !newTitle.trim()) return;
-      updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) =>
-          p.id === item.id
-            ? {
-                ...p,
-                title: newTitle.trim(),
-                updatedAt: new Date().toISOString(),
-              }
-            : p,
-        ),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          prev.map((p) =>
+            p.id === item.id
+              ? {
+                  ...p,
+                  title: newTitle.trim(),
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        historyMessages.item.rename(newTitle.trim()),
       );
     },
     [item, updatePlannerArray],
@@ -46,24 +73,30 @@ export function useItemHandlers(
 
   const handleDelete = useCallback(() => {
     if (!item) return;
-    deleteGoal({ updateAll, taskId: item.id });
+    deleteGoal({ updateAll, taskId: item.id, title: item.title });
     router.push("/items");
   }, [item, updateAll, router]);
 
   const handleToggleReady = useCallback(() => {
     if (!item) return;
-    toggleGoalIsReady(updatePlannerArray, item.id);
+    toggleGoalIsReady(
+      updatePlannerArray,
+      item.id,
+      historyMessages.item.ready(item.title, !item.isReady),
+    );
   }, [item, updatePlannerArray]);
 
   const handleUpdateField = useCallback(
     (field: keyof Planner, value: unknown) => {
       if (!item) return;
-      updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) =>
-          p.id === item.id
-            ? { ...p, [field]: value, updatedAt: new Date().toISOString() }
-            : p,
-        ),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          prev.map((p) =>
+            p.id === item.id
+              ? { ...p, [field]: value, updatedAt: new Date().toISOString() }
+              : p,
+          ),
+        historyMessages.item.field(FIELD_LABELS[field] ?? field, item.title),
       );
     },
     [item, updatePlannerArray],
@@ -75,12 +108,14 @@ export function useItemHandlers(
       // A goal and its subtasks read as one block on the calendar, so recolor
       // the whole subtree, not just this row.
       const treeIds = new Set(getTaskTreeIds(planner, item.id));
-      updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) =>
-          treeIds.has(p.id)
-            ? { ...p, color, updatedAt: new Date().toISOString() }
-            : p,
-        ),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          prev.map((p) =>
+            treeIds.has(p.id)
+              ? { ...p, color, updatedAt: new Date().toISOString() }
+              : p,
+          ),
+        historyMessages.item.field("color", item.title),
       );
     },
     [item, planner, updatePlannerArray],
@@ -106,13 +141,15 @@ export function useItemHandlers(
         ? !!categories.find((c) => c.id === categoryId)?.locationId
         : false;
 
-      updatePlannerArray((prev: Planner[]) =>
-        assignCategoryToSubtrees(
-          prev,
-          [item.id],
-          categoryId,
-          newCategoryHasLocation,
-        ),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          assignCategoryToSubtrees(
+            prev,
+            [item.id],
+            categoryId,
+            newCategoryHasLocation,
+          ),
+        historyMessages.item.field("category", item.title),
       );
       updateAll();
     },
@@ -130,17 +167,19 @@ export function useItemHandlers(
   const handleLocationChange = useCallback(
     (locationId: string | null) => {
       if (!item) return;
-      updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) =>
-          p.id === item.id
-            ? {
-                ...p,
-                locationId,
-                useParentLocation: false,
-                updatedAt: new Date().toISOString(),
-              }
-            : p,
-        ),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          prev.map((p) =>
+            p.id === item.id
+              ? {
+                  ...p,
+                  locationId,
+                  useParentLocation: false,
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        historyMessages.item.field("location", item.title),
       );
     },
     [item, updatePlannerArray],
@@ -159,10 +198,12 @@ export function useItemHandlers(
 
     const treeIds = getGoalTree(planner, item.id).map((i) => i.id);
 
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        treeIds.includes(p.id) ? { ...p, useParentLocation: true } : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          treeIds.includes(p.id) ? { ...p, useParentLocation: true } : p,
+        ),
+      historyMessages.item.field("sub-item locations", item.title),
     );
     setLocationOverrideEnabled(false);
     setShowResetLocationsConfirm(false);

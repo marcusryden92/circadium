@@ -163,7 +163,13 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   const confirmDelete = () => {
     setShowDeleteConfirm(false);
     if (isMovedOneOff && occurrencePlanId && occurrenceKey !== null) {
-      applyOccurrenceDelete(updateAll, occurrencePlanId, occurrenceKey, event.id);
+      applyOccurrenceDelete(
+        updateAll,
+        occurrencePlanId,
+        occurrenceKey,
+        event.id,
+        event.title,
+      );
       return;
     }
     handleClickDelete(
@@ -289,7 +295,13 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
   // tile may legitimately re-place to a new slot after the edit.
   const onEditEndTime = (newEnd: Date) => {
     if (!event.start) return;
-    applyEventResize(updateAll, event.id, new Date(event.start), newEnd);
+    applyEventResize(
+      updateAll,
+      event.id,
+      new Date(event.start),
+      newEnd,
+      event.title,
+    );
   };
 
   const onEditStartTime = (newStart: Date) => {
@@ -305,6 +317,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
           occurrencePlanId,
           occurrenceKey,
           newStart,
+          event.title,
         );
         return;
       }
@@ -315,7 +328,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
       });
       return;
     }
-    applyEventStartEdit(updatePlannerArray, event.id, newStart);
+    applyEventStartEdit(updatePlannerArray, event.id, newStart, event.title);
   };
 
   // A completed recurring occurrence stores its window in the occurrence log,
@@ -440,13 +453,14 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
                 occurrencePlanId,
                 occurrenceKey,
                 event.id,
+                event.title,
               );
             }
             setShowDeleteScope(false);
           }}
           onAllOccurrences={() => {
             if (occurrencePlanId) {
-              applySeriesDelete(updateAll, occurrencePlanId);
+              applySeriesDelete(updateAll, occurrencePlanId, event.title);
             }
             setShowDeleteScope(false);
           }}
@@ -470,6 +484,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
                 occurrencePlanId,
                 occurrenceKey,
                 pendingMoveScope.newStart,
+                event.title,
               );
             }
             setPendingMoveScope(null);
@@ -480,6 +495,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
                 updatePlannerArray,
                 occurrencePlanId,
                 pendingMoveScope.deltaMs,
+                event.title,
               );
             }
             setPendingMoveScope(null);

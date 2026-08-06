@@ -18,9 +18,11 @@ import { validateSubtreeOrder } from "@/utils/precedence/findCycle";
 import { describeCycle } from "@/utils/precedence/describeCycle";
 
 import { ClickedItem } from "@/lib/taskItem";
+import { historyMessages } from "@/utils/historyMessages";
 
 type UpdatePlannerArray = (
   planner: Planner[] | ((prev: Planner[]) => Planner[]),
+  label: string,
 ) => void;
 
 // With node-level dependency edges, a reorder can close a loop through TWO
@@ -85,6 +87,7 @@ export function moveToEdge({
     key,
     reindexed,
     updatePlannerArray,
+    historyMessages.item.reorder(movedTask.title),
     precedence,
   );
 }
@@ -132,6 +135,7 @@ export function moveToMiddle({
     key,
     reindexed,
     updatePlannerArray,
+    historyMessages.item.move(movedTask.title),
     precedence,
   );
 }
@@ -146,6 +150,7 @@ function commitMove(
   key: number,
   reindexed: Map<string, number> | null,
   updatePlannerArray: UpdatePlannerArray,
+  label: string,
   precedence?: MovePrecedenceGuard,
 ): boolean {
   const proposed = applyMove(planner, movedId, parentId, key, reindexed);
@@ -164,7 +169,7 @@ function commitMove(
       return false;
     }
   }
-  updatePlannerArray(inheritRootColor(proposed, movedId, rootId));
+  updatePlannerArray(inheritRootColor(proposed, movedId, rootId), label);
   return true;
 }
 

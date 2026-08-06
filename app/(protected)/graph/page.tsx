@@ -21,6 +21,7 @@ import { useViewStatePersistence } from "@/hooks/useViewStatePersistence";
 import { reorderQueueMember } from "@/utils/queue-handlers/mutateQueueMembers";
 import { wouldCreateCycleAddingDependency } from "@/utils/precedence/findCycle";
 import { describeCycle } from "@/utils/precedence/describeCycle";
+import { historyMessages } from "@/utils/historyMessages";
 import {
   buildRootSpans,
   buildLeafSpans,
@@ -288,29 +289,42 @@ export default function GraphPage() {
     }
     setCycleError(null);
     const nowIso = new Date().toISOString();
-    updateDependencyArray((prev) =>
-      prev.some(
-        (d) =>
-          d.predecessorId === predecessorId && d.successorId === successorId,
-      )
-        ? prev
-        : [
-            ...prev,
-            {
-              id: uuidv4(),
-              predecessorId,
-              successorId,
-              userId,
-              createdAt: nowIso,
-              updatedAt: nowIso,
-            },
-          ],
+    updateDependencyArray(
+      (prev) =>
+        prev.some(
+          (d) =>
+            d.predecessorId === predecessorId && d.successorId === successorId,
+        )
+          ? prev
+          : [
+              ...prev,
+              {
+                id: uuidv4(),
+                predecessorId,
+                successorId,
+                userId,
+                createdAt: nowIso,
+                updatedAt: nowIso,
+              },
+            ],
+      historyMessages.dependency.add(
+        planner.find((p) => p.id === predecessorId)?.title,
+      ),
     );
   };
 
   const handleRemoveDependency = (edgeId: string) => {
     setCycleError(null);
-    updateDependencyArray((prev) => prev.filter((d) => d.id !== edgeId));
+    updateDependencyArray(
+      (prev) => prev.filter((d) => d.id !== edgeId),
+      historyMessages.dependency.remove(
+        planner.find(
+          (p) =>
+            p.id ===
+            dependencies.find((d) => d.id === edgeId)?.predecessorId,
+        )?.title,
+      ),
+    );
   };
 
   const handleReorderMember = (
@@ -333,7 +347,12 @@ export default function GraphPage() {
       return;
     }
     setCycleError(null);
-    updateQueueArray(result.queues);
+    updateQueueArray(
+      result.queues,
+      historyMessages.queue.reorderMember(
+        planner.find((p) => p.id === plannerId)?.title,
+      ),
+    );
   };
 
   const hasAnything = nodeCount > 0 || queues.length > 0;

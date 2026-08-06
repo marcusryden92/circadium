@@ -21,6 +21,7 @@ import type {
 import schedulingSettingsSlice from "@/redux/slices/schedulingSettingsSlice";
 import { hydrateSource } from "@/redux/slices/calendarSourceSlice";
 import { hydrateEngineOutput } from "@/redux/slices/engineOutputSlice";
+import { markSaved } from "@/redux/slices/syncStatusSlice";
 import { handleServerTransaction } from "@/utils/server-handlers/compareCalendarData";
 import type { FreshState } from "@/actions/calendar-actions/fetchFreshState";
 
@@ -340,6 +341,7 @@ const useCalendarServerSync = (
             previousLocations.current = snapshot.locations;
             previousTravelTimes.current = snapshot.travelTimes;
             knownDataVersion.current = response.newDataVersion;
+            dispatch(markSaved());
           } else if (response.reason === "stale") {
             // Server rejected this sync because another writer moved the
             // dataVersion forward. Discard the in-flight edit and adopt the
@@ -383,7 +385,12 @@ const useCalendarServerSync = (
     } finally {
       syncInFlightRef.current = false;
     }
-  }, [hasPendingChanges, adoptFreshServerState, rollbackToLastConfirmedState]);
+  }, [
+    hasPendingChanges,
+    adoptFreshServerState,
+    rollbackToLastConfirmedState,
+    dispatch,
+  ]);
 
   useEffect(() => {
     if (!isInitialized || !userId) return;

@@ -13,7 +13,11 @@ import { hoverRow, hoverBtnGroup, hoverBtn } from "./TemplateEventContent.css";
 interface TemplateEventContentProps {
   event: EventImpl;
   onEditTitle: (
-    updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>,
+    updateTemplateArray: (
+      template: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),
+      label: string,
+      options?: { engineMode?: "inline" | "worker" },
+    ) => void,
     eventTitle: string,
     eventId: string
   ) => void;

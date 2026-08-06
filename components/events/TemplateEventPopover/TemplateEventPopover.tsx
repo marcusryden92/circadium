@@ -11,6 +11,7 @@ import {
   hasMovedException,
 } from "@/utils/planRecurrence";
 import { applyTemplateOccurrenceRestore } from "@/utils/calendarEventHandlers";
+import { historyMessages } from "@/utils/historyMessages";
 import { PopoverLocationPicker } from "../PopoverLocationPicker";
 import { PopoverColorPicker } from "../PopoverColorPicker";
 import { timeOnDate } from "@/utils/calendarUtils";
@@ -87,6 +88,7 @@ const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
         updateTemplateArray,
         templateItem.id,
         occurrenceKeyValue,
+        templateItem.title,
       );
     }
     // The one-off tile this popover is anchored to disappears on restore.
@@ -94,8 +96,9 @@ const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
   };
 
   const applyColor = (color: string) => {
-    updateTemplateArray((prev) =>
-      prev.map((t) => (t.id === templateId ? { ...t, color } : t)),
+    updateTemplateArray(
+      (prev) => prev.map((t) => (t.id === templateId ? { ...t, color } : t)),
+      historyMessages.template.edit(templateItem?.title),
     );
   };
 
@@ -107,8 +110,10 @@ const TemplateEventPopover: React.FC<TemplateEventPopoverProps> = ({
   }, [isEditingTitle]);
 
   const handleLocationChange = (locationId: string | null) => {
-    updateTemplateArray((prev) =>
-      prev.map((t) => (t.id === templateId ? { ...t, locationId } : t)),
+    updateTemplateArray(
+      (prev) =>
+        prev.map((t) => (t.id === templateId ? { ...t, locationId } : t)),
+      historyMessages.template.edit(templateItem?.title),
     );
   };
 

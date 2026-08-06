@@ -17,6 +17,7 @@ import {
 import { formatDatetimeLocal, parseDatetimeLocal } from "@/utils/datetime";
 import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { plannerIsCompleted } from "@/utils/plannerCompletion";
+import { historyMessages } from "@/utils/historyMessages";
 import { DateTimePicker, DurationField } from "@/components/ui";
 import { vars } from "@/lib/theme";
 import { useItem } from "../ItemContext";
@@ -97,7 +98,12 @@ export default function ItemOverviewPage() {
       flashShake();
       return;
     }
-    updatePlannerArray((prev) => toggleSubtaskCompletion(prev, item.id));
+    updatePlannerArray(
+      (prev) => toggleSubtaskCompletion(prev, item.id),
+      isCompleted
+        ? historyMessages.item.uncomplete(item.title)
+        : historyMessages.item.complete(item.title),
+    );
   };
 
   const onCompletedAtChange = (value: string) => {
@@ -106,20 +112,25 @@ export default function ItemOverviewPage() {
       return;
     }
     const iso = parseDatetimeLocal(value) || null;
-    updatePlannerArray((prev) => setSubtaskCompletedAt(prev, item.id, iso));
+    updatePlannerArray(
+      (prev) => setSubtaskCompletedAt(prev, item.id, iso),
+      historyMessages.item.field("completion time", item.title),
+    );
   };
 
   const onSplitCompletedCommit = (minutes: number) => {
     const now = new Date();
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === item.id
-          ? {
-              ...p,
-              completedSegments: setSplitCompletedMinutes(p, minutes, now),
-            }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === item.id
+            ? {
+                ...p,
+                completedSegments: setSplitCompletedMinutes(p, minutes, now),
+              }
+            : p,
+        ),
+      historyMessages.item.field("completed minutes", item.title),
     );
   };
 

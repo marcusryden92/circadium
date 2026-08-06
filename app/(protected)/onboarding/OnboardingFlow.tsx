@@ -29,6 +29,7 @@ import {
   clearProgress,
   type StoredProgress,
 } from "./_lib/onboardingProgress";
+import { historyMessages } from "@/utils/historyMessages";
 import {
   makeEmptyRow,
   type LocationRow,
@@ -241,7 +242,9 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       nowIso,
     );
     roleCommittedIds.current = ownedIds;
-    updateAll(undefined, undefined, undefined, nextCategories);
+    updateAll(undefined, undefined, undefined, nextCategories, undefined, undefined, {
+      label: historyMessages.onboarding.commit,
+    });
   }, [roles, categories, updateAll, userId]);
 
   const commitWeek = useCallback(() => {
@@ -305,6 +308,9 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         : weekWorkApplied.current
           ? (prev) => clearWorkCategoryWindows(prev, nowIso)
           : undefined,
+      undefined,
+      undefined,
+      { label: historyMessages.onboarding.commit },
     );
     weekWorkApplied.current = hasWork;
   }, [week, template, locations, updateAll, userId]);
@@ -313,8 +319,9 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     const nowIso = new Date().toISOString();
     const items = dumpItems;
     const prevCommitted = dumpCommitted.current;
-    updatePlannerArray((prev) =>
-      applyBrainDump(prev, items, prevCommitted, userId, nowIso),
+    updatePlannerArray(
+      (prev) => applyBrainDump(prev, items, prevCommitted, userId, nowIso),
+      historyMessages.onboarding.commit,
     );
     dumpCommitted.current = new Map(
       items.map((it) => [it.id, { title: it.title.trim(), type: it.type }]),

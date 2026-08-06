@@ -2,6 +2,7 @@ import { Planner, SimpleEvent, Category, PlannerType } from "@/types/prisma";
 import { v4 as uuidv4 } from "uuid";
 import { calendarColors } from "@/data/calendarColors";
 import { plannerIsCompleted } from "@/utils/plannerCompletion";
+import { historyMessages } from "@/utils/historyMessages";
 
 import {
   appendKey,
@@ -13,6 +14,7 @@ interface AddSubtaskInterface {
   planner: Planner[];
   updatePlannerArray: (
     planner: Planner[] | ((prev: Planner[]) => Planner[]),
+    label: string,
   ) => void;
   task: Planner;
   taskDuration: number;
@@ -78,7 +80,10 @@ export function addSubtask({
           )
         : planner;
 
-    updatePlannerArray([...nextPlanner, newTask]);
+    updatePlannerArray(
+      [...nextPlanner, newTask],
+      historyMessages.item.addSubtask(taskTitle),
+    );
     resetTaskState();
     return newId;
   }
@@ -141,15 +146,22 @@ interface DeleteGoalInterface {
   updateAll: (
     arg: Planner[] | ((prev: Planner[]) => Planner[]),
     manuallyUpdatedCalendar?: SimpleEvent[],
+    template?: undefined,
+    categories?: undefined,
+    queues?: undefined,
+    dependencies?: undefined,
+    options?: { label?: string },
   ) => void;
   taskId: string;
   manuallyUpdatedCalendar?: SimpleEvent[];
+  title?: string | null;
 }
 
 export function deleteGoal({
   updateAll,
   taskId,
   manuallyUpdatedCalendar,
+  title,
 }: DeleteGoalInterface) {
   updateAll((planner: Planner[]) => {
     // Get goal-tree (all IDs under the goal to be deleted)
@@ -173,7 +185,9 @@ export function deleteGoal({
     }
 
     return newTaskArray;
-  }, manuallyUpdatedCalendar);
+  }, manuallyUpdatedCalendar, undefined, undefined, undefined, undefined, {
+    label: historyMessages.item.delete(title),
+  });
 }
 
 // CHECK IF GOAL IS READY

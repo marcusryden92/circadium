@@ -24,6 +24,7 @@ import {
   reorderQueueMember,
 } from "@/utils/queue-handlers/mutateQueueMembers";
 import { describeCycle } from "@/utils/precedence/describeCycle";
+import { historyMessages } from "@/utils/historyMessages";
 import { QueueRail } from "./_components/QueueRail";
 import { QueueMemberList } from "./_components/QueueMemberList";
 import { AddMemberModal } from "./_components/AddMemberModal";
@@ -115,7 +116,12 @@ export default function QueuesPage() {
       return;
     }
     setCycleError(null);
-    updateQueueArray(result.queues);
+    updateQueueArray(
+      result.queues,
+      historyMessages.queue.addMember(
+        planner.find((p) => p.id === plannerId)?.title,
+      ),
+    );
   };
 
   const handleReorderMember = (plannerId: string, toIndex: number) => {
@@ -135,12 +141,22 @@ export default function QueuesPage() {
       return;
     }
     setCycleError(null);
-    updateQueueArray(result.queues);
+    updateQueueArray(
+      result.queues,
+      historyMessages.queue.reorderMember(
+        planner.find((p) => p.id === plannerId)?.title,
+      ),
+    );
   };
 
   const handleRemoveMember = (plannerId: string) => {
     setCycleError(null);
-    updateQueueArray((prev) => removeQueueMember(prev, plannerId));
+    updateQueueArray(
+      (prev) => removeQueueMember(prev, plannerId),
+      historyMessages.queue.removeMember(
+        planner.find((p) => p.id === plannerId)?.title,
+      ),
+    );
   };
 
   const handleCreate = () => {
@@ -158,28 +174,35 @@ export default function QueuesPage() {
       createdAt: now,
       updatedAt: now,
     };
-    updateQueueArray((prev) => [...prev, created]);
+    updateQueueArray(
+      (prev) => [...prev, created],
+      historyMessages.queue.create(created.title),
+    );
     setSelectedId(id);
   };
 
   const handleRename = (title: string) => {
     if (!selected) return;
-    updateQueueArray((prev) =>
-      prev.map((q) => (q.id === selected.id ? { ...q, title } : q)),
+    updateQueueArray(
+      (prev) => prev.map((q) => (q.id === selected.id ? { ...q, title } : q)),
+      historyMessages.queue.rename(title),
     );
   };
 
   const handleChangeCategory = (categoryId: string | null) => {
     if (!selected) return;
-    updateQueueArray((prev) =>
-      prev.map((q) => (q.id === selected.id ? { ...q, categoryId } : q)),
+    updateQueueArray(
+      (prev) =>
+        prev.map((q) => (q.id === selected.id ? { ...q, categoryId } : q)),
+      historyMessages.queue.recategorize(selected.title),
     );
   };
 
   const handleChangeColor = (color: string) => {
     if (!selected) return;
-    updateQueueArray((prev) =>
-      prev.map((q) => (q.id === selected.id ? { ...q, color } : q)),
+    updateQueueArray(
+      (prev) => prev.map((q) => (q.id === selected.id ? { ...q, color } : q)),
+      historyMessages.queue.recolor(selected.title),
     );
   };
 
@@ -190,12 +213,14 @@ export default function QueuesPage() {
     const moved = orderedQueues.find((q) => q.id === queueId);
     if (!moved) return;
     without.splice(Math.max(0, Math.min(toIndex, without.length)), 0, moved);
-    updateQueueArray((prev) =>
-      prev.map((q) => {
-        const index = without.findIndex((w) => w.id === q.id);
-        if (index === -1 || q.sortOrder === index) return q;
-        return { ...q, sortOrder: index };
-      }),
+    updateQueueArray(
+      (prev) =>
+        prev.map((q) => {
+          const index = without.findIndex((w) => w.id === q.id);
+          if (index === -1 || q.sortOrder === index) return q;
+          return { ...q, sortOrder: index };
+        }),
+      historyMessages.queue.reorderQueues,
     );
   };
 
@@ -205,7 +230,12 @@ export default function QueuesPage() {
       const remaining = orderedQueues.filter((q) => q.id !== deletingId);
       setSelectedId(remaining[0]?.id ?? null);
     }
-    updateQueueArray((prev) => prev.filter((q) => q.id !== deletingId));
+    updateQueueArray(
+      (prev) => prev.filter((q) => q.id !== deletingId),
+      historyMessages.queue.delete(
+        queues.find((q) => q.id === deletingId)?.title,
+      ),
+    );
     setDeletingId(null);
   };
 

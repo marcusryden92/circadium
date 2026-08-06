@@ -10,6 +10,7 @@ import { useCalendarProvider } from "@/context/CalendarProvider";
 import { PopoverLocationPicker } from "../PopoverLocationPicker";
 import { PopoverColorPicker } from "../PopoverColorPicker";
 import { handleEventCopy } from "@/utils/calendarEventHandlers";
+import { historyMessages } from "@/utils/historyMessages";
 import {
   assignLocationToPlanner,
   setUseParentLocation,
@@ -109,7 +110,9 @@ const EventPopover: React.FC<EventPopoverProps> = ({
         ? { ...item, backgroundColor: color }
         : item,
     );
-    updateAll(newPlanner, newCalendar);
+    updateAll(newPlanner, newCalendar, undefined, undefined, undefined, undefined, {
+      label: historyMessages.item.field("color", plannerItem?.title),
+    });
   };
 
   const plannerItem = useMemo(
@@ -133,10 +136,12 @@ const EventPopover: React.FC<EventPopoverProps> = ({
   }, [categoryHasLocation, plannerItem?.useParentLocation]);
 
   const handleLocationChange = async (locationId: string | null) => {
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === plannerId ? { ...p, locationId: locationId } : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === plannerId ? { ...p, locationId: locationId } : p,
+        ),
+      historyMessages.item.field("location", plannerItem?.title),
     );
     try {
       await assignLocationToPlanner(plannerId, locationId);
@@ -149,10 +154,14 @@ const EventPopover: React.FC<EventPopoverProps> = ({
     if (!plannerItem || !categoryHasLocation) return;
     const newOverrideEnabled = !locationOverrideEnabled;
     const newUseParent = !newOverrideEnabled;
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === plannerItem.id ? { ...p, useParentLocation: newUseParent } : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === plannerItem.id
+            ? { ...p, useParentLocation: newUseParent }
+            : p,
+        ),
+      historyMessages.item.field("location inheritance", plannerItem.title),
     );
     setLocationOverrideEnabled(newOverrideEnabled);
     try {

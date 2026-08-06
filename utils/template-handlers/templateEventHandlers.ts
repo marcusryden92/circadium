@@ -3,6 +3,7 @@ import { DateSelectArg } from "@fullcalendar/core/index.js";
 import { EventTemplate } from "@/types/prisma";
 import { WeekDayIntegers } from "@/types/calendarTypes";
 import { calendarColors } from "@/data/calendarColors";
+import { historyMessages } from "../historyMessages";
 
 import { getTimeFromDate } from "../templateBuilderUtils";
 
@@ -11,11 +12,17 @@ import { EventImpl } from "@fullcalendar/core/internal";
 
 const dayOfWeek = (d: Date): WeekDayIntegers => d.getDay() as WeekDayIntegers;
 
+type UpdateTemplateArrayFn = (
+  template: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),
+  label: string,
+  options?: { engineMode?: "inline" | "worker"; label?: string },
+) => void;
+
 export const handleTemplateSelect = (
   userId: string | undefined,
   calendarRef: React.RefObject<FullCalendar>,
-  updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>,
-  selectInfo: DateSelectArg
+  updateTemplateArray: UpdateTemplateArrayFn,
+  selectInfo: DateSelectArg,
 ) => {
   const { start, end } = selectInfo;
   const title = prompt("Enter event title:", "New Event");
@@ -46,14 +53,17 @@ export const handleTemplateSelect = (
       updatedAt: now.toISOString(),
     };
 
-    updateTemplateArray((prevEvents) => [...prevEvents, newEvent]);
+    updateTemplateArray(
+      (prevEvents) => [...prevEvents, newEvent],
+      historyMessages.template.create(title),
+    );
   }
 };
 
 export const handleTemplateEventCopy = (
-  updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>,
+  updateTemplateArray: UpdateTemplateArrayFn,
   event: EventImpl,
-  userId: string
+  userId: string,
 ) => {
   const now = new Date();
 
@@ -85,26 +95,33 @@ export const handleTemplateEventCopy = (
     updatedAt: now.toISOString(),
   };
 
-  updateTemplateArray((prevEvents) => [...prevEvents, newEvent]);
+  updateTemplateArray(
+    (prevEvents) => [...prevEvents, newEvent],
+    historyMessages.template.duplicate(event.title),
+  );
 };
 
 export const handleTemplateEventDelete = (
-  updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>,
-  eventId: string
+  updateTemplateArray: UpdateTemplateArrayFn,
+  eventId: string,
+  title?: string | null,
 ) => {
-  updateTemplateArray((prevEvents) =>
-    prevEvents.filter((ev) => ev.id !== eventId)
+  updateTemplateArray(
+    (prevEvents) => prevEvents.filter((ev) => ev.id !== eventId),
+    historyMessages.template.delete(title),
   );
 };
 
 export const handleTemplateEventEdit = (
-  updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>,
+  updateTemplateArray: UpdateTemplateArrayFn,
   eventTitle: string,
-  eventId: string
+  eventId: string,
 ) => {
-  updateTemplateArray((prevEvents) =>
-    prevEvents.map((ev) =>
-      ev.id === eventId ? { ...ev, title: eventTitle } : ev
-    )
+  updateTemplateArray(
+    (prevEvents) =>
+      prevEvents.map((ev) =>
+        ev.id === eventId ? { ...ev, title: eventTitle } : ev
+      ),
+    historyMessages.template.rename(eventTitle),
   );
 };

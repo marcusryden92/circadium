@@ -19,6 +19,7 @@ import DraggableItem from "@/components/draggable/DraggableItem";
 import { getRootParentId, getSubtasksById } from "@/utils/goalPageHandlers";
 import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { toggleSubtaskCompletion } from "@/utils/goal-handlers/subtaskCompletion";
+import { historyMessages } from "@/utils/historyMessages";
 import { moveToEdge, moveToMiddle } from "@/utils/goal-handlers/moveItem";
 import { sortSiblings } from "@/utils/goal-handlers/sortOrderKeys";
 import { useCalendarProvider } from "@/context/CalendarProvider";
@@ -78,9 +79,14 @@ const TaskItem: React.FC<TaskItemProps> = React.memo(({ planner, task }) => {
         });
         return;
       }
-      updatePlannerArray((prev) => toggleSubtaskCompletion(prev, task.id));
+      updatePlannerArray(
+        (prev) => toggleSubtaskCompletion(prev, task.id),
+        task.completedEndTime
+          ? historyMessages.item.uncomplete(task.title)
+          : historyMessages.item.complete(task.title),
+      );
     },
-    [task.id, updatePlannerArray, completionLocked],
+    [task, updatePlannerArray, completionLocked],
   );
 
   const startDrag = useCallback(

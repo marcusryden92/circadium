@@ -1,9 +1,13 @@
-import type { Dispatch, SetStateAction } from "react";
 import type { Planner } from "@/types/prisma";
 import {
   toggleGoalIsReady,
   setGoalIsReady,
 } from "@/utils/goal-handlers/toggleGoalIsReady";
+
+type UpdateFn = (
+  planner: Planner[] | ((prev: Planner[]) => Planner[]),
+  label: string,
+) => void;
 
 const TS = "2026-01-01T00:00:00.000Z";
 
@@ -54,10 +58,10 @@ function makePlanner(rootIsReady: boolean | null): Planner[] {
 
 function apply(
   planner: Planner[],
-  fn: (update: Dispatch<SetStateAction<Planner[]>>) => void,
+  fn: (update: UpdateFn) => void,
 ): Planner[] {
   let next = planner;
-  const update: Dispatch<SetStateAction<Planner[]>> = (setter) => {
+  const update: UpdateFn = (setter) => {
     next = typeof setter === "function" ? setter(next) : setter;
   };
   fn(update);
@@ -67,7 +71,7 @@ function apply(
 describe("readiness cascades through the subtree", () => {
   it("toggling a root on readies every descendant", () => {
     const result = apply(makePlanner(null), (update) =>
-      toggleGoalIsReady(update, "root"),
+      toggleGoalIsReady(update, "root", "ready test"),
     );
     for (const id of ["root", "sub", "leaf1", "leaf2"]) {
       expect(result.find((p) => p.id === id)!.isReady).toBe(true);
@@ -79,7 +83,9 @@ describe("readiness cascades through the subtree", () => {
     const ready = makePlanner(true).map((p) =>
       p.id === "other" ? p : { ...p, isReady: true },
     );
-    const result = apply(ready, (update) => toggleGoalIsReady(update, "root"));
+    const result = apply(ready, (update) =>
+      toggleGoalIsReady(update, "root", "ready test"),
+    );
     for (const id of ["root", "sub", "leaf1", "leaf2"]) {
       expect(result.find((p) => p.id === id)!.isReady).toBe(false);
     }
@@ -87,7 +93,7 @@ describe("readiness cascades through the subtree", () => {
 
   it("setGoalIsReady applies the value to the whole subtree", () => {
     const result = apply(makePlanner(null), (update) =>
-      setGoalIsReady(update, "root", true),
+      setGoalIsReady(update, "root", true, "ready test"),
     );
     for (const id of ["root", "sub", "leaf1", "leaf2"]) {
       expect(result.find((p) => p.id === id)!.isReady).toBe(true);
@@ -98,7 +104,7 @@ describe("readiness cascades through the subtree", () => {
   it("does nothing for an unknown id", () => {
     const planner = makePlanner(null);
     const result = apply(planner, (update) =>
-      toggleGoalIsReady(update, "missing"),
+      toggleGoalIsReady(update, "missing", "ready test"),
     );
     expect(result).toBe(planner);
   });

@@ -18,6 +18,7 @@ import {
   upsertCategory,
   removeCategory,
   upsertTimeWindow,
+  recordHistory,
 } from "@/redux/slices/calendarSourceSlice";
 import type { AppDispatch, RootState } from "@/redux/store";
 import {
@@ -26,6 +27,7 @@ import {
   getCategoryAndDescendants,
 } from "@/utils/categoryUtils";
 import type { Category } from "@/types/prisma";
+import { historyMessages } from "@/utils/historyMessages";
 import { WeekStructureModal } from "@/components/calendar/WeekStructureModal";
 import { CategoryEditor, SWATCH_PALETTE } from "./_components/CategoryEditor";
 import {
@@ -123,22 +125,43 @@ export default function CategoriesPage() {
   // useCalendarServerSync). Those don't run the engine, so every handler also
   // calls updateAll() to regen — the thunk reads getState() fresh, so it sees
   // the dispatch that just landed.
-  const replace = (next: Partial<Category>) => {
+  const replace = (next: Partial<Category>, label: string) => {
     if (!selected) return;
+    dispatch(recordHistory({ label }));
     dispatch(upsertCategory({ ...selected, ...next }));
     updateAll();
   };
 
-  const handleRename = (name: string) => replace({ name });
-  const handleChangeColor = (color: string) => replace({ color });
+  const handleRename = (name: string) =>
+    replace({ name }, historyMessages.category.rename(name));
+  const handleChangeColor = (color: string) =>
+    replace(
+      { color },
+      historyMessages.category.field("color", selected?.name),
+    );
   const handleChangeLocation = (locationId: string | null) =>
-    replace({ locationId });
+    replace(
+      { locationId },
+      historyMessages.category.field("location", selected?.name),
+    );
   const handleToggleStrict = () =>
-    selected && replace({ isStrict: !selected.isStrict });
+    selected &&
+    replace(
+      { isStrict: !selected.isStrict },
+      historyMessages.category.field("strictness", selected.name),
+    );
   const handleToggleUseTimeWindows = () =>
-    selected && replace({ useTimeWindows: !selected.useTimeWindows });
+    selected &&
+    replace(
+      { useTimeWindows: !selected.useTimeWindows },
+      historyMessages.category.field("time windows", selected.name),
+    );
   const handleToggleConfine = () =>
-    selected && replace({ confineToOwnWindows: !selected.confineToOwnWindows });
+    selected &&
+    replace(
+      { confineToOwnWindows: !selected.confineToOwnWindows },
+      historyMessages.category.field("window confinement", selected.name),
+    );
 
   // Granular window dispatch, not upsertCategory with rebuilt timeSlots — the
   // category row stays untouched (no updatedAt restamp, no phantom category
@@ -149,6 +172,11 @@ export default function CategoriesPage() {
   ) => {
     const row = selected?.timeSlots.find((ts) => ts.id === windowId);
     if (!row) return;
+    dispatch(
+      recordHistory({
+        label: historyMessages.category.windowExceptions(selected?.name),
+      }),
+    );
     dispatch(upsertTimeWindow({ ...row, recurrenceExceptions: serialized }));
     updateAll();
   };
@@ -160,7 +188,10 @@ export default function CategoriesPage() {
     const siblingMax = categories
       .filter((c) => c.parentId === parentId && c.id !== selected.id)
       .reduce((max, c) => Math.max(max, c.sortOrder), -1);
-    replace({ parentId, sortOrder: siblingMax + 1 });
+    replace(
+      { parentId, sortOrder: siblingMax + 1 },
+      historyMessages.category.move(selected.name),
+    );
   };
 
   const handleConfirmDelete = () => {
@@ -170,6 +201,13 @@ export default function CategoriesPage() {
       setSelectedId(remaining.find((c) => !c.parentId)?.id ?? null);
       setEditorSheetOpen(false);
     }
+    dispatch(
+      recordHistory({
+        label: historyMessages.category.delete(
+          categories.find((c) => c.id === deletingId)?.name,
+        ),
+      }),
+    );
     dispatch(removeCategory(deletingId));
     updateAll();
     setDeletingId(null);
@@ -227,6 +265,9 @@ export default function CategoriesPage() {
       parentId: newParentId,
       sortOrder: siblingMax + 1,
     };
+    dispatch(
+      recordHistory({ label: historyMessages.category.move(dragged.name) }),
+    );
     dispatch(upsertCategory(moved));
     updateAll();
 
@@ -274,6 +315,9 @@ export default function CategoriesPage() {
       createdAt: now,
       updatedAt: now,
     };
+    dispatch(
+      recordHistory({ label: historyMessages.category.create(!parentId) }),
+    );
     dispatch(upsertCategory(created));
     updateAll();
     setSelectedId(id);

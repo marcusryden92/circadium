@@ -33,6 +33,7 @@ import { deleteGoal } from "@/utils/goalPageHandlers";
 import { demoteRootIntoGoal } from "@/utils/goal-handlers/demoteRootIntoGoal";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { isUnprocessed } from "@/utils/plannerStatus";
+import { historyMessages } from "@/utils/historyMessages";
 import { ageLabel } from "@/utils/timeFormatting";
 import type { RootState } from "@/redux/store";
 import type { Planner, Category } from "@/types/prisma";
@@ -264,7 +265,10 @@ export default function CapturePage() {
         createdAt: now,
         updatedAt: now,
       };
-      updatePlannerArray((prev: Planner[]) => [...prev, newItem]);
+      updatePlannerArray(
+        (prev: Planner[]) => [...prev, newItem],
+        historyMessages.capture.jot(newItem.title),
+      );
       setJot("");
     },
     [jot, userId, updatePlannerArray],
@@ -306,8 +310,10 @@ export default function CapturePage() {
       // the scheduling gate, so "Save as draft" leaves a triaged item unready
       // rather than encoding draftness.
       const nextReady = draft.type === "goal" ? false : markReady;
-      updatePlannerArray((prev: Planner[]) =>
-        prev.map((p) => (p.id === id ? applyTriage(p, nextReady) : p)),
+      updatePlannerArray(
+        (prev: Planner[]) =>
+          prev.map((p) => (p.id === id ? applyTriage(p, nextReady) : p)),
+        historyMessages.capture.save(selected.title),
       );
       advanceAfterSelectedId(id);
     },
@@ -343,7 +349,13 @@ export default function CapturePage() {
       return;
     }
     setNestError(null);
-    updatePlannerArray(result);
+    updatePlannerArray(
+      result,
+      historyMessages.item.demote(
+        selected.title,
+        planner.find((p) => p.id === nestTargetId)?.title ?? "goal",
+      ),
+    );
     closeNest();
     advanceAfterSelectedId(id);
   }, [

@@ -384,6 +384,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
             planId,
             occurrenceKeyValue,
             event.start,
+            plan.title,
           );
           return;
         }
@@ -575,6 +576,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               pendingOccurrenceMove.planId,
               pendingOccurrenceMove.occurrenceKey,
               pendingOccurrenceMove.newStart,
+              pendingOccurrenceMove.planTitle,
             );
           }
           setPendingOccurrenceMove(null);
@@ -585,6 +587,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               updatePlannerArray,
               pendingOccurrenceMove.planId,
               pendingOccurrenceMove.deltaMs,
+              pendingOccurrenceMove.planTitle,
             );
           }
           setPendingOccurrenceMove(null);
@@ -606,6 +609,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               pendingTemplateScope.templateId,
               pendingTemplateScope.occurrenceKey,
               pendingTemplateScope.newStart,
+              pendingTemplateScope.templateTitle,
             );
           } else if (pendingTemplateScope?.mode === "resize") {
             applyTemplateOccurrenceResize(
@@ -614,12 +618,14 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               pendingTemplateScope.occurrenceKey,
               pendingTemplateScope.newStart,
               pendingTemplateScope.newDurationMinutes,
+              pendingTemplateScope.templateTitle,
             );
           } else if (pendingTemplateScope?.mode === "delete") {
             applyTemplateOccurrenceDelete(
               updateTemplateArray,
               pendingTemplateScope.templateId,
               pendingTemplateScope.occurrenceKey,
+              pendingTemplateScope.templateTitle,
             );
           }
           setPendingTemplateScope(null);
@@ -630,6 +636,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               updateTemplateArray,
               pendingTemplateScope.templateId,
               pendingTemplateScope.newStart,
+              pendingTemplateScope.templateTitle,
             );
           } else if (pendingTemplateScope?.mode === "resize") {
             applyTemplateSeriesResize(
@@ -637,11 +644,13 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               pendingTemplateScope.templateId,
               pendingTemplateScope.occurrenceKey,
               pendingTemplateScope.newDurationMinutes,
+              pendingTemplateScope.templateTitle,
             );
           } else if (pendingTemplateScope?.mode === "delete") {
             handleTemplateEventDelete(
               updateTemplateArray,
               pendingTemplateScope.templateId,
+              pendingTemplateScope.templateTitle,
             );
           }
           setPendingTemplateScope(null);

@@ -15,8 +15,12 @@ import {
   setPlannerAndTemplate,
   setQueues,
   setDependencies,
+  recordHistory,
+  shiftHistoryForUndo,
+  shiftHistoryForRedo,
 } from "../slices/calendarSourceSlice";
 import { applyEngineRun } from "../slices/engineOutputSlice";
+import { pushToast } from "../slices/toastSlice";
 import {
   travelTimeArrayToMap,
   deriveTravelTimeMatrix,
@@ -46,6 +50,17 @@ type CalendarPayload = {
    * it overlapping stale placements. Everything else defaults to the worker.
    */
   engineMode?: "inline" | "worker";
+  /**
+   * "skip" suppresses the undo-history entry — used by the undo/redo thunks
+   * so a restore doesn't record itself. Default is "record".
+   */
+  history?: "record" | "skip";
+  /**
+   * Human-readable name for the edit ("move task", "change duration…"),
+   * stored on the history entry and surfaced as `Undid/Redid <label>` toasts.
+   * Call sites supply it via useCalendarStateActions / historyMessages.
+   */
+  label?: string;
 };
 
 // Helper function that processes optional update parameters
@@ -135,6 +150,22 @@ export const updateAllCalendarStates =
       state.occurrenceCompletions.rows,
     );
 
+    // Snapshot the pre-edit source arrays for undo, once per logical edit.
+    // Identity comparison: an occasional redundant entry from a caller that
+    // rebuilt an identical array is harmless, and no-arg regen passes (source
+    // untouched) record nothing. Out-of-band domains (locations, external
+    // calendars, occurrence completions, habits) never enter history — an
+    // undo of an assistant save reverts the synced domains only.
+    const sourceChanged =
+      newPlanner !== currentPlanner ||
+      newTemplate !== template ||
+      newCategories !== categories ||
+      newQueues !== queues ||
+      newDependencies !== dependencies;
+    if (sourceChanged && updates.history !== "skip") {
+      dispatch(recordHistory({ label: updates.label ?? "change" }));
+    }
+
     // Source state lands immediately (optimistic UI); engine output follows
     // when the worker replies. These dispatches must stay BEFORE the await so
     // functional updates from rapid consecutive calls chain off fresh state.
@@ -207,6 +238,49 @@ export const updateAllCalendarStates =
         engineMessages: result.messages,
         plannerScores: result.plannerScores,
         ranAt: new Date().toISOString(),
+      }),
+    );
+  };
+
+// Undo/redo restore a source snapshot through the normal update path, so
+// central pruning, the engine regen, and the debounced diff sync all apply.
+// Rapid repeats coalesce via the worker's latest-wins + the sync's debounce.
+export const undoCalendarState =
+  () =>
+  async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
+    const { past } = getState().calendarSource;
+    const entry = past[past.length - 1];
+    if (!entry) return;
+    dispatch(shiftHistoryForUndo());
+    dispatch(pushToast(`Undid "${entry.label}"`));
+    await dispatch(
+      updateAllCalendarStates({
+        planner: entry.planner,
+        template: entry.template,
+        categories: entry.categories,
+        queues: entry.queues,
+        dependencies: entry.dependencies,
+        history: "skip",
+      }),
+    );
+  };
+
+export const redoCalendarState =
+  () =>
+  async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
+    const { future } = getState().calendarSource;
+    const entry = future[future.length - 1];
+    if (!entry) return;
+    dispatch(shiftHistoryForRedo());
+    dispatch(pushToast(`Redid "${entry.label}"`));
+    await dispatch(
+      updateAllCalendarStates({
+        planner: entry.planner,
+        template: entry.template,
+        categories: entry.categories,
+        queues: entry.queues,
+        dependencies: entry.dependencies,
+        history: "skip",
       }),
     );
   };

@@ -6,7 +6,13 @@ import StoreProvider from "@/context/StoreProvider";
 import UserProvider from "@/context/UserProvider";
 import CalendarProvider from "@/context/CalendarProvider";
 import type { AiMode } from "@/generated/client";
-import { AppShell, AssistantProvider, AiAccessProvider } from "@/components/ui";
+import {
+  AppShell,
+  AssistantProvider,
+  AiAccessProvider,
+  ToastStack,
+  SaveIndicator,
+} from "@/components/ui";
 import { AppLoadingScreen } from "@/components/ui/AppLoadingScreen";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { OnboardingOverlay } from "./onboarding/OnboardingOverlay";
@@ -68,6 +74,9 @@ function CircadiumShell({
           loadingSlot={<AppLoadingScreen />}
         >
           {children}
+          {/* Portal into the shell canvas from under ShellPortalProvider. */}
+          <ToastStack />
+          <SaveIndicator />
         </AppShell>
       </AssistantProvider>
     </AiAccessProvider>

@@ -10,8 +10,10 @@ import {
   upsertCategory,
   upsertTimeWindow,
   removeTimeWindow,
+  recordHistory,
 } from "@/redux/slices/calendarSourceSlice";
 import { startDayAsInt } from "./eventSerializers";
+import { historyMessages } from "@/utils/historyMessages";
 import type { WorkingWindow } from "./timeWindow";
 
 interface UseWeekStructureStateArgs {
@@ -92,6 +94,10 @@ export function useWeekStructureState({
     setSaving(true);
     setError(null);
     try {
+      // One undo entry for the whole save — never per granular dispatch, or a
+      // single Save would fragment into several undo steps.
+      if (changeCount > 0)
+        dispatch(recordHistory({ label: historyMessages.weekStructure.save }));
       // Window diff via Redux. Unassigned drafts (categoryId === null) are
       // dropped here — they're UI-only and never persisted. Lookups against
       // `categories` recover the userId, which the slice needs but the

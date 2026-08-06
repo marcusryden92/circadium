@@ -1,6 +1,7 @@
 import { Planner } from "@/types/prisma";
 import { getSubtasksById } from "./goalPageHandlers";
 import { plannerCompletedEnd } from "./plannerCompletion";
+import { historyMessages } from "./historyMessages";
 
 export function getTaskById(
   planner: Planner[],
@@ -10,11 +11,17 @@ export function getTaskById(
 }
 
 export const handleDeleteTaskById = (
-  updatePlannerArray: React.Dispatch<React.SetStateAction<Planner[]>>,
-  taskId: string
+  updatePlannerArray: (
+    planner: Planner[] | ((prev: Planner[]) => Planner[]),
+    label: string,
+    options?: { engineMode?: "inline" | "worker" },
+  ) => void,
+  taskId: string,
+  title?: string | null,
 ) => {
   updatePlannerArray(
-    (prevTasks) => prevTasks.filter((task) => task.id !== taskId) // Filter out the task with the matching id
+    (prevTasks) => prevTasks.filter((task) => task.id !== taskId), // Filter out the task with the matching id
+    historyMessages.item.delete(title),
   );
 };
 

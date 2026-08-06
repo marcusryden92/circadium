@@ -26,6 +26,7 @@ import { getRootParentId } from "@/utils/goalPageHandlers";
 import { isValidDependencyEndpoint } from "@/utils/precedence/endpoints";
 import { wouldCreateCycleAddingNodeDependency } from "@/utils/precedence/findCycle";
 import { describeCycle } from "@/utils/precedence/describeCycle";
+import { historyMessages } from "@/utils/historyMessages";
 import type { PlannerDependency } from "@/types/prisma";
 import { useItem } from "../ItemContext";
 import {
@@ -222,28 +223,42 @@ export function ConnectionsCard() {
     }
     setError(null);
     const now = new Date().toISOString();
-    updateDependencyArray((prev) =>
-      prev.some(
-        (d) => d.predecessorId === predecessorId && d.successorId === item.id,
-      )
-        ? prev
-        : [
-            ...prev,
-            {
-              id: uuidv4(),
-              predecessorId,
-              successorId: item.id,
-              userId,
-              createdAt: now,
-              updatedAt: now,
-            },
-          ],
+    updateDependencyArray(
+      (prev) =>
+        prev.some(
+          (d) =>
+            d.predecessorId === predecessorId && d.successorId === item.id,
+        )
+          ? prev
+          : [
+              ...prev,
+              {
+                id: uuidv4(),
+                predecessorId,
+                successorId: item.id,
+                userId,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+      historyMessages.dependency.add(
+        planner.find((p) => p.id === predecessorId)?.title,
+      ),
     );
   };
 
   const handleRemove = (edgeId: string) => {
     setError(null);
-    updateDependencyArray((prev) => prev.filter((d) => d.id !== edgeId));
+    updateDependencyArray(
+      (prev) => prev.filter((d) => d.id !== edgeId),
+      historyMessages.dependency.remove(
+        planner.find(
+          (p) =>
+            p.id ===
+            dependencies.find((d) => d.id === edgeId)?.predecessorId,
+        )?.title,
+      ),
+    );
   };
 
   // Dependencies exist between any non-plan nodes whose structural roots are
@@ -472,7 +487,13 @@ export function NestIntoGoalCard() {
       return;
     }
     setDemoteError(null);
-    updatePlannerArray(result);
+    updatePlannerArray(
+      result,
+      historyMessages.item.demote(
+        item.title,
+        planner.find((p) => p.id === targetId)?.title ?? "goal",
+      ),
+    );
     router.push(`/items/${targetId}/subtasks`);
   };
 

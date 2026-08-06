@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   ReactNode,
+  useCallback,
   useMemo,
   useEffect,
   useRef,
@@ -31,6 +32,10 @@ import type { UserSettings } from "@/types/userTypes";
 import useCalendarStateActions, {
   type CalendarUpdateOptions,
 } from "@/hooks/useCalendarStateActions";
+import {
+  undoCalendarState,
+  redoCalendarState,
+} from "@/redux/thunks/calendarThunks";
 import useManuallyRefreshCalendar from "@/hooks/useManuallyRefreshCalendar";
 import useCalendarServerSync from "@/hooks/useCalendarServerSync";
 import {
@@ -89,17 +94,24 @@ type CalendarContextType = {
   externalEvents: ExternalEvent[];
   updatePlannerArray: (
     planner: Planner[] | ((prev: Planner[]) => Planner[]),
+    label: string,
     options?: CalendarUpdateOptions,
   ) => void;
-  updateTemplateArray: React.Dispatch<React.SetStateAction<EventTemplate[]>>;
+  updateTemplateArray: (
+    template: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),
+    label: string,
+    options?: CalendarUpdateOptions,
+  ) => void;
   updateQueueArray: (
     queues: Queue[] | ((prev: Queue[]) => Queue[]),
+    label: string,
     options?: CalendarUpdateOptions,
   ) => void;
   updateDependencyArray: (
     dependencies:
       | PlannerDependency[]
       | ((prev: PlannerDependency[]) => PlannerDependency[]),
+    label: string,
     options?: CalendarUpdateOptions,
   ) => void;
   updateAll: (
@@ -114,6 +126,13 @@ type CalendarContextType = {
     options?: CalendarUpdateOptions,
   ) => void;
   manuallyRefreshCalendar: () => void;
+  // Undo/redo over the source arrays (planner/template/categories/queues/
+  // dependencies). In-memory per session; restores run through the normal
+  // update path, so the regen + diff sync persist them.
+  undoCalendar: () => void;
+  redoCalendar: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   inheritedLocationMap: Map<string, InheritedLocationInfo>;
   // Shared queue-lookup seam: every surface rendering queue membership or
   // effective category reads these, never a page-local build, so all views
@@ -174,6 +193,14 @@ export default function CalendarProvider({
   const isCalendarLoaded = useSelector(
     (state: RootState) => state.calendarSource.isLoaded,
   );
+  // Lengths, not the stacks — the provider re-renders only when availability
+  // flips or the stack depth changes, never on the snapshot contents.
+  const canUndo = useSelector(
+    (state: RootState) => state.calendarSource.past.length > 0,
+  );
+  const canRedo = useSelector(
+    (state: RootState) => state.calendarSource.future.length > 0,
+  );
   const calendar = useSelector(
     (state: RootState) => state.engineOutput.calendar,
   );
@@ -232,6 +259,52 @@ export default function CalendarProvider({
   // regenerating against a not-yet-loaded planner paints an empty calendar.
   const isCalendarLoadedRef = useRef(isCalendarLoaded);
   isCalendarLoadedRef.current = isCalendarLoaded;
+
+  const undoCalendar = useCallback(() => {
+    void dispatch(undoCalendarState());
+  }, [dispatch]);
+  const redoCalendar = useCallback(() => {
+    void dispatch(redoCalendarState());
+  }, [dispatch]);
+
+  // Mirrored into refs so the keydown listener reads fresh availability
+  // without re-registering per stack change.
+  const canUndoRef = useRef(canUndo);
+  canUndoRef.current = canUndo;
+  const canRedoRef = useRef(canRedo);
+  canRedoRef.current = canRedo;
+
+  // mod+Z / mod+shift+Z (+ ctrl+Y) — the SearchContext/AssistantContext
+  // window-listener pattern. Skipped inside editable targets so native text
+  // undo wins; preventDefault only when a step is actually available. The
+  // onboarding overlay stops propagation of these in capture phase while
+  // visible, so mid-onboarding undo can't fire.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      const isUndo = key === "z" && !e.shiftKey;
+      const isRedo = (key === "z" && e.shiftKey) || key === "y";
+      if (!isUndo && !isRedo) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (
+        target &&
+        (target.closest("input, textarea, select") || target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!isCalendarLoadedRef.current) return;
+      if (isUndo && canUndoRef.current) {
+        e.preventDefault();
+        void dispatch(undoCalendarState());
+      } else if (isRedo && canRedoRef.current) {
+        e.preventDefault();
+        void dispatch(redoCalendarState());
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dispatch]);
 
   // Regenerate on engine-input settings that don't flow through the source
   // arrays (buffer, week start, travel rows, transport mode, travel toggle).
@@ -474,6 +547,10 @@ export default function CalendarProvider({
             updateDependencyArray,
             updateAll,
             manuallyRefreshCalendar,
+            undoCalendar,
+            redoCalendar,
+            canUndo,
+            canRedo,
             inheritedLocationMap,
             queueCategoryByRootId,
             queueByPlannerId,
@@ -502,6 +579,10 @@ export default function CalendarProvider({
       updateDependencyArray,
       updateAll,
       manuallyRefreshCalendar,
+      undoCalendar,
+      redoCalendar,
+      canUndo,
+      canRedo,
       inheritedLocationMap,
       queueCategoryByRootId,
       queueByPlannerId,

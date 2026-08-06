@@ -32,6 +32,9 @@ export { TimePicker } from "./TimePicker";
 export type { TimePickerProps } from "./TimePicker";
 export { DurationField } from "./DurationField";
 export { CenteredLoader } from "./CenteredLoader";
+export { UndoRedoControls } from "./UndoRedoControls";
+export { ToastStack } from "./ToastStack";
+export { SaveIndicator } from "./SaveIndicator";
 export { PageHeader } from "./PageHeader";
 export { StubPage } from "./StubPage";
 export {

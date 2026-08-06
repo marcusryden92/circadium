@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { fallbackCalendarColor } from "@/utils/colorUtils";
 import { defaultReadyForType } from "@/utils/plannerReadiness";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
+import { historyMessages } from "@/utils/historyMessages";
 import type { Planner } from "@/types/prisma";
 import {
   overlay,
@@ -108,7 +109,10 @@ export function NewItemModal({
       createdAt: now,
       updatedAt: now,
     };
-    updatePlannerArray((prev: Planner[]) => [...prev, newItem]);
+    updatePlannerArray(
+      (prev: Planner[]) => [...prev, newItem],
+      historyMessages.item.create(newItem.title),
+    );
     onOpenChange(false);
     router.push(`/items/${id}`);
   };

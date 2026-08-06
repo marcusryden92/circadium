@@ -66,6 +66,7 @@ import {
   buildDemoteLossManifest,
   demoteRootIntoGoal,
 } from "@/utils/goal-handlers/demoteRootIntoGoal";
+import { historyMessages } from "@/utils/historyMessages";
 import { GoalPickerList } from "@/components/GoalPickerList";
 import {
   page,
@@ -490,25 +491,29 @@ export default function LibraryPage() {
     const categoryHasLocation = categoryId
       ? !!categoryIndex.get(categoryId)?.locationId
       : false;
-    updatePlannerArray((prev) =>
-      assignCategoryToSubtrees(
-        prev,
-        selectedTargets,
-        categoryId,
-        categoryHasLocation,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        assignCategoryToSubtrees(
+          prev,
+          selectedTargets,
+          categoryId,
+          categoryHasLocation,
+        ),
+      historyMessages.item.categoryMany(selectedTargets.length),
     );
   };
 
   const handleSetColor = (color: string) => {
-    updatePlannerArray((prev) =>
-      setColorOnSubtrees(prev, selectedTargets, color),
+    updatePlannerArray(
+      (prev) => setColorOnSubtrees(prev, selectedTargets, color),
+      historyMessages.item.colorMany(selectedTargets.length),
     );
   };
 
   const handleSetPriority = (priority: number) => {
-    updatePlannerArray((prev) =>
-      setPriorityOnRoots(prev, selectedTargets, priority),
+    updatePlannerArray(
+      (prev) => setPriorityOnRoots(prev, selectedTargets, priority),
+      historyMessages.item.priorityMany(selectedTargets.length),
     );
   };
 
@@ -566,14 +571,31 @@ export default function LibraryPage() {
         failures.push(`"${title}" — ${result.error}`);
       }
     }
-    if (next !== planner) updatePlannerArray(next);
+    if (next !== planner)
+      updatePlannerArray(
+        next,
+        historyMessages.item.demote(
+          selectedTargets.length === 1
+            ? (planner.find((p) => p.id === selectedTargets[0])?.title ??
+                "item")
+            : `${selectedTargets.length} items`,
+          planner.find((p) => p.id === targetRootId)?.title ?? "goal",
+        ),
+      );
     setSelectedIds(new Set());
     setNestNotice(failures.length > 0 ? failures.join(" ") : null);
   };
 
   const confirmDelete = () => {
     if (!deleteTargetIds || deleteTargetIds.length === 0) return;
-    updatePlannerArray((prev) => deleteSubtrees(prev, deleteTargetIds));
+    updatePlannerArray(
+      (prev) => deleteSubtrees(prev, deleteTargetIds),
+      deleteTargetIds.length === 1
+        ? historyMessages.item.delete(
+            planner.find((p) => p.id === deleteTargetIds[0])?.title,
+          )
+        : historyMessages.item.deleteMany(deleteTargetIds.length),
+    );
     setSelectedIds((prev) => {
       const next = new Set(prev);
       for (const id of deleteTargetIds) next.delete(id);

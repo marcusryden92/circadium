@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { plannerForestToJson } from "@/utils/draft/plannerForestToJson";
+import { historyMessages } from "@/utils/historyMessages";
 import { JsonForestView } from "@/components/draft/JsonTreeView";
 import { TemplateWeekView } from "@/components/draft/TemplateWeekView";
 import { ChatPane } from "@/components/draft/ChatPane";
@@ -862,6 +863,7 @@ export function AIDraftModal({
       nextCategories,
       nextQueues,
       nextDependencies,
+      { label: historyMessages.assistant.save },
     );
     // Habits are out-of-band (direct actions, never the OCC sync): replay the
     // assistant's delta on the server after the forest apply so draft item

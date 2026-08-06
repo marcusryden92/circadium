@@ -28,6 +28,7 @@ import {
   readyDependents,
 } from "@/utils/precedence/readinessBlockers";
 import { setGoalIsReady } from "@/utils/goal-handlers/toggleGoalIsReady";
+import { historyMessages } from "@/utils/historyMessages";
 import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import type { Planner } from "@/types/prisma";
 import { DependencyGatePopover, type GateEntry } from "./DependencyGatePopover";
@@ -396,7 +397,12 @@ export default function ItemDetailLayout({
       }
       return `"${goal.title || "Untitled"}" ${parts.join("; ")}.`;
     }
-    setGoalIsReady(updatePlannerArray, goal.id, true);
+    setGoalIsReady(
+      updatePlannerArray,
+      goal.id,
+      true,
+      historyMessages.item.ready(goal.title, true),
+    );
     return null;
   };
 
@@ -416,12 +422,26 @@ export default function ItemDetailLayout({
         .map((d) => `"${d.root.title || "Untitled"}"`)
         .join(", ")}.`;
     }
-    setGoalIsReady(updatePlannerArray, goal.id, false);
+    setGoalIsReady(
+      updatePlannerArray,
+      goal.id,
+      false,
+      historyMessages.item.ready(goal.title, false),
+    );
     return null;
   };
 
   const disconnectDependency = (edgeId: string) => {
-    updateDependencyArray((prev) => prev.filter((d) => d.id !== edgeId));
+    updateDependencyArray(
+      (prev) => prev.filter((d) => d.id !== edgeId),
+      historyMessages.dependency.remove(
+        planner.find(
+          (p) =>
+            p.id ===
+            dependencies.find((d) => d.id === edgeId)?.predecessorId,
+        )?.title,
+      ),
+    );
   };
 
   return (

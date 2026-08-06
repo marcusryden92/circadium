@@ -15,6 +15,7 @@ import { useCalendarProvider } from "@/context/CalendarProvider";
 import { usePlatform } from "@/hooks/usePlatform";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
+import { historyMessages } from "@/utils/historyMessages";
 import type { Planner } from "@/types/prisma";
 import { BottomSheet } from "../../BottomSheet";
 import {
@@ -78,7 +79,10 @@ export function CapturePalette() {
       createdAt: now,
       updatedAt: now,
     };
-    updatePlannerArray((prev: Planner[]) => [...prev, newItem]);
+    updatePlannerArray(
+      (prev: Planner[]) => [...prev, newItem],
+      historyMessages.capture.jot(newItem.title),
+    );
     setValue("");
     return true;
   };

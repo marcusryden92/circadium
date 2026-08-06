@@ -11,7 +11,10 @@ import {
 
 interface TaskDividerProps {
   planner: Planner[];
-  updatePlannerArray: React.Dispatch<React.SetStateAction<Planner[]>>;
+  updatePlannerArray: (
+    planner: Planner[] | ((prev: Planner[]) => Planner[]),
+    label: string,
+  ) => void;
   targetId: string;
   mouseLocationInItem: "top" | "bottom";
 }

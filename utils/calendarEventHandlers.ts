@@ -38,10 +38,11 @@ import {
   segmentStartFromEventId,
   serializeCompletedSegments,
 } from "./taskSplitting";
+import { historyMessages } from "./historyMessages";
 
 export const createPlanFromSelection = (
   userId: string | undefined,
-  updatePlannerArray: React.Dispatch<React.SetStateAction<Planner[]>>,
+  updatePlannerArray: UpdatePlannerArrayFn,
   start: Date,
   end: Date,
   title: string,
@@ -82,12 +83,18 @@ export const createPlanFromSelection = (
     updatedAt: now.toISOString(),
   };
 
-  updatePlannerArray((prevEvents) => [...prevEvents, newEvent]);
+  updatePlannerArray(
+    (prevEvents) => [...prevEvents, newEvent],
+    historyMessages.calendarSurface.createPlan(title),
+  );
 };
+
+type UpdateOptions = { engineMode?: "inline" | "worker"; label?: string };
 
 type UpdatePlannerArrayFn = (
   planner: Planner[] | ((prev: Planner[]) => Planner[]),
-  options?: { engineMode?: "inline" | "worker" },
+  label: string,
+  options?: UpdateOptions,
 ) => void;
 
 type UpdateAllFn = (
@@ -99,7 +106,7 @@ type UpdateAllFn = (
   dependencies?:
     | PlannerDependency[]
     | ((prev: PlannerDependency[]) => PlannerDependency[]),
-  options?: { engineMode?: "inline" | "worker" },
+  options?: UpdateOptions,
 ) => void;
 
 // Calendar drag/resize run the engine inline: FullCalendar has already moved
@@ -116,6 +123,7 @@ export const applyEventResize = (
   eventId: string,
   start: Date,
   end: Date,
+  title?: string | null,
 ) => {
   const plannerId = plannerIdFromEventId(eventId);
 
@@ -138,7 +146,10 @@ export const applyEventResize = (
     undefined,
     undefined,
     undefined,
-    { engineMode: "inline" },
+    {
+      engineMode: "inline",
+      label: historyMessages.calendarSurface.resizeEvent(title),
+    },
   );
 };
 
@@ -152,7 +163,7 @@ export const handleEventResize = (
   assert(event.start, "Event.start undefined in handleEventResize");
   assert(event.end, "Event.end undefined in handleEventResize");
 
-  applyEventResize(updateAll, event.id, event.start, event.end);
+  applyEventResize(updateAll, event.id, event.start, event.end, event.title);
 };
 
 // Shared commit for drag-move and the popover start field (plan `starts`).
@@ -160,6 +171,7 @@ export const applyEventStartEdit = (
   updatePlannerArray: UpdatePlannerArrayFn,
   eventId: string,
   newStart: Date,
+  title?: string | null,
 ) => {
   updatePlannerArray(
     (prevPlanner) => {
@@ -179,6 +191,7 @@ export const applyEventStartEdit = (
           : ev,
       );
     },
+    historyMessages.calendarSurface.moveEvent(title),
     { engineMode: "inline" },
   );
 };
@@ -191,7 +204,7 @@ export const handleEventDrop = (
   console.debug("[calendar] eventDrop", event.id, event.start?.toISOString());
   if (!event.start) return;
 
-  applyEventStartEdit(updatePlannerArray, event.id, event.start);
+  applyEventStartEdit(updatePlannerArray, event.id, event.start, event.title);
 };
 
 // "Move just this occurrence": a moved exception keyed by the occurrence's
@@ -201,6 +214,7 @@ export const applyOccurrenceMove = (
   planId: string,
   occurrenceKey: string,
   newStart: Date,
+  title?: string | null,
 ) => {
   updatePlannerArray(
     (prev) =>
@@ -219,6 +233,7 @@ export const applyOccurrenceMove = (
             }
           : p,
       ),
+    historyMessages.calendarSurface.moveOccurrence(title),
     { engineMode: "inline" },
   );
 };
@@ -229,6 +244,7 @@ export const applySeriesMove = (
   updatePlannerArray: UpdatePlannerArrayFn,
   planId: string,
   deltaMs: number,
+  title?: string | null,
 ) => {
   updatePlannerArray(
     (prev) =>
@@ -249,6 +265,7 @@ export const applySeriesMove = (
             }
           : p,
       ),
+    historyMessages.calendarSurface.moveEvent(title),
     { engineMode: "inline" },
   );
 };
@@ -260,6 +277,7 @@ export const applyOccurrenceDelete = (
   planId: string,
   occurrenceKey: string,
   occurrenceEventId: string,
+  title?: string | null,
 ) => {
   updateAll(
     (prev) =>
@@ -278,21 +296,36 @@ export const applyOccurrenceDelete = (
           : p,
       ),
     (prev) => prev.filter((e) => e.id !== occurrenceEventId),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { label: historyMessages.calendarSurface.deleteOccurrence(title) },
   );
 };
 
 // "Delete every occurrence": remove the plan row and all of its occurrence
 // events (their ids share the plan-id prefix).
-export const applySeriesDelete = (updateAll: UpdateAllFn, planId: string) => {
+export const applySeriesDelete = (
+  updateAll: UpdateAllFn,
+  planId: string,
+  title?: string | null,
+) => {
   updateAll(
     (prev) => prev.filter((p) => p.id !== planId),
     (prev) => prev.filter((e) => plannerIdFromEventId(e.id) !== planId),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { label: historyMessages.item.delete(title) },
   );
 };
 
 type UpdateTemplateArrayFn = (
   template: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),
-  options?: { engineMode?: "inline" | "worker" },
+  label: string,
+  options?: UpdateOptions,
 ) => void;
 
 // Templates recur weekly on a fixed startDay/startTime, so an occurrence is
@@ -328,6 +361,7 @@ export const applyTemplateOccurrenceMove = (
   templateId: string,
   key: string,
   newStart: Date,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -346,6 +380,7 @@ export const applyTemplateOccurrenceMove = (
             }
           : t,
       ),
+    historyMessages.template.move(title),
     { engineMode: "inline" },
   );
 };
@@ -356,6 +391,7 @@ export const applyTemplateSeriesMove = (
   updateTemplateArray: UpdateTemplateArrayFn,
   templateId: string,
   newStart: Date,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -370,6 +406,7 @@ export const applyTemplateSeriesMove = (
             }
           : t,
       ),
+    historyMessages.template.move(title),
     { engineMode: "inline" },
   );
 };
@@ -384,6 +421,7 @@ export const applyTemplateOccurrenceResize = (
   key: string,
   newStart: Date,
   durationMinutes: number,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -403,6 +441,7 @@ export const applyTemplateOccurrenceResize = (
             }
           : t,
       ),
+    historyMessages.template.resize(title),
     { engineMode: "inline" },
   );
 };
@@ -418,6 +457,7 @@ export const applyTemplateSeriesResize = (
   templateId: string,
   occurrenceKey: string,
   durationMinutes: number,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -436,6 +476,7 @@ export const applyTemplateSeriesResize = (
             }
           : t,
       ),
+    historyMessages.template.resize(title),
     { engineMode: "inline" },
   );
 };
@@ -447,6 +488,7 @@ export const applyTemplateOccurrenceRestore = (
   updateTemplateArray: UpdateTemplateArrayFn,
   templateId: string,
   key: string,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -464,6 +506,7 @@ export const applyTemplateOccurrenceRestore = (
             }
           : t,
       ),
+    historyMessages.template.restoreOccurrence(title),
     { engineMode: "inline" },
   );
 };
@@ -474,6 +517,7 @@ export const applyTemplateOccurrenceDelete = (
   updateTemplateArray: UpdateTemplateArrayFn,
   templateId: string,
   key: string,
+  title?: string | null,
 ) => {
   updateTemplateArray(
     (prev) =>
@@ -491,18 +535,12 @@ export const applyTemplateOccurrenceDelete = (
             }
           : t,
       ),
+    historyMessages.calendarSurface.deleteOccurrence(title),
     { engineMode: "inline" },
   );
 };
 
-export const handleEventCopy = (
-  event: EventImpl,
-  updateAll: (
-    planner?: Planner[] | ((prev: Planner[]) => Planner[]),
-    calendar?: SimpleEvent[] | ((prev: SimpleEvent[]) => SimpleEvent[]),
-    template?: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),
-  ) => void,
-) => {
+export const handleEventCopy = (event: EventImpl, updateAll: UpdateAllFn) => {
   assert(event, "Event undefined in handleEventCopy");
   assert(event.start, "Event.start undefined in handleEventCopy");
   assert(event.end, "Event.end undefined in handleEventCopy");
@@ -512,25 +550,33 @@ export const handleEventCopy = (
 
   const now = new Date().toISOString();
 
-  updateAll((prevPlanner) => {
-    const item = prevPlanner.find(
-      (p) => p.id === plannerIdFromEventId(event.id),
-    );
+  updateAll(
+    (prevPlanner) => {
+      const item = prevPlanner.find(
+        (p) => p.id === plannerIdFromEventId(event.id),
+      );
 
-    return item
-      ? [
-          ...prevPlanner,
-          {
-            ...item,
-            id: uuidv4(),
-            completedStartTime: null,
-            completedEndTime: null,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ]
-      : prevPlanner;
-  });
+      return item
+        ? [
+            ...prevPlanner,
+            {
+              ...item,
+              id: uuidv4(),
+              completedStartTime: null,
+              completedEndTime: null,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ]
+        : prevPlanner;
+    },
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { label: historyMessages.item.duplicate(event.title) },
+  );
 };
 
 export const handleUpdateTitle = (
@@ -538,10 +584,7 @@ export const handleUpdateTitle = (
   setTitle: React.Dispatch<React.SetStateAction<string>>,
   taskId: string,
   calendar: SimpleEvent[],
-  updateAll: (
-    arg: Planner[] | ((prev: Planner[]) => Planner[]),
-    manuallyUpdatedCalendar?: SimpleEvent[],
-  ) => void,
+  updateAll: UpdateAllFn,
 ) => {
   const plannerId = plannerIdFromEventId(taskId);
   const updatedEvents = calendar?.map((calEvent) => {
@@ -553,13 +596,20 @@ export const handleUpdateTitle = (
 
   if (updatedEvents) updateAll((prev) => prev, updatedEvents);
 
-  updateAll((prev) =>
-    prev.map((item) => {
-      if (item.id === plannerId) {
-        return { ...item, title };
-      }
-      return item;
-    }),
+  updateAll(
+    (prev) =>
+      prev.map((item) => {
+        if (item.id === plannerId) {
+          return { ...item, title };
+        }
+        return item;
+      }),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { label: historyMessages.item.rename(title) },
   );
 
   setTitle(title);
@@ -575,12 +625,11 @@ export const handleClickCompleteTask = (
   setIsCompleted: React.Dispatch<React.SetStateAction<boolean>>,
   planner: Planner[],
   calendar: SimpleEvent[],
-  updateAll: (
-    planner?: Planner[] | ((prev: Planner[]) => Planner[]),
-    calendar?: SimpleEvent[] | ((prev: SimpleEvent[]) => SimpleEvent[]),
-  ) => void,
+  updateAll: UpdateAllFn,
 ) => {
   if (!event) return;
+  const restOptions = (label: string) =>
+    [undefined, undefined, undefined, undefined, { label }] as const;
 
   // Split-task chunks complete per-chunk: the chunk's window is appended to
   // the row's completedSegments (completed minutes are derived by summing),
@@ -611,6 +660,7 @@ export const handleClickCompleteTask = (
               : item,
           ),
         (prev) => prev.filter((e) => e.id !== event.id),
+        ...restOptions(historyMessages.item.uncomplete(event.title)),
       );
     } else {
       // A chunk that hasn't started yet completes at now, its length preserved
@@ -649,6 +699,7 @@ export const handleClickCompleteTask = (
               : item,
           ),
         (prev) => prev.filter((e) => e.id !== event.id),
+        ...restOptions(historyMessages.item.complete(event.title)),
       );
     }
     return;
@@ -667,6 +718,7 @@ export const handleClickCompleteTask = (
             : item,
         ),
       (prev) => prev.filter((e) => e.id !== event.id),
+      ...restOptions(historyMessages.item.uncomplete(event.title)),
     );
   } else {
     setIsCompleted(true);
@@ -681,6 +733,7 @@ export const handleClickCompleteTask = (
         updateAll(
           (prev) => manuallyUpdatedTaskArray || prev,
           manuallyUpdatedCalendar,
+          ...restOptions(historyMessages.item.complete(event.title)),
         );
       }
     }, 500);
@@ -690,10 +743,7 @@ export const handleClickCompleteTask = (
 export const handlePostponeTask = (
   event: EventImpl,
   calendar: SimpleEvent[],
-  updateAll: (
-    planner?: Planner[] | ((prev: Planner[]) => Planner[]),
-    calendar?: SimpleEvent[] | ((prev: SimpleEvent[]) => SimpleEvent[]),
-  ) => void,
+  updateAll: UpdateAllFn,
 ) => {
   const updatedCalendar = calendar?.filter((e) => e.id !== event.id);
   if (updatedCalendar) updateAll((prev) => prev, updatedCalendar);
@@ -702,10 +752,7 @@ export const handlePostponeTask = (
 export const handleClickDelete = (
   event: EventImpl,
   calendar: SimpleEvent[],
-  updateAll: (
-    planner?: Planner[] | ((prev: Planner[]) => Planner[]),
-    calendar?: SimpleEvent[] | ((prev: SimpleEvent[]) => SimpleEvent[]),
-  ) => void,
+  updateAll: UpdateAllFn,
   plannerType: string,
   setShowPopover?: React.Dispatch<React.SetStateAction<boolean>>,
 ) => {
@@ -732,6 +779,11 @@ export const handleClickDelete = (
       updateAll(
         (prev) => prev.filter((t) => t.id !== rowId),
         (prev) => prev.filter((t) => t.id !== event.id),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { label: historyMessages.item.delete(event.title) },
       );
     }
   }, 500);

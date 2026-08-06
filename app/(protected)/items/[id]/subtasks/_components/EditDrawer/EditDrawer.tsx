@@ -66,6 +66,7 @@ import {
   DurationField,
 } from "@/components/ui";
 import { formatDatetimeLocal, parseDatetimeLocal } from "@/utils/datetime";
+import { historyMessages } from "@/utils/historyMessages";
 import { SHAKE_DURATION_MS } from "../../../_constants";
 
 import {
@@ -234,40 +235,51 @@ export function EditDrawer() {
 
   const setLinkedItem = (targetId: string | null) => {
     if (targetId && linkTargets.blocked.has(targetId)) return;
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? {
-              ...p,
-              linkedItemId: targetId,
-              updatedAt: new Date().toISOString(),
-            }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? {
+                ...p,
+                linkedItemId: targetId,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      targetId
+        ? historyMessages.item.link(
+            task.title,
+            planner.find((p) => p.id === targetId)?.title ?? "item",
+          )
+        : historyMessages.item.unlink(task.title),
     );
   };
 
   const commitTitle = () => {
     const t = titleDraft.trim();
     if (!t || t === task.title) return;
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? { ...p, title: t, updatedAt: new Date().toISOString() }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? { ...p, title: t, updatedAt: new Date().toISOString() }
+            : p,
+        ),
+      historyMessages.item.rename(t),
     );
   };
 
   const commitNotes = () => {
     if (notesDraft === null) return;
     const next = notesDraft.trim() ? notesDraft : null;
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? { ...p, notes: next, updatedAt: new Date().toISOString() }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? { ...p, notes: next, updatedAt: new Date().toISOString() }
+            : p,
+        ),
+      historyMessages.item.field("notes", task.title),
     );
     setNotesDraft(null);
   };
@@ -283,56 +295,64 @@ export function EditDrawer() {
   };
 
   const setDuration = (next: number) => {
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? { ...p, duration: next, updatedAt: new Date().toISOString() }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? { ...p, duration: next, updatedAt: new Date().toISOString() }
+            : p,
+        ),
+      historyMessages.item.duration(task.title, next),
     );
   };
 
   const applySplitting = (next: TaskSplittingSettings | null) => {
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? {
-              ...p,
-              splitting: next ? serializeTaskSplitting(next) : null,
-              updatedAt: new Date().toISOString(),
-            }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? {
+                ...p,
+                splitting: next ? serializeTaskSplitting(next) : null,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      historyMessages.item.field("splitting", task.title),
     );
   };
 
   const commitSplitCompleted = (minutes: number) => {
     const now = new Date();
-    updatePlannerArray((prev) =>
-      prev.map((p) => {
-        if (p.id !== task.id) return p;
-        const nextSegments = setSplitCompletedMinutes(p, minutes, now);
-        if (nextSegments === (p.completedSegments ?? null)) return p;
-        return {
-          ...p,
-          completedSegments: nextSegments,
-          updatedAt: now.toISOString(),
-        };
-      }),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) => {
+          if (p.id !== task.id) return p;
+          const nextSegments = setSplitCompletedMinutes(p, minutes, now);
+          if (nextSegments === (p.completedSegments ?? null)) return p;
+          return {
+            ...p,
+            completedSegments: nextSegments,
+            updatedAt: now.toISOString(),
+          };
+        }),
+      historyMessages.item.field("completed minutes", task.title),
     );
   };
 
   const setDeadline = (iso: string | null) => {
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? {
-              ...p,
-              deadline: iso,
-              updatedAt: new Date().toISOString(),
-            }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? {
+                ...p,
+                deadline: iso,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      historyMessages.item.field("deadline", task.title),
     );
   };
 
@@ -341,23 +361,26 @@ export function EditDrawer() {
 
   const onEarliestStartInput = (value: string) => {
     const iso = parseDatetimeLocal(value) || null;
-    updatePlannerArray((prev) =>
-      prev.map((p) =>
-        p.id === task.id
-          ? {
-              ...p,
-              earliestStartDate: iso,
-              updatedAt: new Date().toISOString(),
-            }
-          : p,
-      ),
+    updatePlannerArray(
+      (prev) =>
+        prev.map((p) =>
+          p.id === task.id
+            ? {
+                ...p,
+                earliestStartDate: iso,
+                updatedAt: new Date().toISOString(),
+              }
+            : p,
+        ),
+      historyMessages.item.field("earliest start", task.title),
     );
   };
 
   const onLocationChange = async (locationId: string | null) => {
     await assignLocationToPlanner(task.id, locationId);
-    updatePlannerArray((prev) =>
-      prev.map((p) => (p.id === task.id ? { ...p, locationId } : p)),
+    updatePlannerArray(
+      (prev) => prev.map((p) => (p.id === task.id ? { ...p, locationId } : p)),
+      historyMessages.item.field("location", task.title),
     );
   };
 
@@ -370,7 +393,10 @@ export function EditDrawer() {
       return;
     }
     const iso = parseDatetimeLocal(value) || null;
-    updatePlannerArray((prev) => setSubtaskCompletedAt(prev, task.id, iso));
+    updatePlannerArray(
+      (prev) => setSubtaskCompletedAt(prev, task.id, iso),
+      historyMessages.item.field("completion time", task.title),
+    );
   };
 
   const toggleCompletion = () => {
@@ -378,7 +404,12 @@ export function EditDrawer() {
       flashShake();
       return;
     }
-    updatePlannerArray((prev) => toggleSubtaskCompletion(prev, task.id));
+    updatePlannerArray(
+      (prev) => toggleSubtaskCompletion(prev, task.id),
+      task.completedEndTime
+        ? historyMessages.item.uncomplete(task.title)
+        : historyMessages.item.complete(task.title),
+    );
   };
 
   const isCompleted = !!task.completedEndTime;
@@ -405,7 +436,7 @@ export function EditDrawer() {
   const currentLocation = locations.find((l) => l.id === task.locationId);
 
   const handleDelete = () => {
-    deleteGoal({ updateAll, taskId: task.id });
+    deleteGoal({ updateAll, taskId: task.id, title: task.title });
     setShowDeleteConfirm(false);
     setFocusedTask(null);
   };
@@ -413,7 +444,10 @@ export function EditDrawer() {
   const handleDuplicate = () => {
     const result = duplicateSubtree({ planner, taskId: task.id });
     if (!result) return;
-    updatePlannerArray(result.newPlanner);
+    updatePlannerArray(
+      result.newPlanner,
+      historyMessages.item.duplicate(task.title),
+    );
     setFocusedTask(result.newRootId);
   };
 
@@ -423,7 +457,7 @@ export function EditDrawer() {
     const result = promoteSubtree(planner, task.id);
     setShowPromoteConfirm(false);
     if (!Array.isArray(result)) return;
-    updatePlannerArray(result);
+    updatePlannerArray(result, historyMessages.item.promote(task.title));
     setFocusedTask(null);
     router.push(`/items/${task.id}`);
   };

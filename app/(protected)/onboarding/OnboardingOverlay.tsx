@@ -11,6 +11,10 @@ import { overlayRoot, overlayScroll } from "./onboarding.css";
 // listeners) keeps a palette or a second assistant from opening over the
 // setup flow.
 const SUPPRESSED_SHORTCUT_KEYS = new Set(["i", "j", "k"]);
+// Calendar undo/redo (mod+Z / mod+Y) only stops propagation — the app-level
+// undo must not fire mid-onboarding, but preventDefault would also kill
+// native text undo inside the flow's inputs.
+const PROPAGATION_ONLY_KEYS = new Set(["z", "y"]);
 
 // Rendered in the shell's overlay slot. Its initial visibility is resolved on
 // the server (the protected layout reads onboardedAt), so on a fresh load the
@@ -30,8 +34,12 @@ export function OnboardingOverlay({
     if (!show) return;
     const suppress = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && SUPPRESSED_SHORTCUT_KEYS.has(e.key.toLowerCase())) {
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (SUPPRESSED_SHORTCUT_KEYS.has(key)) {
         e.preventDefault();
+        e.stopImmediatePropagation();
+      } else if (PROPAGATION_ONLY_KEYS.has(key)) {
         e.stopImmediatePropagation();
       }
     };
