@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { fontDisplay, fontUI, fontLogo } from "@/lib/theme/fonts";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import PostHogProvider from "@/context/PostHogProvider";
 import "@/lib/theme/global.css";
 import "./globals.css";
 
@@ -45,7 +46,9 @@ export default async function RootLayout({
         }}
       >
         <SessionProvider session={session}>
-          <ThemeProvider>{children}</ThemeProvider>
+          <PostHogProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </PostHogProvider>
         </SessionProvider>
       </body>
     </html>

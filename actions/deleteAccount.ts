@@ -8,6 +8,7 @@ import { getAccountDeletionTokenByToken } from "@/data/accountDeletionToken";
 import { currentUser } from "@/lib/auth";
 import { generateAccountDeletionToken } from "@/lib/tokens";
 import { sendAccountDeletionEmail } from "@/lib/mail";
+import { deletePosthogPerson } from "@/lib/posthogServer";
 
 interface RequestInput {
   confirmEmail: string;
@@ -128,6 +129,10 @@ export const confirmAccountDeletion = async (
           : "Failed to delete account.",
     };
   }
+
+  // GDPR erasure completeness: analytics events are keyed by the user id, so
+  // remove the PostHog person too. Best-effort — never blocks the deletion.
+  await deletePosthogPerson(dbUser.id);
 
   return { success: "Account deleted." };
 };

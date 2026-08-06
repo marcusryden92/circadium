@@ -18,6 +18,7 @@ import { fallbackCalendarColor } from "@/utils/colorUtils";
 import { defaultReadyForType } from "@/utils/plannerReadiness";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { historyMessages } from "@/utils/historyMessages";
+import { captureEvent } from "@/utils/analytics";
 import type { Planner } from "@/types/prisma";
 import {
   overlay,
@@ -113,6 +114,7 @@ export function NewItemModal({
       (prev: Planner[]) => [...prev, newItem],
       historyMessages.item.create(newItem.title),
     );
+    captureEvent("item_created", { type });
     onOpenChange(false);
     router.push(`/items/${id}`);
   };

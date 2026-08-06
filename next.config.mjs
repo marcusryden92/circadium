@@ -5,6 +5,25 @@ const withVanillaExtract = createVanillaExtractPlugin();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
+  // PostHog's API paths use trailing slashes (/e/), which the default
+  // trailing-slash redirect would strip before the rewrite matches.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: "/relay-cq/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/relay-cq/array/:path*",
+        destination: "https://eu-assets.i.posthog.com/array/:path*",
+      },
+      {
+        source: "/relay-cq/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
+      },
+    ];
+  },
   experimental: {
     optimizePackageImports: ["@/components/ui", "@/lib/theme"],
   },

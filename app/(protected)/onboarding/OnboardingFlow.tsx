@@ -30,6 +30,7 @@ import {
   type StoredProgress,
 } from "./_lib/onboardingProgress";
 import { historyMessages } from "@/utils/historyMessages";
+import { captureEvent } from "@/utils/analytics";
 import {
   makeEmptyRow,
   type LocationRow,
@@ -216,10 +217,10 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     [persistProgress, stepIndex],
   );
 
-  const goNext = useCallback(
-    () => setStepIndex((i) => Math.min(i + 1, TOTAL_STEPS - 1)),
-    [],
-  );
+  const goNext = useCallback(() => {
+    captureEvent("onboarding_step_completed", { step: stepIndex });
+    setStepIndex((i) => Math.min(i + 1, TOTAL_STEPS - 1));
+  }, [stepIndex]);
   const goBack = useCallback(() => setStepIndex((i) => Math.max(i - 1, 0)), []);
 
   const commitRoles = useCallback(() => {
@@ -330,6 +331,10 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
   const finish = useCallback(async () => {
     setFinishing(true);
+    captureEvent("onboarding_finished", {
+      atStep: stepIndex,
+      skippedFromWelcome: stepIndex === 0,
+    });
     let stamped = false;
     try {
       await completeOnboarding();
@@ -345,7 +350,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       clearProgress(userId);
     }
     onComplete();
-  }, [onComplete, userId]);
+  }, [onComplete, userId, stepIndex]);
 
   switch (stepIndex) {
     case 0:

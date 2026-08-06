@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_EMAIL = "support@circadium.app";
-const LAST_UPDATED = "July 24, 2026";
+const LAST_UPDATED = "August 6, 2026";
 // The person or company legally responsible for the data (GDPR "controller").
 // Replace with your registered name / company before a public launch.
 const CONTROLLER_NAME = "[Your name or company]";
@@ -177,6 +177,28 @@ export default function PrivacyPage() {
         </section>
 
         <section className={section}>
+          <h2 className={heading}>Analytics</h2>
+          <p className={body}>
+            We use PostHog, hosted in the European Union, to understand how
+            Circadium is used and to improve it — for example which features are
+            used and where people get stuck. Our analytics is cookieless: it
+            stores nothing on your device (no cookies, no local storage, no
+            persistent identifiers), which is why Circadium shows no cookie
+            banner. When you are signed in, analytics events are linked to your
+            account id so we can understand usage across visits.
+          </p>
+          <p className={body}>
+            We may also record how the app&apos;s interface is used (session
+            replay) to diagnose problems and improve usability. Everything you
+            type is masked in these recordings before it leaves your browser.
+            Analytics data is used solely to improve the product — never for
+            advertising, and never sold or shared beyond the provider that
+            processes it for us. We process this data on the basis of our
+            legitimate interest in improving the service.
+          </p>
+        </section>
+
+        <section className={section}>
           <h2 className={heading}>Service providers we use</h2>
           <p className={body}>
             We do not sell your personal data or your Google user data. We share
@@ -188,6 +210,9 @@ export default function PrivacyPage() {
             <li>Hosting and application delivery (Vercel).</li>
             <li>Database storage (Neon).</li>
             <li>Transactional email, e.g. sign-in and verification (Resend).</li>
+            <li>
+              Product analytics and session replay (PostHog, hosted in the EU).
+            </li>
             <li>
               Sign-in providers you choose to use (Google, GitHub) and Google
               Calendar, when you connect them.

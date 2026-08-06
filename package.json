@@ -57,6 +57,7 @@
     "next-auth": "5.0.0-beta.32",
     "node-ical": "^0.27.1",
     "partial-json": "^0.1.7",
+    "posthog-js": "^1.413.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.52.2",

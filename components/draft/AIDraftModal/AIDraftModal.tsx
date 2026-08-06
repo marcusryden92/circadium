@@ -16,6 +16,7 @@ import {
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { plannerForestToJson } from "@/utils/draft/plannerForestToJson";
 import { historyMessages } from "@/utils/historyMessages";
+import { captureEvent } from "@/utils/analytics";
 import { JsonForestView } from "@/components/draft/JsonTreeView";
 import { TemplateWeekView } from "@/components/draft/TemplateWeekView";
 import { ChatPane } from "@/components/draft/ChatPane";
@@ -435,6 +436,7 @@ export function AIDraftModal({
       // The gate replaces the chat UI whenever AI isn't ready, so this only
       // trips on races (key removed in another tab mid-session).
       if (aiStatus !== "ready") return;
+      captureEvent("assistant_message_sent", { embedded });
       const userMessageId = uuidv4();
       const assistantMessageId = uuidv4();
 
@@ -739,6 +741,7 @@ export function AIDraftModal({
       locations,
       recurringPlanIds,
       intent,
+      embedded,
     ],
   );
 
@@ -886,6 +889,14 @@ export function AIDraftModal({
           .catch(() => {});
       }
     }
+    captureEvent("assistant_draft_saved", {
+      embedded,
+      goals: hasForestChanges,
+      templates: hasTemplateChanges,
+      categories: hasWindowChanges,
+      precedence: hasPrecedenceChanges,
+      habits: hasHabitChanges,
+    });
     if (embedded) onSaved?.();
     else onClose();
   }, [
@@ -977,7 +988,8 @@ export function AIDraftModal({
         />
       </div>
 
-      <div className={body} ref={bodyRef}>
+      {/* ph-no-capture: assistant content (chat + drafts) stays out of session replay */}
+      <div className={`${body} ph-no-capture`} ref={bodyRef}>
         <div
           className={`${chatPane} ${
             mobilePane === "chat" ? "" : paneMobileHidden

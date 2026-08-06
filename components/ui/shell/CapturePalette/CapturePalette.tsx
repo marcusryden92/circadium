@@ -16,6 +16,7 @@ import { usePlatform } from "@/hooks/usePlatform";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { historyMessages } from "@/utils/historyMessages";
+import { captureEvent } from "@/utils/analytics";
 import type { Planner } from "@/types/prisma";
 import { BottomSheet } from "../../BottomSheet";
 import {
@@ -83,6 +84,7 @@ export function CapturePalette() {
       (prev: Planner[]) => [...prev, newItem],
       historyMessages.capture.jot(newItem.title),
     );
+    captureEvent("item_captured");
     setValue("");
     return true;
   };

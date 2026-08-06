@@ -6,6 +6,7 @@ import { WeekDayIntegers } from "@/types/calendarTypes";
 
 import { runEngineCalculation } from "@/utils/calendar-generation/engineWorkerClient";
 import { taskIsCompleted } from "@/utils/taskHelpers";
+import { captureEvent } from "@/utils/analytics";
 
 import {
   Planner,
@@ -163,6 +164,8 @@ const useManuallyRefreshCalendar = (
     } = stateRef.current;
 
     if (!userId) throw new Error("Id missing in manuallyRefreshCalendar");
+
+    captureEvent("calendar_refreshed");
 
     const now = floorMinutes(new Date());
     if (template && planner && calendar) {
