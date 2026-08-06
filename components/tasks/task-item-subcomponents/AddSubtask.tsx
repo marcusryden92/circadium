@@ -30,7 +30,9 @@ const AddSubtask: React.FC<AddSubtaskProps> = ({
   const [taskTitle, setTaskTitle] = useState<string>("");
 
   const { planner, updatePlannerArray, userId } = useCalendarProvider();
-  const refs = useRef(new Map<string, React.RefObject<HTMLInputElement>>());
+  const refs = useRef(
+    new Map<string, React.RefObject<HTMLInputElement | null>>(),
+  );
 
   const getRef = (parentId?: string) => {
     if (!parentId) return undefined;

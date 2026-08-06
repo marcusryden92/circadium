@@ -22,7 +22,7 @@ import {
 interface PredictionsListHandle {
   visible: boolean;
   onInputKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   node: ReactNode;
 }
 

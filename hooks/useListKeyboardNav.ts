@@ -24,7 +24,7 @@ export function useListKeyboardNav<T>(
   activeIndex: number | null;
   setActiveIndex: (i: number | null) => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
 } {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);

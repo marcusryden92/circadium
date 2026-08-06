@@ -32,7 +32,7 @@ interface EventExtendedPropsWithTrespassing {
 
 interface EventWrapperProps {
   event: EventImpl;
-  elementRef: React.RefObject<HTMLDivElement>;
+  elementRef: React.RefObject<HTMLDivElement | null>;
   elementHeight: number;
   elementWidth: number;
   isCompleted: boolean;

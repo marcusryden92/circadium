@@ -15,7 +15,8 @@ export async function GET(): Promise<NextResponse> {
   }
 
   const state = randomBytes(16).toString("hex");
-  cookies().set(MICROSOFT_OAUTH_STATE_COOKIE, state, {
+  const cookieStore = await cookies();
+  cookieStore.set(MICROSOFT_OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

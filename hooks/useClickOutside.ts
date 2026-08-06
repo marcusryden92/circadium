@@ -1,7 +1,7 @@
 import { useEffect, RefObject } from "react";
 
 interface UseClickOutsideOptions {
-  ref: RefObject<HTMLElement>;
+  ref: RefObject<HTMLElement | null>;
   onClickOutside: () => void;
   isActive?: boolean;
   /** Ignore clicks on Radix UI portal content (e.g., Select dropdowns) */

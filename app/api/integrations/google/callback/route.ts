@@ -22,7 +22,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
   const userId = session.user.id;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const expectedState = cookieStore.get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
   cookieStore.delete(GOOGLE_OAUTH_STATE_COOKIE);
 

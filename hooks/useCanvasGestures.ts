@@ -121,7 +121,7 @@ type Mode = "idle" | "pending" | "dragging" | "pinching" | "spent";
 // preventDefault needed). Children that own their own pointer interaction
 // (e.g. link handles) opt out with a `data-gesture-skip` attribute.
 export function useCanvasGestures(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   handlers: CanvasGestureHandlers,
 ): void {
   const handlersRef = useRef(handlers);

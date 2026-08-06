@@ -793,7 +793,7 @@ export const handleClickDelete = (
 
 export const handleDoubleClick = (
   e: React.MouseEvent,
-  elementRef: React.RefObject<HTMLDivElement>,
+  elementRef: React.RefObject<HTMLDivElement | null>,
   setEventRect: React.Dispatch<React.SetStateAction<DOMRect | null>>,
   setShowPopover: React.Dispatch<React.SetStateAction<boolean>>,
 ) => {

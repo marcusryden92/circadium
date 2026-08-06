@@ -16,7 +16,7 @@ import {
 interface TitleEditor {
   isEditing: boolean;
   value: string;
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLInputElement | null>;
   onChange: (value: string) => void;
   onBlur: () => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
