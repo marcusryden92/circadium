@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { isHexColor } from "@/utils/colorUtils";
 import { findCycle, findCycleInGraph } from "@/utils/precedence/findCycle";
 import type { PrecedenceEdge } from "@/utils/precedence/types";
 import type { DraftOpFailure } from "./draftForestOps";
@@ -29,6 +30,7 @@ export interface DraftQueueUpdate {
   id: string;
   title?: string;
   categoryId?: string | null;
+  color?: string | null;
 }
 
 function titleOf(forest: DraftForest, id: string): string {
@@ -69,6 +71,9 @@ function endpointFailure(
   if (root.plannerType === "plan") {
     return "a plan — plans have fixed start times and cannot be sequenced";
   }
+  if ((root.recurrence ?? null) !== null) {
+    return "a repeating item — each occurrence schedules in its own period, so it cannot be sequenced";
+  }
   return null;
 }
 
@@ -84,6 +89,9 @@ function dependencyEndpointFailure(
   }
   if (root.plannerType === "plan") {
     return "a plan — plans have fixed start times and cannot be sequenced";
+  }
+  if ((root.recurrence ?? null) !== null) {
+    return "a repeating item — each occurrence schedules in its own period, so it cannot be sequenced";
   }
   return null;
 }
@@ -171,10 +179,18 @@ export function addDraftQueues(
       continue;
     }
 
+    if (obj.color !== undefined && obj.color !== null && !isHexColor(obj.color)) {
+      failures.push({
+        id: null,
+        reason: `"${obj.title}": color must be a 6-digit hex string or null`,
+      });
+      continue;
+    }
     const queue: DraftQueue = {
       id: uuidv4(),
       title: obj.title.trim(),
       categoryId,
+      color: typeof obj.color === "string" ? obj.color : null,
       memberPlannerIds: [],
     };
     current = { queues: [...current.queues, queue], dependencies: current.dependencies };
@@ -230,12 +246,25 @@ export function updateDraftQueues(
       failures.push({ id, reason: "unknown categoryId" });
       continue;
     }
-    if (update.title === undefined && update.categoryId === undefined) {
+    if (
+      update.color !== undefined &&
+      update.color !== null &&
+      !isHexColor(update.color)
+    ) {
+      failures.push({ id, reason: "color must be a 6-digit hex string or null" });
+      continue;
+    }
+    if (
+      update.title === undefined &&
+      update.categoryId === undefined &&
+      update.color === undefined
+    ) {
       failures.push({ id, reason: "no fields to update" });
       continue;
     }
     if (update.title !== undefined) target.title = update.title.trim();
     if (update.categoryId !== undefined) target.categoryId = update.categoryId;
+    if (update.color !== undefined) target.color = update.color;
     changed = true;
   }
 

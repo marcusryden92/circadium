@@ -47,7 +47,7 @@ const searchItemsTool: Anthropic.Tool = {
 const updateItemsTool: Anthropic.Tool = {
   name: "update_items",
   description:
-    'Change fields on existing items by id — title, plannerType ("task" or "goal"; convert a leaf task into an empty goal or vice versa, or turn a plan into a task), duration (minutes), deadline (ISO date or null to clear), priority, isReady, categoryId (top-level goals only; null to clear), splitting (schedulable leaves only — an object enables/adjusts chunked scheduling, null turns it off), maxMinutesPerDay (top-level goals only — the goal\'s daily limit in minutes, null to remove it), earliestStartDate (tasks/goals at any level — ISO date before which it may not be scheduled, null to clear), and allowedTimes (tasks/goals at any level — which weekdays / times of day it may be scheduled, null to clear). An item with subtasks is always a goal — that is enforced automatically, so you never set plannerType just to fix a parent. Structural changes (adding, moving, removing items) use the other tools.',
+    'Change fields on existing items by id — title, plannerType ("task", "goal", or "plan"; retyping a childless item to "plan" makes it a fixed-time appointment — pair it with starts), starts (plans only — the fixed ISO start date-time; null makes the plan timeless), duration (minutes), deadline (ISO date or null to clear), priority, isReady, categoryId (top-level goals only; null to clear), locationId (any item — one of the user\'s location ids, null to clear), color (top-level items only — 6-digit hex, the subtree inherits it), notes (free-text note on the item; null clears), completed (mark a task/goal done or not done; never plans or repeating items), splitting (schedulable leaves only — an object enables/adjusts chunked scheduling, null turns it off), maxMinutesPerDay (top-level goals only — the goal\'s daily limit in minutes, null to remove it), recurrence (top-level items only — repeat rule; on tasks/goals flexible per-period placement, on plans a fixed repeat stepping from starts), earliestStartDate (tasks/goals at any level — ISO date before which it may not be scheduled, null to clear), and allowedTimes (tasks/goals at any level — which weekdays / times of day it may be scheduled, null to clear). An item with subtasks is always a goal — that is enforced automatically, so you never set plannerType just to fix a parent. Structural changes (adding, moving, removing items) use the other tools.',
   input_schema: {
     type: "object",
     properties: {
@@ -58,12 +58,36 @@ const updateItemsTool: Anthropic.Tool = {
           properties: {
             id: { type: "string" },
             title: { type: "string" },
-            plannerType: { type: "string", enum: ["task", "goal"] },
+            plannerType: { type: "string", enum: ["task", "goal", "plan"] },
+            starts: {
+              type: ["string", "null"],
+              description:
+                "Plans only: the fixed ISO start date-time (local time with offset preferred). Null makes the plan timeless.",
+            },
             duration: { type: "integer" },
             deadline: { type: ["string", "null"] },
             priority: { type: "integer", minimum: 1, maximum: 7 },
             isReady: { type: ["boolean", "null"] },
             categoryId: { type: ["string", "null"] },
+            locationId: {
+              type: ["string", "null"],
+              description:
+                "One of the user's location ids; null clears the item's own location.",
+            },
+            color: {
+              type: "string",
+              description:
+                'Top-level items only: 6-digit hex like "#1976D2"; the subtree inherits it.',
+            },
+            notes: {
+              type: ["string", "null"],
+              description: "Free-text note on the item; null clears it.",
+            },
+            completed: {
+              type: "boolean",
+              description:
+                "Mark the item done (true) or not done (false). Tasks and goals only — plans and repeating items complete per occurrence on the calendar.",
+            },
             splitting: {
               type: ["object", "null"],
               properties: {
@@ -82,7 +106,7 @@ const updateItemsTool: Anthropic.Tool = {
             recurrence: {
               type: ["object", "null"],
               description:
-                "Top-level tasks/goals only: an object makes the item repeat flexibly (clearing its deadline); null stops the repetition.",
+                "Top-level items only: an object makes the item repeat (tasks/goals: flexible per-period placement, clearing the deadline; plans: fixed repeat stepping from starts); null stops the repetition.",
               properties: {
                 freq: {
                   type: "string",
@@ -152,7 +176,7 @@ const moveItemTool: Anthropic.Tool = {
 const addItemsTool: Anthropic.Tool = {
   name: "add_items",
   description:
-    "Insert new items (with optional nested children) under an existing parent — the goal itself or any node inside it. Items use the node structure WITHOUT ids (real ids are assigned when the user saves). Position works like move_item.",
+    "Insert new items (with optional nested children) under an existing parent — the goal itself or any node inside it. Items use the node structure WITHOUT ids (real ids are assigned when the user saves). Position works like move_item. For new TOP-LEVEL items (goals, loose tasks, fixed-time plans) use propose_goals instead.",
   input_schema: {
     type: "object",
     properties: {
@@ -174,6 +198,15 @@ const addItemsTool: Anthropic.Tool = {
           deadline: { type: ["string", "null"] },
           priority: { type: "integer", minimum: 1, maximum: 7 },
           isReady: { type: ["boolean", "null"] },
+          locationId: {
+            type: ["string", "null"],
+            description:
+              "One of the user's location ids, or null (inherits from ancestors/category).",
+          },
+          notes: {
+            type: ["string", "null"],
+            description: "Optional free-text note on the item.",
+          },
           splitting: {
             type: ["object", "null"],
             properties: {
@@ -261,6 +294,11 @@ const proposeGoalsTool: Anthropic.Tool = {
             type: "string",
             enum: ["task", "plan", "goal"],
           },
+          starts: {
+            type: ["string", "null"],
+            description:
+              "Plans only: the fixed ISO start date-time (the appointment's exact start). Required for a plan to appear on the calendar; always null on tasks and goals. Echo verbatim for retained plans.",
+          },
           duration: {
             type: "integer",
             description: "Duration in minutes.",
@@ -276,7 +314,12 @@ const proposeGoalsTool: Anthropic.Tool = {
           color: {
             type: ["string", "null"],
             description:
-              'Top-level goals only: a 6-digit hex color (e.g. "#1976D2") for the whole goal; its subtasks inherit it. Never set on child nodes.',
+              'Top-level goals only: a 6-digit hex color (e.g. "#1976D2") for the whole goal; its subtasks inherit it. When creating SEVERAL related top-level items in one batch, give them all the SAME color. Never set on child nodes.',
+          },
+          locationId: {
+            type: ["string", "null"],
+            description:
+              "One of the user's location ids — where this item happens — or null. Echo verbatim for retained nodes.",
           },
           splitting: {
             type: ["object", "null"],
@@ -298,7 +341,7 @@ const proposeGoalsTool: Anthropic.Tool = {
           recurrence: {
             type: ["object", "null"],
             description:
-              "Top-level tasks/goals only: flexible repeat rule — the scheduler places one occurrence per period (a repeating item has no deadline). Echo verbatim for retained items; dropping it stops the repetition. Never set on child nodes or plans.",
+              "Top-level items only: repeat rule. On tasks/goals the scheduler places one occurrence per period flexibly (a repeating item has no deadline); on plans it repeats on a fixed schedule stepping from starts. Echo verbatim for retained items; dropping it stops the repetition. Never set on child nodes.",
             properties: {
               freq: {
                 type: "string",
@@ -656,6 +699,11 @@ const addQueuesTool: Anthropic.Tool = {
               description:
                 "Optional inherited default: members without their own category adopt this one for scheduling.",
             },
+            color: {
+              type: ["string", "null"],
+              description:
+                "Optional 6-digit hex accent for the queue's lane on the graph view.",
+            },
             memberPlannerIds: {
               type: "array",
               items: { type: "string" },
@@ -674,7 +722,7 @@ const addQueuesTool: Anthropic.Tool = {
 const updateQueuesTool: Anthropic.Tool = {
   name: "update_queues",
   description:
-    "Edit queues by id: title, categoryId (null clears the inherited default). Partial patches — omit fields you are not changing. Membership is managed with the member tools, not here.",
+    "Edit queues by id: title, categoryId (null clears the inherited default), color (6-digit hex accent, null clears). Partial patches — omit fields you are not changing. Membership is managed with the member tools, not here.",
   input_schema: {
     type: "object",
     properties: {
@@ -686,6 +734,7 @@ const updateQueuesTool: Anthropic.Tool = {
             id: { type: "string" },
             title: { type: "string" },
             categoryId: { type: ["string", "null"] },
+            color: { type: ["string", "null"] },
           },
           required: ["id"],
         },

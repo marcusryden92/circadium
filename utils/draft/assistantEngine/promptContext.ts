@@ -46,7 +46,11 @@ function buildGoalIndex(
       if (goal.categoryId) {
         parts.push(categoryNameById.get(goal.categoryId) ?? goal.categoryId);
       }
+      if (goal.plannerType === "plan") {
+        parts.push(goal.starts ? `at ${goal.starts}` : "NO START TIME SET");
+      }
       if (goal.deadline) parts.push(`due ${goal.deadline}`);
+      if (goal.completed) parts.push("completed");
       if (goal.recurrence) {
         parts.push(
           `repeats ${
@@ -157,6 +161,7 @@ function buildPrecedenceList(
           `category ${categoryNameById.get(queue.categoryId) ?? queue.categoryId}`,
         );
       }
+      if (queue.color) parts.push(queue.color);
       lines.push(`- ${parts.join(" | ")}`);
       if (queue.memberPlannerIds.length === 0) {
         lines.push("  (empty)");
@@ -268,7 +273,7 @@ Scope your work to this goal unless the user asks for something broader.
 
   return `Today's date is ${today}. Ground all deadlines relative to it.
 
-GOAL INDEX (id | type | title | category | deadline | size)
+GOAL INDEX (id | type | title | category | start/deadline | size)
 ${buildGoalIndex(currentForest, categories)}
 
 USER CATEGORIES (nesting = hierarchy; each line: id: name | color | @location | flags; "window" lines are that category's time windows)

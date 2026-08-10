@@ -329,7 +329,7 @@ describe("applyDraftForestToPlanner", () => {
     expect(byId(result, "a1").isReady).toBe(true);
   });
 
-  it("coerces a new top-level plan to a non-plan type", () => {
+  it("mints a new top-level plan with its fixed start time", () => {
     const planner = makePlanner();
     const workingForest = clone(plannerForestToJson(planner));
     workingForest.goals.push({
@@ -341,6 +341,7 @@ describe("applyDraftForestToPlanner", () => {
       priority: 0,
       isReady: null,
       categoryId: null,
+      starts: TS,
       children: [],
     });
 
@@ -351,9 +352,50 @@ describe("applyDraftForestToPlanner", () => {
       validCategoryIds: VALID_CATEGORY_IDS,
     });
 
-    expect(result.find((p) => p.title === "Dentist")!.plannerType).toBe(
-      "task",
-    );
+    const dentist = result.find((p) => p.title === "Dentist")!;
+    expect(dentist.plannerType).toBe("plan");
+    expect(dentist.starts).toBe(TS);
+    expect(dentist.isReady).toBe(true);
+  });
+
+  it("a new plan node with children is coerced to a goal", () => {
+    const planner = makePlanner();
+    const workingForest = clone(plannerForestToJson(planner));
+    workingForest.goals.push({
+      id: "",
+      title: "Not really a plan",
+      plannerType: "plan",
+      duration: 30,
+      deadline: null,
+      priority: 0,
+      isReady: null,
+      categoryId: null,
+      starts: TS,
+      children: [
+        {
+          id: "",
+          title: "step",
+          plannerType: "task",
+          duration: 10,
+          deadline: null,
+          priority: 0,
+          isReady: null,
+          categoryId: null,
+          children: [],
+        },
+      ],
+    });
+
+    const result = applyDraftForestToPlanner({
+      planner,
+      workingForest,
+      userId: USER_ID,
+      validCategoryIds: VALID_CATEGORY_IDS,
+    });
+
+    expect(
+      result.find((p) => p.title === "Not really a plan")!.plannerType,
+    ).toBe("goal");
   });
 
   it("converts a top-level plan to a task while preserving its start time", () => {
@@ -833,6 +875,136 @@ describe("applyDraftForestToPlanner", () => {
         maxMinutes: 120,
         maxMinutesPerDay: null,
       });
+    });
+  });
+
+  describe("location, notes, and completion semantics", () => {
+    const LOCATION_IDS: ReadonlySet<string> = new Set(["loc-1", "loc-2"]);
+
+    it("pins a changed location (useParentLocation off) and preserves inherit setups on unchanged values", () => {
+      const planner = [
+        ...makePlanner(),
+        row({ id: "inherits", useParentLocation: true }),
+      ];
+      const workingForest = clone(plannerForestToJson(planner));
+      workingForest.goals.find((g) => g.id === "goal-c")!.locationId = "loc-1";
+
+      const result = applyDraftForestToPlanner({
+        planner,
+        workingForest,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+        validLocationIds: LOCATION_IDS,
+      });
+
+      const moved = byId(result, "goal-c");
+      expect(moved.locationId).toBe("loc-1");
+      expect(moved.useParentLocation).toBe(false);
+      // Echoed-null location on the inheriting row leaves both columns alone.
+      expect(byId(result, "inherits").useParentLocation).toBe(true);
+    });
+
+    it("ignores an unknown locationId (existing value kept)", () => {
+      const planner = [...makePlanner(), row({ id: "at-gym", locationId: "loc-2" })];
+      const workingForest = clone(plannerForestToJson(planner));
+      workingForest.goals.find((g) => g.id === "at-gym")!.locationId = "bogus";
+
+      const result = applyDraftForestToPlanner({
+        planner,
+        workingForest,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+        validLocationIds: LOCATION_IDS,
+      });
+
+      expect(byId(result, "at-gym").locationId).toBe("loc-2");
+    });
+
+    it("notes: omitted preserves, string sets, null clears", () => {
+      const planner = [...makePlanner(), row({ id: "noted", notes: "keep me" })];
+      const working = clone(plannerForestToJson(planner));
+      // Simulate a model re-emit that omits notes entirely.
+      delete working.goals.find((g) => g.id === "noted")!.notes;
+      working.goals.find((g) => g.id === "noted")!.title = "renamed";
+
+      const preserved = applyDraftForestToPlanner({
+        planner,
+        workingForest: working,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+      });
+      expect(byId(preserved, "noted").notes).toBe("keep me");
+
+      const withEdit = clone(plannerForestToJson(preserved));
+      withEdit.goals.find((g) => g.id === "noted")!.notes = "new note";
+      const set = applyDraftForestToPlanner({
+        planner: preserved,
+        workingForest: withEdit,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+      });
+      expect(byId(set, "noted").notes).toBe("new note");
+
+      const withClear = clone(plannerForestToJson(set));
+      withClear.goals.find((g) => g.id === "noted")!.notes = null;
+      const cleared = applyDraftForestToPlanner({
+        planner: set,
+        workingForest: withClear,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+      });
+      expect(byId(cleared, "noted").notes).toBeNull();
+    });
+
+    it("completed true stamps a window, false clears timestamps and segments", () => {
+      const planner = [
+        ...makePlanner(),
+        row({
+          id: "done-split",
+          completedStartTime: TS,
+          completedEndTime: TS,
+          completedSegments: JSON.stringify([{ start: TS, end: TS }]),
+        }),
+      ];
+      const working = clone(plannerForestToJson(planner));
+      working.goals.find((g) => g.id === "goal-c")!.completed = true;
+      working.goals.find((g) => g.id === "done-split")!.completed = false;
+
+      const result = applyDraftForestToPlanner({
+        planner,
+        workingForest: working,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+      });
+
+      const done = byId(result, "goal-c");
+      expect(done.completedStartTime).not.toBeNull();
+      expect(done.completedEndTime).not.toBeNull();
+
+      const undone = byId(result, "done-split");
+      expect(undone.completedStartTime).toBeNull();
+      expect(undone.completedEndTime).toBeNull();
+      expect(undone.completedSegments).toBeNull();
+    });
+
+    it("an omitted completed flag preserves existing completion", () => {
+      const planner = [
+        ...makePlanner(),
+        row({ id: "done", completedStartTime: TS, completedEndTime: TS }),
+      ];
+      const working = clone(plannerForestToJson(planner));
+      const node = working.goals.find((g) => g.id === "done")!;
+      delete node.completed;
+      node.title = "renamed";
+
+      const result = applyDraftForestToPlanner({
+        planner,
+        workingForest: working,
+        userId: USER_ID,
+        validCategoryIds: VALID_CATEGORY_IDS,
+      });
+      expect(byId(result, "done").completedStartTime).toBe(TS);
+      expect(byId(result, "done").completedEndTime).toBe(TS);
     });
   });
 });

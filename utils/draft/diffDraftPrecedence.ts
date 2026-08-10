@@ -71,6 +71,7 @@ export function diffDraftPrecedence(
     const changedFields: string[] = [];
     if (q.title !== base.title) changedFields.push("title");
     if (q.categoryId !== base.categoryId) changedFields.push("category");
+    if ((q.color ?? null) !== (base.color ?? null)) changedFields.push("color");
     const orderChanged =
       q.memberPlannerIds.length !== base.memberPlannerIds.length ||
       q.memberPlannerIds.some((id, i) => id !== base.memberPlannerIds[i]);

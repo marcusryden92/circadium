@@ -4,12 +4,12 @@ import { updateDraftItems } from "@/utils/draft/draftForestOps";
 import type { DraftNode } from "@/utils/draft/plannerTreeToJson";
 import type { Planner } from "@/types/prisma";
 
-// The flexible repeat rule rides the draft contract on top-level task/goal
-// roots (splitting-style null semantics): the forest json emits it, ops
-// validate it (roots only, never plans, mutually exclusive with a deadline),
-// and the apply round-trips it — a retained root re-emitted without the rule
-// stops repeating, plans keep their own fixed-anchor recurrence untouched,
-// and stale nested values are healed away.
+// The repeat rule rides the draft contract on ALL top-level roots
+// (splitting-style null semantics): flexible per-period placement on
+// task/goal roots (mutually exclusive with a deadline), the fixed-anchor
+// repeat on plan roots (requires starts). The forest json emits it, ops
+// validate it, and the apply round-trips it — a retained root re-emitted
+// without the rule stops repeating, and stale nested values are healed away.
 
 const USER_ID = "test-user";
 const DAILY = JSON.stringify({ freq: "daily", interval: 1, until: null });
@@ -57,7 +57,7 @@ function findGoal(goals: DraftNode[], id: string): DraftNode {
 }
 
 describe("recurrence in the draft forest contract", () => {
-  it("emits the rule on recurring roots, null for plans and children", () => {
+  it("emits the rule on recurring roots (plans included), null for children", () => {
     const recurringTask = makePlanner("rt", { recurrence: DAILY });
     const recurringPlan = makePlanner("rp", {
       plannerType: "plan",
@@ -77,7 +77,9 @@ describe("recurrence in the draft forest contract", () => {
       interval: 1,
       until: null,
     });
-    expect(findGoal(forest.goals, "rp").recurrence).toBeNull();
+    const rp = findGoal(forest.goals, "rp");
+    expect(rp.recurrence).toEqual({ freq: "daily", interval: 1, until: null });
+    expect(rp.starts).toBe("2026-01-06T09:00:00.000Z");
     expect(findGoal(forest.goals, "g").recurrence).toEqual({
       freq: "daily",
       interval: 1,
@@ -134,7 +136,7 @@ describe("recurrence in the draft forest contract", () => {
     expect(rtAfter.recurrenceExceptions).toBeNull();
   });
 
-  it("preserves a retained plan's own recurrence outside the contract", () => {
+  it("round-trips a retained plan's recurrence and starts through the contract", () => {
     const plan = makePlanner("rp", {
       plannerType: "plan",
       starts: "2026-01-06T09:00:00.000Z",
@@ -153,6 +155,48 @@ describe("recurrence in the draft forest contract", () => {
     const row = next.find((p) => p.id === "rp")!;
     expect(row.plannerType).toBe("plan");
     expect(row.recurrence).toBe(DAILY);
+    expect(row.starts).toBe("2026-01-06T09:00:00.000Z");
+
+    // Dropping the rule from the re-emitted tree stops the repetition.
+    const cleared = plannerForestToJson(next);
+    findGoal(cleared.goals, "rp").recurrence = null;
+    const after = applyDraftForestToPlanner({
+      planner: next,
+      workingForest: cleared,
+      userId: USER_ID,
+      validCategoryIds: new Set<string>(),
+    });
+    expect(after.find((p) => p.id === "rp")!.recurrence).toBeNull();
+  });
+
+  it("moving a plan's anchor shifts its exception keys with it", () => {
+    const plan = makePlanner("rp", {
+      plannerType: "plan",
+      starts: "2026-01-06T09:00:00.000Z",
+      recurrence: DAILY,
+      recurrenceExceptions: JSON.stringify([
+        { key: "2026-01-07T10:00", type: "deleted" },
+      ]),
+    });
+    const planner = [plan];
+    const working = plannerForestToJson(planner);
+    // One hour later.
+    findGoal(working.goals, "rp").starts = "2026-01-06T10:00:00.000Z";
+
+    const next = applyDraftForestToPlanner({
+      planner,
+      workingForest: working,
+      userId: USER_ID,
+      validCategoryIds: new Set<string>(),
+    });
+    const row = next.find((p) => p.id === "rp")!;
+    expect(row.starts).toBe("2026-01-06T10:00:00.000Z");
+    const exceptions = JSON.parse(row.recurrenceExceptions!) as {
+      key: string;
+      type: string;
+    }[];
+    expect(exceptions).toHaveLength(1);
+    expect(exceptions[0].key).toBe("2026-01-07T11:00");
   });
 
   it("a repeat rule satisfies the goal readiness gate in place of a deadline", () => {
@@ -191,15 +235,16 @@ describe("recurrence in update_items", () => {
     expect(node.deadline).toBeNull();
   });
 
-  it("rejects the rule on subtasks and plans, accepts null as a clear", () => {
+  it("rejects the rule on subtasks and timeless plans, accepts it on anchored plans and null as a clear", () => {
     const goal = makePlanner("g", { plannerType: "goal" });
     const child = makePlanner("c", { parentId: "g" });
     const plan = makePlanner("p", {
       plannerType: "plan",
       starts: "2026-01-06T09:00:00.000Z",
     });
+    const timeless = makePlanner("tp", { plannerType: "plan", starts: null });
     const recurring = makePlanner("r", { recurrence: DAILY });
-    const forest = forestOf([goal, child, plan, recurring]);
+    const forest = forestOf([goal, child, plan, timeless, recurring]);
 
     const onChild = updateDraftItems(
       forest,
@@ -208,12 +253,25 @@ describe("recurrence in update_items", () => {
     );
     expect(onChild.failures).toHaveLength(1);
 
+    // An anchored plan takes the rule (fixed repeat stepping from starts).
     const onPlan = updateDraftItems(
       forest,
       [{ id: "p", recurrence: { freq: "daily" } }],
       new Set<string>(),
     );
-    expect(onPlan.failures).toHaveLength(1);
+    expect(onPlan.failures).toHaveLength(0);
+    expect(
+      onPlan.forest.goals.find((g) => g.id === "p")!.recurrence,
+    ).toEqual({ freq: "daily", interval: 1, until: null });
+
+    // A timeless plan has nothing to step from.
+    const onTimeless = updateDraftItems(
+      forest,
+      [{ id: "tp", recurrence: { freq: "daily" } }],
+      new Set<string>(),
+    );
+    expect(onTimeless.failures).toHaveLength(1);
+    expect(onTimeless.failures[0].reason).toContain("set starts first");
 
     const clear = updateDraftItems(
       forest,

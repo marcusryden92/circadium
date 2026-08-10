@@ -100,19 +100,57 @@ describe("updateDraftItems", () => {
     });
   });
 
-  it("converts a leaf task to a goal and rejects setting plannerType to plan", () => {
+  it("converts a leaf task to a goal, and a childless node to a plan with starts", () => {
     const result = updateDraftItems(
       makeForest(),
       [
         { id: "a1", plannerType: "goal" },
-        { id: "b1", plannerType: "plan" as "task" },
+        { id: "b1", plannerType: "plan", starts: "2026-01-05T10:00:00.000Z" },
       ],
       VALID_CATEGORY_IDS,
     );
     expect(result.forest.goals[0].children[0].plannerType).toBe("goal");
-    expect(result.failures).toEqual([
-      { id: "b1", reason: 'plannerType must be "task" or "goal"' },
+    expect(result.failures).toEqual([]);
+    const b1 = result.forest.goals[0].children[1].children[0];
+    expect(b1.plannerType).toBe("plan");
+    expect(b1.starts).toBe("2026-01-05T10:00:00.000Z");
+  });
+
+  it("rejects plan retype on a node with subtasks and starts on non-plans", () => {
+    const parent = updateDraftItems(
+      makeForest(),
+      // goal-a's child "basics" holds b1/b2, so it cannot become a plan.
+      [{ id: "basics", plannerType: "plan" }],
+      VALID_CATEGORY_IDS,
+    );
+    expect(parent.failures.map((f) => f.reason)).toEqual([
+      "an item with subtasks cannot become a plan — plans are single fixed-time blocks",
     ]);
+
+    const startsOnTask = updateDraftItems(
+      makeForest(),
+      [{ id: "b1", starts: "2026-01-05T10:00:00.000Z" }],
+      VALID_CATEGORY_IDS,
+    );
+    expect(startsOnTask.failures).toHaveLength(1);
+    expect(startsOnTask.failures[0].reason).toContain("plans only");
+  });
+
+  it("retyping a plan back to a task clears its working start", () => {
+    const toPlan = updateDraftItems(
+      makeForest(),
+      [{ id: "b1", plannerType: "plan", starts: "2026-01-05T10:00:00.000Z" }],
+      VALID_CATEGORY_IDS,
+    );
+    const back = updateDraftItems(
+      toPlan.forest,
+      [{ id: "b1", plannerType: "task" }],
+      VALID_CATEGORY_IDS,
+    );
+    expect(back.failures).toEqual([]);
+    const b1 = back.forest.goals[0].children[1].children[0];
+    expect(b1.plannerType).toBe("task");
+    expect(b1.starts ?? null).toBeNull();
   });
 
   it("rejects categoryId on non-roots and unknown categories, allows clearing on roots", () => {

@@ -218,11 +218,48 @@ export function useAIDraftState({
   // history list) just because it was loaded.
   const lastPersistedRef = useRef<string | null>(null);
 
+  // Latest canonical state for the conversation-switch reset below. A ref so
+  // startNewConversation/adoptConversation stay referentially stable.
+  const canonicalRef = useRef({
+    ready,
+    canonical,
+    canonicalTemplates,
+    canonicalWindows,
+    canonicalPrecedence,
+    canonicalHabits,
+  });
+  useEffect(() => {
+    canonicalRef.current = {
+      ready,
+      canonical,
+      canonicalTemplates,
+      canonicalWindows,
+      canonicalPrecedence,
+      canonicalHabits,
+    };
+  });
+
+  // Pending drafts belong to the live session, not to a conversation — the
+  // stored history is prose-only. Switching chats (History load or New chat)
+  // therefore resets the working copies, so edits from the previous session
+  // can't linger and masquerade as the loaded conversation's changes. Callers
+  // confirm with the user first when there are unsaved changes.
+  const resetWorkingToCanonical = useCallback(() => {
+    const c = canonicalRef.current;
+    if (!c.ready) return;
+    setWorkingForestState(c.canonical);
+    setWorkingTemplatesState(c.canonicalTemplates);
+    setWorkingWindowsState(c.canonicalWindows);
+    setWorkingPrecedenceState(c.canonicalPrecedence);
+    setWorkingHabitsState(c.canonicalHabits);
+  }, []);
+
   const startNewConversation = useCallback(() => {
     setConversationId(uuidv4());
     setMessages([]);
     lastPersistedRef.current = null;
-  }, []);
+    resetWorkingToCanonical();
+  }, [resetWorkingToCanonical]);
 
   const adoptConversation = useCallback(
     ({
@@ -235,8 +272,9 @@ export function useAIDraftState({
       setConversationId(id);
       setMessages(adopted);
       lastPersistedRef.current = JSON.stringify([id, adopted]);
+      resetWorkingToCanonical();
     },
-    [],
+    [resetWorkingToCanonical],
   );
 
   // Persistence: one debounced upsert whenever the chat settles (no message

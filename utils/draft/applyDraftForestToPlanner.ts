@@ -9,7 +9,12 @@ import type { DraftForest } from "./plannerForestToJson";
 import { draftTreesEqual } from "./diffDraftTree";
 import { fallbackCalendarColor, isHexColor } from "@/utils/colorUtils";
 import { serializeTaskSplitting } from "@/utils/taskSplitting";
-import { serializePlanRecurrence } from "@/utils/planRecurrence";
+import {
+  parseRecurrenceExceptions,
+  serializePlanRecurrence,
+  serializeRecurrenceExceptions,
+  shiftRecurrenceExceptions,
+} from "@/utils/planRecurrence";
 import { serializeAllowedTimes } from "@/utils/allowedTimes";
 
 // Splitting rides the full-tree contract like deadline/priority: the node's
@@ -19,16 +24,13 @@ function splittingColumn(node: DraftNode): string | null {
   return node.splitting ? serializeTaskSplitting(node.splitting) : null;
 }
 
-// The flexible repeat rule rides top-level task/goal roots only, splitting-
-// style null semantics: the node's value (null when absent) becomes the row
-// value, so a retained root re-emitted without it stops repeating. Plans keep
-// their own recurrence outside the contract (spread-preserved), and every
-// descendant stamps null — a nested rule is inert and gets healed away.
-function recurrenceColumn(
-  node: DraftNode,
-  rootType: PlannerType,
-): string | null {
-  if (rootType === PlannerType.plan) return null;
+// The repeat rule rides top-level roots only, splitting-style null semantics:
+// the node's value (null when absent) becomes the row value, so a retained
+// root re-emitted without it stops repeating. On task/goal roots it is the
+// flexible per-period rule; on plan roots the fixed-anchor repeat stepping
+// from `starts`. Every descendant stamps null EXCEPT nested plans, whose
+// fixed-anchor recurrence stays outside the contract (spread-preserved).
+function recurrenceColumn(node: DraftNode): string | null {
   const rule = node.recurrence ?? null;
   if (!rule) return null;
   return serializePlanRecurrence({
@@ -36,6 +38,94 @@ function recurrenceColumn(
     interval: rule.interval >= 1 ? Math.floor(rule.interval) : 1,
     until: rule.until ?? null,
   });
+}
+
+// A plan's fixed start instant: valid ISO or null (a timeless plan is legal —
+// the engine warns rather than erroring). Non-plan rows keep whatever the row
+// already held (the engine ignores it, and the app's own type picker leaves
+// stale fields behind the same way — so plan -> task -> plan round-trips keep
+// the time); new non-plan rows get null.
+function startsColumn(
+  node: DraftNode,
+  type: PlannerType,
+  existing?: Planner,
+): string | null {
+  if (type !== PlannerType.plan) return existing?.starts ?? null;
+  const value = node.starts ?? null;
+  return value && !isNaN(new Date(value).getTime()) ? value : null;
+}
+
+// The node's own location. An id outside the user's set is ignored (existing
+// value kept — mirrors categoryId). Changing the value pins the item there
+// (useParentLocation off); an unchanged value preserves both columns as they
+// were, so inherit-from-parent setups survive round-trips untouched.
+function resolveLocation(
+  node: DraftNode,
+  existing: Planner | undefined,
+  validLocationIds: ReadonlySet<string> | undefined,
+): { locationId: string | null; useParentLocation: boolean } {
+  const raw = node.locationId ?? null;
+  const value =
+    raw && validLocationIds && !validLocationIds.has(raw)
+      ? existing?.locationId ?? null
+      : raw;
+  if (existing && value === (existing.locationId ?? null)) {
+    return {
+      locationId: existing.locationId ?? null,
+      useParentLocation: existing.useParentLocation,
+    };
+  }
+  return { locationId: value, useParentLocation: false };
+}
+
+// Undefined-preserve fields (notes, completed): only an explicit value in the
+// working node changes the row; absence keeps whatever the row had.
+function resolveNotes(node: DraftNode, existing: Planner | undefined): string | null {
+  if (node.notes === undefined) return existing?.notes ?? null;
+  return node.notes;
+}
+
+function resolveCompletionColumns(
+  node: DraftNode,
+  existing: Planner | undefined,
+  type: PlannerType,
+  now: string,
+): {
+  completedStartTime: string | null;
+  completedEndTime: string | null;
+  completedSegments: string | null;
+} {
+  const preserved = {
+    completedStartTime: existing?.completedStartTime ?? null,
+    completedEndTime: existing?.completedEndTime ?? null,
+    completedSegments: existing?.completedSegments ?? null,
+  };
+  // Completion never applies to plans or repeating roots; the op layer
+  // refuses those, this is the save-time backstop.
+  if (node.completed === undefined || type === PlannerType.plan) {
+    return preserved;
+  }
+  if ((node.recurrence ?? null) !== null) return preserved;
+  if (node.completed === false) {
+    return {
+      completedStartTime: null,
+      completedEndTime: null,
+      // A split task with exhausted segments would still read completed, so
+      // un-completing clears the segment record too.
+      completedSegments: null,
+    };
+  }
+  if (preserved.completedStartTime && preserved.completedEndTime) {
+    return preserved;
+  }
+  const durationMinutes = Math.max(1, Math.floor(node.duration));
+  const end = new Date(now);
+  const start = new Date(end.getTime() - durationMinutes * 60_000);
+  return {
+    completedStartTime: start.toISOString(),
+    completedEndTime: end.toISOString(),
+    completedSegments: preserved.completedSegments,
+  };
 }
 
 // Placement bounds ride EVERY node (per-node, inherited down the tree), unlike
@@ -95,6 +185,9 @@ interface ApplyForestArgs {
   // The user's category ids. A model-supplied categoryId outside this set is
   // ignored (existing value kept / null for new roots).
   validCategoryIds: ReadonlySet<string>;
+  // The user's location ids; a locationId outside the set is ignored the same
+  // way. Optional — when absent, contract values are trusted as-is.
+  validLocationIds?: ReadonlySet<string>;
   // Category id -> its hex color, used to color a new goal after its own
   // color and before the deterministic palette fallback. Optional so callers
   // that don't care about coloring can omit it.
@@ -140,6 +233,7 @@ export function applyDraftForestToPlanner({
   workingForest,
   userId,
   validCategoryIds,
+  validLocationIds,
   categoryColorById,
   dependencies = [],
   nodeIdMap,
@@ -180,6 +274,7 @@ export function applyDraftForestToPlanner({
         workingTree: goal,
         userId,
         validCategoryIds,
+        validLocationIds,
         now,
         nodeIdMap,
       });
@@ -188,6 +283,7 @@ export function applyDraftForestToPlanner({
         goal,
         userId,
         validCategoryIds,
+        validLocationIds,
         categoryColorById,
         now,
         nodeIdMap,
@@ -243,6 +339,7 @@ interface ApplyTreeArgs {
   workingTree: DraftNode;
   userId: string;
   validCategoryIds: ReadonlySet<string>;
+  validLocationIds?: ReadonlySet<string>;
   now: string;
   nodeIdMap?: Map<string, string>;
 }
@@ -256,6 +353,7 @@ function applyTreeToExistingRoot({
   workingTree,
   userId,
   validCategoryIds,
+  validLocationIds,
   now,
   nodeIdMap,
 }: ApplyTreeArgs): Planner[] {
@@ -286,10 +384,11 @@ function applyTreeToExistingRoot({
 
   // Readiness cascades from the root across the whole subtree, resolved from
   // the root's (possibly retyped) type.
-  const resolvedRootType = resolveRetainedRootType(
+  // task <-> goal <-> plan retypes are all legal now that the contract
+  // carries `starts`; children still force goal.
+  const resolvedRootType = normalizePlannerType(
     workingTree.plannerType,
     workingTree.children.length > 0,
-    rootRow.plannerType,
   );
   const appliedReady = resolveAppliedReady(workingTree, resolvedRootType);
 
@@ -314,6 +413,8 @@ function applyTreeToExistingRoot({
       processNode(child, nodeId, (i + 1) * SORT_ORDER_STEP);
     });
 
+    const location = resolveLocation(node, existing, validLocationIds);
+    const completion = resolveCompletionColumns(node, existing, nodeType, now);
     const row: Planner = existing
       ? {
           ...existing,
@@ -330,10 +431,23 @@ function applyTreeToExistingRoot({
           categoryId: null,
           splitting: splittingColumn(node),
           maxMinutesPerDay: null,
-          // Recurrence is root-only, like categoryId — clearing retained
-          // descendants heals rows that predate that invariant.
-          recurrence: null,
-          recurrenceExceptions: null,
+          // The flexible rule is root-only, like categoryId — clearing
+          // retained non-plan descendants heals rows that predate that
+          // invariant. A nested PLAN keeps its fixed-anchor recurrence
+          // (outside the contract, spread-preserved).
+          recurrence:
+            nodeType === PlannerType.plan ? existing.recurrence : null,
+          recurrenceExceptions:
+            nodeType === PlannerType.plan
+              ? existing.recurrenceExceptions
+              : null,
+          starts: startsColumn(node, nodeType, existing),
+          locationId: location.locationId,
+          useParentLocation: location.useParentLocation,
+          notes: resolveNotes(node, existing),
+          completedStartTime: completion.completedStartTime,
+          completedEndTime: completion.completedEndTime,
+          completedSegments: completion.completedSegments,
           // Placement bounds ride the contract per-node now: write (or clear)
           // them instead of spread-preserving the old row value.
           earliestStartDate: earliestStartColumn(node, nodeType),
@@ -349,7 +463,7 @@ function applyTreeToExistingRoot({
           isTriaged: true,
           duration: Math.max(1, Math.floor(node.duration)),
           deadline: node.deadline,
-          starts: null,
+          starts: startsColumn(node, nodeType),
           recurrence: null,
           recurrenceExceptions: null,
           splitting: splittingColumn(node),
@@ -358,14 +472,14 @@ function applyTreeToExistingRoot({
           earliestStartDate: earliestStartColumn(node, nodeType),
           allowedTimes: allowedTimesColumn(node, nodeType),
           linkedItemId: null,
-          notes: null,
+          notes: node.notes ?? null,
           sortOrder,
           completedStartTime: null,
           completedEndTime: null,
           priority: node.priority,
           userId,
           color: nextColor,
-          locationId: null,
+          locationId: location.locationId,
           useParentLocation: false,
           categoryId: null,
           createdAt: now,
@@ -379,28 +493,57 @@ function applyTreeToExistingRoot({
   });
 
   // Recurrence and a deadline are mutually exclusive on flexible roots (each
-  // occurrence derives its deadline from its own period end); a retained plan
-  // keeps its own fixed-anchor recurrence outside the contract. Changing or
-  // clearing the rule drops the per-period skip exceptions — their keys only
-  // mean anything under the rule that minted them.
-  const nextRecurrence =
-    resolvedRootType === PlannerType.plan
-      ? rootRow.recurrence
-      : recurrenceColumn(workingTree, resolvedRootType);
-  const nextRecurrenceExceptions =
-    resolvedRootType === PlannerType.plan
-      ? rootRow.recurrenceExceptions
-      : nextRecurrence === rootRow.recurrence
-        ? rootRow.recurrenceExceptions
-        : null;
+  // occurrence derives its deadline from its own period end); a plan root's
+  // rule is the fixed-anchor repeat stepping from `starts`. Changing or
+  // clearing the rule drops per-occurrence exceptions — their keys only mean
+  // anything under the rule that minted them. Moving a plan's anchor shifts
+  // the exception keys with it (matching the calendar's "every occurrence"
+  // move), so the user's moved/deleted one-offs keep pointing at their
+  // occurrences.
+  const nextRecurrence = recurrenceColumn(workingTree);
+  const nextStarts = startsColumn(workingTree, resolvedRootType, rootRow);
+  let nextRecurrenceExceptions: string | null = null;
+  // A retype invalidates exception keys too (flexible per-period skips mean
+  // nothing on a plan and vice versa), so preservation requires the same type
+  // AND the same rule.
+  if (
+    nextRecurrence === rootRow.recurrence &&
+    resolvedRootType === rootRow.plannerType
+  ) {
+    nextRecurrenceExceptions = rootRow.recurrenceExceptions;
+    if (
+      resolvedRootType === PlannerType.plan &&
+      nextStarts !== rootRow.starts
+    ) {
+      if (nextStarts && rootRow.starts && rootRow.recurrenceExceptions) {
+        const deltaMs =
+          new Date(nextStarts).getTime() - new Date(rootRow.starts).getTime();
+        nextRecurrenceExceptions = serializeRecurrenceExceptions(
+          shiftRecurrenceExceptions(
+            parseRecurrenceExceptions(rootRow.recurrenceExceptions),
+            deltaMs,
+          ),
+        );
+      } else {
+        nextRecurrenceExceptions = null;
+      }
+    }
+  }
   const nextDeadline =
     resolvedRootType !== PlannerType.plan && nextRecurrence
       ? null
       : workingTree.deadline;
+  const rootLocation = resolveLocation(workingTree, rootRow, validLocationIds);
+  const rootCompletion = resolveCompletionColumns(
+    workingTree,
+    rootRow,
+    resolvedRootType,
+    now,
+  );
 
   // Root row: update the fields the assistant may have changed. Preserve
-  // sortOrder, parentId, locationId — those are part of root's position/identity
-  // in the outer tree, not its subtask structure.
+  // sortOrder and parentId — those are part of root's position/identity in
+  // the outer tree, not its subtask structure.
   const updatedRoot: Planner = {
     ...rootRow,
     title: workingTree.title,
@@ -415,6 +558,13 @@ function applyTreeToExistingRoot({
     maxMinutesPerDay: goalDayCapColumn(workingTree, resolvedRootType),
     recurrence: nextRecurrence,
     recurrenceExceptions: nextRecurrenceExceptions,
+    starts: nextStarts,
+    locationId: rootLocation.locationId,
+    useParentLocation: rootLocation.useParentLocation,
+    notes: resolveNotes(workingTree, rootRow),
+    completedStartTime: rootCompletion.completedStartTime,
+    completedEndTime: rootCompletion.completedEndTime,
+    completedSegments: rootCompletion.completedSegments,
     earliestStartDate: earliestStartColumn(workingTree, resolvedRootType),
     allowedTimes: allowedTimesColumn(workingTree, resolvedRootType),
     updatedAt: now,
@@ -436,6 +586,7 @@ function buildNewRootRows(
   node: DraftNode,
   userId: string,
   validCategoryIds: ReadonlySet<string>,
+  validLocationIds: ReadonlySet<string> | undefined,
   categoryColorById: ReadonlyMap<string, string | null> | undefined,
   now: string,
   nodeIdMap?: Map<string, string>,
@@ -459,7 +610,10 @@ function buildNewRootRows(
   // Readiness cascades from the root: every row in the subtree carries the
   // same value. A goal is held to the manual gate (subtasks + deadline); a
   // task/plan root defaults ready unless the assistant set it false.
-  const rootType = normalizeRootType(node.plannerType, node.children.length > 0);
+  const rootType = normalizePlannerType(
+    node.plannerType,
+    node.children.length > 0,
+  );
   const rootIsReady = resolveAppliedReady(node, rootType);
 
   function build(child: DraftNode, parentId: string, sortOrder: number): void {
@@ -483,7 +637,7 @@ function buildNewRootRows(
       isTriaged: true,
       duration: Math.max(1, Math.floor(child.duration)),
       deadline: child.deadline,
-      starts: null,
+      starts: startsColumn(child, childType),
       recurrence: null,
       recurrenceExceptions: null,
       splitting: splittingColumn(child),
@@ -492,7 +646,7 @@ function buildNewRootRows(
       earliestStartDate: earliestStartColumn(child, childType),
       allowedTimes: allowedTimesColumn(child, childType),
       linkedItemId: null,
-      notes: null,
+      notes: child.notes ?? null,
       sortOrder,
       completedStartTime: null,
       completedEndTime: null,
@@ -509,7 +663,7 @@ function buildNewRootRows(
     });
   }
 
-  const newRootRecurrence = recurrenceColumn(node, rootType);
+  const newRootRecurrence = recurrenceColumn(node);
   const rootRow: Planner = {
     id: rootId,
     title: node.title,
@@ -518,8 +672,9 @@ function buildNewRootRows(
     isReady: rootIsReady,
     isTriaged: true,
     duration: Math.max(1, Math.floor(node.duration)),
-    deadline: newRootRecurrence ? null : node.deadline,
-    starts: null,
+    deadline:
+      newRootRecurrence && rootType !== PlannerType.plan ? null : node.deadline,
+    starts: startsColumn(node, rootType),
     recurrence: newRootRecurrence,
     recurrenceExceptions: null,
     splitting: splittingColumn(node),
@@ -528,14 +683,14 @@ function buildNewRootRows(
     earliestStartDate: earliestStartColumn(node, rootType),
     allowedTimes: allowedTimesColumn(node, rootType),
     linkedItemId: null,
-    notes: null,
+    notes: node.notes ?? null,
     sortOrder: 0,
     completedStartTime: null,
     completedEndTime: null,
     priority: node.priority,
     userId,
     color: rootColor,
-    locationId: null,
+    locationId: resolveLocation(node, undefined, validLocationIds).locationId,
     useParentLocation: false,
     categoryId: rootCategoryId,
     createdAt: now,
@@ -563,32 +718,3 @@ function normalizePlannerType(
   return PlannerType.task;
 }
 
-// A retained root may now have its type edited from the assistant (task <->
-// goal, or plan -> task). The draft contract still can't MINT a plan (no
-// `starts`), so a working "plan" is honored only when the row was already a
-// plan — an unchanged plan root round-trips as "plan" and survives; anything
-// else falls back to task. Children still force goal.
-function resolveRetainedRootType(
-  working: DraftNode["plannerType"],
-  hasChildren: boolean,
-  existing: PlannerType,
-): PlannerType {
-  if (hasChildren) return PlannerType.goal;
-  if (working === "goal") return PlannerType.goal;
-  if (working === "plan") {
-    return existing === PlannerType.plan ? PlannerType.plan : PlannerType.task;
-  }
-  return PlannerType.task;
-}
-
-// New top-level rows must never be plans — a plan needs a fixed `starts`,
-// which the draft contract doesn't carry. A root with children is a goal; a
-// leaf root falls back to task (goal only when explicitly labeled).
-function normalizeRootType(
-  raw: DraftNode["plannerType"],
-  hasChildren: boolean,
-): PlannerType {
-  if (hasChildren) return PlannerType.goal;
-  if (raw === "goal") return PlannerType.goal;
-  return PlannerType.task;
-}

@@ -14,6 +14,7 @@ import {
   parseAllowedTimes,
   type AllowedTimesSettings,
 } from "@/utils/allowedTimes";
+import { plannerIsCompleted } from "@/utils/plannerCompletion";
 
 // The JSON shape sent to the AI and rendered in the right pane of the draft
 // modal. `sortOrder` is intentionally omitted — sibling order is array order,
@@ -42,13 +43,21 @@ export interface DraftNode {
   // day. Top-level goal roots only (children carry null); full-tree contract
   // like splitting: a retained goal re-emitted without it clears it.
   maxMinutesPerDay?: number | null;
-  // Flexible repeat rule for top-level task/goal roots: one auto-placed
-  // occurrence per period (the whole subtree for a goal). Splitting-style
+  // Repeat rule for top-level roots: on task/goal roots one flexibly
+  // auto-placed occurrence per period (the whole subtree for a goal); on PLAN
+  // roots the fixed-anchor repeat stepping from `starts`. Splitting-style
   // null contract — a retained root re-emitted without it stops repeating.
-  // Children always carry null, and PLAN recurrence never rides this field
-  // (a plan's fixed-anchor repeat + exceptions stay outside the contract,
-  // spread-preserved on retained rows).
+  // Children always carry null (nested plan recurrence stays outside the
+  // contract, spread-preserved on retained rows).
   recurrence?: PlanRecurrenceRule | null;
+  // The fixed start instant of a plan (ISO), null for a timeless plan. Plans
+  // only — always null on tasks and goals. Rides every plan node so the
+  // engine's anchor survives assistant round-trips.
+  starts?: string | null;
+  // The node's OWN location id (null = none set; the effective location may
+  // still inherit from an ancestor or category). Rides every node; setting a
+  // different value at save time pins the item there.
+  locationId?: string | null;
   // Placement bounds for tasks and goals (never plans). UNLIKE the root-only
   // fields above, these ride EVERY node and inherit down the tree — a leaf is
   // bound by its own values AND every ancestor's, so buildDraftNode emits them
@@ -58,6 +67,14 @@ export interface DraftNode {
   // parsed {days, ranges} shape (like splitting carries the parsed object).
   earliestStartDate?: string | null;
   allowedTimes?: AllowedTimesSettings | null;
+  // Free-form user notes. UNDEFINED-PRESERVE semantics, unlike every other
+  // field: undefined (absent) means "leave as is" at apply time, null clears,
+  // a string sets — so a model re-emit that omits notes can never wipe them.
+  notes?: string | null;
+  // Whether the item is completed (derived, type-aware — always false for
+  // plans and flexibly recurring roots). Same undefined-preserve semantics:
+  // only an explicit true/false changes completion at apply time.
+  completed?: boolean;
   children: DraftNode[];
 }
 
@@ -73,8 +90,7 @@ export function plannerTreeToJson(
     categoryId: root.categoryId ?? null,
     color: root.color ?? null,
     maxMinutesPerDay: root.maxMinutesPerDay ?? null,
-    recurrence:
-      root.plannerType === "plan" ? null : parsePlanRecurrence(root.recurrence),
+    recurrence: parsePlanRecurrence(root.recurrence),
   };
 }
 
@@ -100,6 +116,10 @@ export function buildDraftNode(planner: Planner[], node: Planner): DraftNode {
       node.plannerType === "plan" ? null : node.earliestStartDate ?? null,
     allowedTimes:
       node.plannerType === "plan" ? null : parseAllowedTimes(node.allowedTimes),
+    starts: node.plannerType === "plan" ? node.starts ?? null : null,
+    locationId: node.locationId ?? null,
+    notes: node.notes ?? null,
+    completed: plannerIsCompleted(node),
     children: orderedChildren.map((child) => buildDraftNode(planner, child)),
   };
 }

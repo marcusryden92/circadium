@@ -66,7 +66,12 @@ export function handleUpdateItems(
   state.send("status", { tool: tu.name, count: updates.length });
   return applyOpResult(
     state,
-    updateDraftItems(state.workingForest, updates, currentCategoryIds(state)),
+    updateDraftItems(
+      state.workingForest,
+      updates,
+      currentCategoryIds(state),
+      state.validLocationIds,
+    ),
     `Updated ${updates.length} item(s)`,
   );
 }

@@ -238,6 +238,7 @@ export function applyDraftPrecedence({
     // keeps whatever the row holds now (concurrent edits win there).
     let title = queue.title;
     let categoryId = queue.categoryId ?? null;
+    let color = queue.color ?? null;
     let recordChanged = false;
     if (canonicalRecord && workingRecord) {
       if (
@@ -256,6 +257,13 @@ export function applyDraftPrecedence({
         categoryId = workingRecord.categoryId;
         recordChanged = true;
       }
+      if (
+        (canonicalRecord.color ?? null) !== (workingRecord.color ?? null) &&
+        (workingRecord.color ?? null) !== (queue.color ?? null)
+      ) {
+        color = workingRecord.color ?? null;
+        recordChanged = true;
+      }
     }
 
     const target = targetsByQueueId.get(queue.id);
@@ -269,6 +277,7 @@ export function applyDraftPrecedence({
       ...queue,
       title,
       categoryId,
+      color,
       members,
       ...(recordChanged ? { updatedAt: now } : {}),
     };
@@ -284,7 +293,7 @@ export function applyDraftPrecedence({
       id: draft.id,
       title: draft.title,
       sortOrder: maxSortOrder,
-      color: null,
+      color: draft.color ?? null,
       categoryId:
         draft.categoryId !== null && validCategoryIds.has(draft.categoryId)
           ? draft.categoryId

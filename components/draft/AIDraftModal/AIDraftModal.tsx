@@ -22,6 +22,7 @@ import { TemplateWeekView } from "@/components/draft/TemplateWeekView";
 import { ChatPane } from "@/components/draft/ChatPane";
 import { ChatHistoryPopover } from "@/components/draft/ChatHistoryPopover";
 import { useAIDraftState } from "@/hooks/useAIDraftState";
+import type { DraftConversationMessage } from "@/actions/draftConversations";
 import { useAiAccess } from "@/components/ui";
 import type {
   StreamChatMessage,
@@ -181,7 +182,18 @@ export function AIDraftModal({
   const habitBucketRows = useSelector((s: RootState) => s.habits.buckets);
   const habitRows = useSelector((s: RootState) => s.habits.habits);
   const habitItemRows = useSelector((s: RootState) => s.habits.items);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  // Unsaved-changes confirm covers three destructive intents: closing the
+  // modal, starting a new chat, and loading another conversation — the latter
+  // two reset the working drafts (drafts belong to the session, not the chat).
+  const [discardIntent, setDiscardIntent] = useState<
+    | { kind: "close" }
+    | { kind: "new" }
+    | {
+        kind: "adopt";
+        payload: { id: string; messages: DraftConversationMessage[] };
+      }
+    | null
+  >(null);
   const [chatBasisPct, setChatBasisPct] = useState(50);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
@@ -780,11 +792,33 @@ export function AIDraftModal({
 
   const requestClose = useCallback(() => {
     if (hasChanges) {
-      setShowDiscardConfirm(true);
+      setDiscardIntent({ kind: "close" });
       return;
     }
     onClose();
   }, [hasChanges, onClose]);
+
+  // Chat switches reset the working drafts (useAIDraftState), so with unsaved
+  // changes they route through the same discard confirm as closing. Embedded
+  // (onboarding) has no ConfirmModal — it keeps the old direct behavior.
+  const requestNewConversation = useCallback(() => {
+    if (hasChanges && !embedded) {
+      setDiscardIntent({ kind: "new" });
+      return;
+    }
+    startNewConversation();
+  }, [hasChanges, embedded, startNewConversation]);
+
+  const requestAdoptConversation = useCallback(
+    (payload: { id: string; messages: DraftConversationMessage[] }) => {
+      if (hasChanges && !embedded) {
+        setDiscardIntent({ kind: "adopt", payload });
+        return;
+      }
+      adoptConversation(payload);
+    },
+    [hasChanges, embedded, adoptConversation],
+  );
 
   const handleSave = useCallback(() => {
     if (!hasChanges || !userId || !isLoaded) return;
@@ -816,6 +850,7 @@ export function AIDraftModal({
           workingForest,
           userId,
           validCategoryIds: new Set(categoriesForForest.map((c) => c.id)),
+          validLocationIds: new Set(locations.map((l) => l.id)),
           categoryColorById: new Map(
             categoriesForForest.map((c) => [c.id, c.color]),
           ),
@@ -924,6 +959,7 @@ export function AIDraftModal({
     planner,
     template,
     categories,
+    locations,
     queues,
     dependencies,
     updateAll,
@@ -1008,7 +1044,7 @@ export function AIDraftModal({
                 <ChatHistoryPopover
                   currentConversationId={conversationId}
                   disabled={isStreaming}
-                  onAdopt={adoptConversation}
+                  onAdopt={requestAdoptConversation}
                   onDeletedCurrent={startNewConversation}
                 />
               )}
@@ -1016,7 +1052,7 @@ export function AIDraftModal({
                 <button
                   type="button"
                   className={headerActionButton}
-                  onClick={startNewConversation}
+                  onClick={requestNewConversation}
                 >
                   New chat
                 </button>
@@ -1176,7 +1212,7 @@ export function AIDraftModal({
 
       {!embedded && (
         <ConfirmModal
-          open={showDiscardConfirm}
+          open={discardIntent !== null}
           title="Discard changes?"
           body={
             <p style={{ margin: 0 }}>
@@ -1188,16 +1224,25 @@ export function AIDraftModal({
                 hasPrecedenceChanges,
                 hasHabitChanges,
               )}
-              . Closing now will discard them.
+              .{" "}
+              {discardIntent?.kind === "new"
+                ? "Starting a new chat will discard them."
+                : discardIntent?.kind === "adopt"
+                  ? "Loading another conversation will discard them."
+                  : "Closing now will discard them."}
             </p>
           }
           confirmLabel="Discard"
           cancelLabel="Keep editing"
           tone="danger"
-          onCancel={() => setShowDiscardConfirm(false)}
+          onCancel={() => setDiscardIntent(null)}
           onConfirm={() => {
-            setShowDiscardConfirm(false);
-            onClose();
+            const intent = discardIntent;
+            setDiscardIntent(null);
+            if (!intent) return;
+            if (intent.kind === "new") startNewConversation();
+            else if (intent.kind === "adopt") adoptConversation(intent.payload);
+            else onClose();
           }}
         />
       )}

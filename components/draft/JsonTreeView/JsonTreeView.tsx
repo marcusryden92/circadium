@@ -191,6 +191,9 @@ function GoalSection({ goal, category, expanded, onToggle }: GoalSectionProps) {
           {category && (
             <CategoryBadge color={categoryColor}>{category.name}</CategoryBadge>
           )}
+          {goal.plannerType === "plan" && goal.starts && (
+            <span className={deadlineStyle}>{formatStarts(goal.starts)}</span>
+          )}
           {goal.deadline && (
             <span className={deadlineStyle}>
               {formatDeadline(goal.deadline)}
@@ -287,6 +290,9 @@ const FIELD_LABELS: Record<string, string> = {
   recurrence: "repeat rule",
   earliestStartDate: "earliest start",
   allowedTimes: "allowed times",
+  starts: "start time",
+  locationId: "location",
+  completed: "completed",
 };
 
 function formatChangedFields(fields: string[]): string {
@@ -304,4 +310,15 @@ function formatDeadline(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatStarts(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

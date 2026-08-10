@@ -76,6 +76,13 @@ function diffNode(working: DraftNode, canonical: DraftNode): DiffNode {
     recurrence: working.recurrence ?? null,
     earliestStartDate: working.earliestStartDate ?? null,
     allowedTimes: working.allowedTimes ?? null,
+    starts: working.starts ?? null,
+    locationId: working.locationId ?? null,
+    notes: working.notes === undefined ? canonical.notes ?? null : working.notes,
+    completed:
+      working.completed === undefined
+        ? canonical.completed ?? false
+        : working.completed,
     status,
     children: diffedChildren,
     changedFields,
@@ -98,6 +105,10 @@ export function markSubtree(node: DraftNode, status: DiffStatus): DiffNode {
     recurrence: node.recurrence ?? null,
     earliestStartDate: node.earliestStartDate ?? null,
     allowedTimes: node.allowedTimes ?? null,
+    starts: node.starts ?? null,
+    locationId: node.locationId ?? null,
+    notes: node.notes ?? null,
+    completed: node.completed ?? false,
     status,
     changedFields: [],
     children: node.children.map((c) => markSubtree(c, status)),
@@ -178,6 +189,23 @@ function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
     changed.push("earliestStartDate");
   if (!allowedTimesEqual(a.allowedTimes, b.allowedTimes))
     changed.push("allowedTimes");
+  if ((a.starts ?? null) !== (b.starts ?? null)) changed.push("starts");
+  if ((a.locationId ?? null) !== (b.locationId ?? null))
+    changed.push("locationId");
+  // Undefined-preserve fields read as "unchanged" when absent — an omitted
+  // value means "leave as is", so it must not diff (or dirty) anything.
+  if (
+    a.notes !== undefined &&
+    b.notes !== undefined &&
+    (a.notes ?? null) !== (b.notes ?? null)
+  )
+    changed.push("notes");
+  if (
+    a.completed !== undefined &&
+    b.completed !== undefined &&
+    a.completed !== b.completed
+  )
+    changed.push("completed");
   return changed;
 }
 

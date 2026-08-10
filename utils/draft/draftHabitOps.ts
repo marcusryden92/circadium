@@ -34,10 +34,11 @@ function cloneState(state: DraftHabitsState): DraftHabitsState {
 }
 
 // Tracked items must be top-level REPEATING rows — a habit counts occurrences,
-// so there must be occurrences to count. Task/goal roots carry their repeat
-// rule in the draft contract; plan recurrence lives outside it, so recurring
-// plans are recognized via the id set the caller derives from canonical rows.
-// Unknown or non-repeating ids fail loud so the model corrects them.
+// so there must be occurrences to count. Every root type carries its repeat
+// rule in the draft contract now (plans included), so the contract check
+// covers drafts and canonical rows alike; the canonical recurring-plan id set
+// stays as a belt-and-braces fallback. Unknown or non-repeating ids fail loud
+// so the model corrects them.
 function resolveItemIds(
   raw: unknown,
   forest: DraftForest,
@@ -63,9 +64,8 @@ function resolveItemIds(
       continue;
     }
     const repeats =
-      root.plannerType === "plan"
-        ? recurringPlanIds.has(value)
-        : (root.recurrence ?? null) !== null;
+      (root.recurrence ?? null) !== null ||
+      (root.plannerType === "plan" && recurringPlanIds.has(value));
     if (!repeats) {
       failures.push({
         id: value,

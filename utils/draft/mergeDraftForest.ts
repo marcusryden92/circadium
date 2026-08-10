@@ -34,6 +34,15 @@ export function mergeDraftForest(
         color: proposal.trustNullCategoryId
           ? goal.color ?? null
           : goal.color ?? baseGoal.color ?? null,
+        // A plan's anchor and an item's location get the same protection — a
+        // model re-emit that forgets them must not silently unschedule or
+        // relocate the item. Clearing goes through update_items (fromOps).
+        starts: proposal.trustNullCategoryId
+          ? goal.starts ?? null
+          : goal.starts ?? baseGoal.starts ?? null,
+        locationId: proposal.trustNullCategoryId
+          ? goal.locationId ?? null
+          : goal.locationId ?? baseGoal.locationId ?? null,
       });
     } else {
       appended.push(goal);

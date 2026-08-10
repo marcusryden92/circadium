@@ -12,6 +12,7 @@ import {
 } from "./draftPrecedence";
 import { normalizeTaskSplittingSettings } from "@/utils/taskSplitting";
 import { clampPriority } from "@/utils/plannerPriority";
+import { isHexColor } from "@/utils/colorUtils";
 import {
   normalizeAllowedTimesSettings,
   parseEarliestStartDate,
@@ -51,15 +52,27 @@ export interface DraftSearchHit {
 export interface DraftItemUpdate {
   id: string;
   title?: string;
-  // "task" | "goal" only — plans need a fixed start time the draft contract
-  // doesn't carry, so a node can never be turned INTO a plan here. A node with
-  // children is forced back to "goal" regardless (coerceParentTypes).
+  // "task" | "goal" | "plan". Retyping to "plan" requires a childless node
+  // (pair it with `starts` for a real fixed time); a node with children is
+  // forced back to "goal" regardless (coerceParentTypes).
   plannerType?: DraftNode["plannerType"];
   duration?: number;
   deadline?: string | null;
   priority?: number;
   isReady?: boolean | null;
   categoryId?: string | null;
+  // The plan's fixed start instant (ISO). Plans only; null makes the plan
+  // timeless (it stops appearing on the calendar until a time is set).
+  starts?: string | null;
+  // One of the user's location ids, or null to clear the item's own location.
+  locationId?: string | null;
+  // A 6-digit hex color. Top-level items only (the subtree inherits it).
+  color?: string;
+  // Free-form user notes: a string sets, null clears. Never wiped implicitly.
+  notes?: string | null;
+  // Mark done / not done. Tasks and goals only — never plans or repeating
+  // items (those complete per occurrence on the calendar).
+  completed?: boolean;
   // Chunked scheduling on schedulable leaves: an object enables/updates it,
   // null turns it off. Rejected on nodes with children (only leaves place).
   splitting?: {
@@ -189,6 +202,7 @@ export function updateDraftItems(
   forest: DraftForest,
   updates: DraftItemUpdate[],
   validCategoryIds: ReadonlySet<string>,
+  validLocationIds: ReadonlySet<string> = new Set(),
 ): DraftOpsResult {
   const next = cloneForest(forest);
   const updatedRootIds = new Set<string>();
@@ -213,14 +227,64 @@ export function updateDraftItems(
       node.title = trimmed;
     }
     if (update.plannerType !== undefined) {
-      if (update.plannerType !== "task" && update.plannerType !== "goal") {
+      if (
+        update.plannerType !== "task" &&
+        update.plannerType !== "goal" &&
+        update.plannerType !== "plan"
+      ) {
         failures.push({
           id,
-          reason: 'plannerType must be "task" or "goal"',
+          reason: 'plannerType must be "task", "goal", or "plan"',
         });
         continue;
       }
+      if (update.plannerType === "plan" && node.children.length > 0) {
+        failures.push({
+          id,
+          reason:
+            "an item with subtasks cannot become a plan — plans are single fixed-time blocks",
+        });
+        continue;
+      }
+      if (node.plannerType === "plan" && update.plannerType !== "plan") {
+        // Leaving plan-hood drops the fixed anchor; the flexible fields can
+        // then be set by later patches in this same update.
+        node.starts = null;
+      }
+      if (update.plannerType === "plan" && node.plannerType !== "plan") {
+        // Entering plan-hood drops fields that only apply to auto-scheduled
+        // work — a plan sits exactly where its start time puts it.
+        node.splitting = null;
+        node.earliestStartDate = null;
+        node.allowedTimes = null;
+        node.deadline = null;
+      }
       node.plannerType = update.plannerType;
+    }
+    if (update.starts !== undefined) {
+      if (update.starts === null) {
+        if (node.plannerType === "plan") node.starts = null;
+      } else {
+        if (node.plannerType !== "plan") {
+          failures.push({
+            id,
+            reason:
+              'a fixed start time applies to plans only — retype the item to "plan" first (or in the same update), or use a deadline/earliest start for tasks and goals',
+          });
+          continue;
+        }
+        if (
+          typeof update.starts !== "string" ||
+          isNaN(new Date(update.starts).getTime())
+        ) {
+          failures.push({
+            id,
+            reason: "starts must be an ISO date-time string or null",
+          });
+          continue;
+        }
+        node.starts = update.starts;
+      }
     }
     if (update.duration !== undefined) {
       if (typeof update.duration !== "number" || !isFinite(update.duration)) {
@@ -259,6 +323,68 @@ export function updateDraftItems(
         continue;
       }
       node.categoryId = update.categoryId;
+    }
+    if (update.locationId !== undefined) {
+      if (update.locationId === null) {
+        node.locationId = null;
+      } else {
+        if (!validLocationIds.has(update.locationId)) {
+          failures.push({ id, reason: "unknown locationId" });
+          continue;
+        }
+        node.locationId = update.locationId;
+      }
+    }
+    if (update.color !== undefined) {
+      if (!isRoot) {
+        failures.push({
+          id,
+          reason:
+            "color can only be set on top-level items (the subtree inherits it)",
+        });
+        continue;
+      }
+      if (!isHexColor(update.color)) {
+        failures.push({
+          id,
+          reason: 'color must be a 6-digit hex string like "#1976D2"',
+        });
+        continue;
+      }
+      node.color = update.color;
+    }
+    if (update.notes !== undefined) {
+      if (update.notes !== null && typeof update.notes !== "string") {
+        failures.push({ id, reason: "notes must be a string or null" });
+        continue;
+      }
+      node.notes =
+        update.notes === null || update.notes.trim().length === 0
+          ? null
+          : update.notes;
+    }
+    if (update.completed !== undefined) {
+      if (typeof update.completed !== "boolean") {
+        failures.push({ id, reason: "completed must be a boolean" });
+        continue;
+      }
+      if (node.plannerType === "plan") {
+        failures.push({
+          id,
+          reason:
+            "plans aren't completed this way — the user checks off each occurrence on the calendar",
+        });
+        continue;
+      }
+      if (isRoot && (node.recurrence ?? null) !== null) {
+        failures.push({
+          id,
+          reason:
+            "repeating items are completed per occurrence on the calendar, not as a whole",
+        });
+        continue;
+      }
+      node.completed = update.completed;
     }
     if (update.splitting !== undefined) {
       if (update.splitting === null) {
@@ -328,11 +454,11 @@ export function updateDraftItems(
           });
           continue;
         }
-        if (node.plannerType === "plan") {
+        if (node.plannerType === "plan" && (node.starts ?? null) === null) {
           failures.push({
             id,
             reason:
-              "plans repeat on their fixed schedule — this rule is for tasks and goals",
+              "a plan repeats from its fixed start time — set starts first, then the repeat rule",
           });
           continue;
         }
@@ -346,9 +472,10 @@ export function updateDraftItems(
           continue;
         }
         node.recurrence = rule;
-        // Mutually exclusive with a deadline: each occurrence is bounded by
-        // its own period end.
-        node.deadline = null;
+        // Mutually exclusive with a deadline on flexible items: each
+        // occurrence is bounded by its own period end. (A plan's rule anchors
+        // on starts; its deadline is inert.)
+        if (node.plannerType !== "plan") node.deadline = null;
       }
     }
     if (update.earliestStartDate !== undefined) {
