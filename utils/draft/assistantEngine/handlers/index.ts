@@ -41,6 +41,12 @@ import {
   handleUpdateHabits,
 } from "./habits";
 import { handleProposeGoals } from "./goals";
+import {
+  handleDemoteItem,
+  handlePromoteItem,
+  handleTriageItems,
+  handleUpdateSchedulingSettings,
+} from "./structure";
 
 // Route one tool call to its handler and return the tool_result content. The
 // handler mutates the shared turn state and mirrors changes to the caller via
@@ -115,6 +121,14 @@ export function executeTool(
       return handleRemoveHabitItems(state, tu);
     case "propose_goals":
       return handleProposeGoals(state, tu);
+    case "promote_item":
+      return handlePromoteItem(state, tu);
+    case "demote_item":
+      return handleDemoteItem(state, tu);
+    case "triage_items":
+      return handleTriageItems(state, tu);
+    case "update_scheduling_settings":
+      return handleUpdateSchedulingSettings(state, tu);
     default:
       return "Goals displayed.";
   }

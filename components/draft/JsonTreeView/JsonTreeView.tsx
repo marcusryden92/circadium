@@ -293,6 +293,7 @@ const FIELD_LABELS: Record<string, string> = {
   starts: "start time",
   locationId: "location",
   completed: "completed",
+  linkedItemId: "linked item",
 };
 
 function formatChangedFields(fields: string[]): string {

@@ -2,6 +2,8 @@ import { normalizeDraftTemplates } from "@/utils/draft/draftTemplates";
 import { normalizeDraftWindowsState } from "@/utils/draft/draftWindows";
 import { normalizeDraftPrecedenceState } from "@/utils/draft/draftPrecedence";
 import { normalizeDraftHabitsState } from "@/utils/draft/draftHabits";
+import type { DraftRelocation } from "@/utils/draft/draftRelocations";
+import { normalizeDraftSettings } from "@/utils/draft/draftSettings";
 import type { SendFn } from "./turnState";
 import type { RunAssistantTurnArgs } from "./types";
 
@@ -13,11 +15,31 @@ type EventCallbacks = Pick<
   | "onWindows"
   | "onPrecedence"
   | "onHabits"
+  | "onRelocations"
+  | "onSettings"
   | "onShow"
   | "onStatus"
   | "onDone"
   | "onError"
 >;
+
+function normalizeRelocations(raw: unknown): DraftRelocation[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: DraftRelocation[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) return null;
+    const { kind, itemId, targetRootId } = entry as Record<string, unknown>;
+    if (typeof itemId !== "string" || itemId.length === 0) return null;
+    if (kind === "promote" || kind === "triage") {
+      out.push({ kind, itemId });
+    } else if (kind === "demote" && typeof targetRootId === "string") {
+      out.push({ kind, itemId, targetRootId });
+    } else {
+      return null;
+    }
+  }
+  return out;
+}
 
 // Callback dispatch replacing the old SSE emit — same event names and payload
 // shapes, including the normalize pass the SSE client ran, so the caller's
@@ -31,6 +53,8 @@ export function createSend(callbacks: EventCallbacks): SendFn {
     onWindows,
     onPrecedence,
     onHabits,
+    onRelocations,
+    onSettings,
     onShow,
     onStatus,
     onDone,
@@ -73,6 +97,16 @@ export function createSend(callbacks: EventCallbacks): SendFn {
       case "habits": {
         const state = normalizeDraftHabitsState(data);
         if (state) onHabits(state);
+        break;
+      }
+      case "relocations": {
+        const relocations = normalizeRelocations(data);
+        if (relocations) onRelocations(relocations);
+        break;
+      }
+      case "settings": {
+        const settings = normalizeDraftSettings(data);
+        if (settings) onSettings(settings);
         break;
       }
       case "status": {

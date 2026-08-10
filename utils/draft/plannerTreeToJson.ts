@@ -75,6 +75,12 @@ export interface DraftNode {
   // plans and flexibly recurring roots). Same undefined-preserve semantics:
   // only an explicit true/false changes completion at apply time.
   completed?: boolean;
+  // Detour link: this subtask redirects the scheduler into the linked
+  // top-level item's steps (its own duration is ignored while linked).
+  // Undefined-preserve like notes — absent means "leave as is" at apply time,
+  // so a model re-emit can never silently destroy a link; null clears, a
+  // top-level item id sets (validated + save-time defended).
+  linkedItemId?: string | null;
   children: DraftNode[];
 }
 
@@ -120,6 +126,7 @@ export function buildDraftNode(planner: Planner[], node: Planner): DraftNode {
     locationId: node.locationId ?? null,
     notes: node.notes ?? null,
     completed: plannerIsCompleted(node),
+    linkedItemId: node.linkedItemId ?? null,
     children: orderedChildren.map((child) => buildDraftNode(planner, child)),
   };
 }

@@ -7,9 +7,14 @@ import {
   coerceParentTypes,
 } from "./normalizeDraftTree";
 import {
+  draftDetourAdjacency,
+  draftDetourReaches,
+  draftPrecedencePathConnects,
   draftValidateSubtreeOrder,
   type DraftPrecedenceState,
 } from "./draftPrecedence";
+import type { DraftRelocation } from "./draftRelocations";
+import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { normalizeTaskSplittingSettings } from "@/utils/taskSplitting";
 import { clampPriority } from "@/utils/plannerPriority";
 import { isHexColor } from "@/utils/colorUtils";
@@ -73,6 +78,9 @@ export interface DraftItemUpdate {
   // Mark done / not done. Tasks and goals only — never plans or repeating
   // items (those complete per occurrence on the calendar).
   completed?: boolean;
+  // Detour link on a subtask: a top-level task/goal id redirects the
+  // scheduler into that item's steps at this position; null unlinks.
+  linkedItemId?: string | null;
   // Chunked scheduling on schedulable leaves: an object enables/updates it,
   // null turns it off. Rejected on nodes with children (only leaves place).
   splitting?: {
@@ -203,6 +211,9 @@ export function updateDraftItems(
   updates: DraftItemUpdate[],
   validCategoryIds: ReadonlySet<string>,
   validLocationIds: ReadonlySet<string> = new Set(),
+  // Needed only for linkedItemId patches (a detour makes host and target
+  // mutually ordered, so existing queue/dependency paths refuse the link).
+  precedence?: DraftPrecedenceState,
 ): DraftOpsResult {
   const next = cloneForest(forest);
   const updatedRootIds = new Set<string>();
@@ -385,6 +396,73 @@ export function updateDraftItems(
         continue;
       }
       node.completed = update.completed;
+    }
+    if (update.linkedItemId !== undefined) {
+      if (update.linkedItemId === null) {
+        node.linkedItemId = null;
+      } else {
+        if (isRoot) {
+          failures.push({
+            id,
+            reason:
+              "a detour link lives on a subtask inside a goal — top-level items already schedule on their own (use a dependency to order two top-level items)",
+          });
+          continue;
+        }
+        if (node.plannerType === "plan") {
+          failures.push({
+            id,
+            reason: "a plan cannot redirect into other work",
+          });
+          continue;
+        }
+        const target = next.goals.find((g) => g.id === update.linkedItemId);
+        if (
+          !target ||
+          (target.plannerType !== "task" && target.plannerType !== "goal")
+        ) {
+          failures.push({
+            id,
+            reason:
+              "the linked target must be a top-level task or goal (use an id from the goal index)",
+          });
+          continue;
+        }
+        if ((target.recurrence ?? null) !== null) {
+          failures.push({
+            id,
+            reason:
+              "a repeating item cannot be spliced into another goal's flow — it schedules per occurrence",
+          });
+          continue;
+        }
+        if (target.id === root.id) {
+          failures.push({
+            id,
+            reason: "cannot link a subtask back to its own goal",
+          });
+          continue;
+        }
+        const adjacency = draftDetourAdjacency(next);
+        if (draftDetourReaches(adjacency, target.id, root.id)) {
+          failures.push({
+            id,
+            reason: `linking would loop — "${target.title}" already leads back into "${root.title}" through existing links`,
+          });
+          continue;
+        }
+        if (
+          precedence &&
+          draftPrecedencePathConnects(next, precedence, root.id, target.id)
+        ) {
+          failures.push({
+            id,
+            reason: `a queue or prerequisite already orders "${root.title}" and "${target.title}" — linking them would deadlock; remove that ordering first`,
+          });
+          continue;
+        }
+        node.linkedItemId = update.linkedItemId;
+      }
     }
     if (update.splitting !== undefined) {
       if (update.splitting === null) {
@@ -735,5 +813,225 @@ function mintDraftIds(node: DraftNode): DraftNode {
     categoryId: null,
     recurrence: null,
     children: node.children.map(mintDraftIds),
+  };
+}
+
+// -- Relocations across the root boundary -------------------------------------
+// Promote/demote/triage mirror the app's native helpers on the working forest
+// and hand back a relocation record; at Save the records replay on the
+// canonical planner array FIRST (replayDraftRelocations), so the regular
+// apply sees each id exactly where the working forest holds it.
+
+export interface DraftRelocationOpResult extends DraftOpsResult {
+  relocation: DraftRelocation | null;
+}
+
+// Break a subtask out as its own top-level item — the draft mirror of
+// promoteSubtree's fixups (type, readiness, category snapshot, color,
+// link clear, emptied-source unready).
+export function promoteDraftItem(
+  forest: DraftForest,
+  itemId: string,
+): DraftRelocationOpResult {
+  const fail = (reason: string): DraftRelocationOpResult => ({
+    forest,
+    updatedRootIds: [],
+    deletedGoalIds: [],
+    failures: [{ id: itemId || null, reason }],
+    relocation: null,
+  });
+
+  const next = cloneForest(forest);
+  const found = locate(next, itemId);
+  if (!found) return fail("item not found");
+  if (found.parent === null) return fail("this item is already at the top level");
+  if (found.node.plannerType === "plan") return fail("plans cannot be promoted");
+  const { node, parent, root } = found;
+
+  parent.children.splice(parent.children.indexOf(node), 1);
+
+  const hasChildren = node.children.length > 0;
+  const promoted: DraftNode = {
+    ...node,
+    plannerType: hasChildren ? "goal" : "task",
+    isReady: hasChildren
+      ? node.deadline != null
+        ? node.isReady === true
+        : false
+      : true,
+    // The effective category is snapshotted on (root-only invariant); color
+    // follows own -> old root's, with the save replay minting the
+    // deterministic fallback when both are null.
+    categoryId: root.categoryId ?? null,
+    color: node.color || root.color || null,
+    linkedItemId: null,
+  };
+  next.goals.push(promoted);
+
+  // Emptied-source fixup: a childless ready goal root would start scheduling
+  // its own stale duration.
+  if (root.children.length === 0 && root.plannerType === "goal") {
+    root.isReady = false;
+  }
+
+  return {
+    forest: coerceForestTypes(next),
+    updatedRootIds: [root.id, itemId],
+    deletedGoalIds: [],
+    failures: [],
+    relocation: { kind: "promote", itemId },
+  };
+}
+
+// Nest a top-level item as the LAST step of another top-level goal — the
+// draft mirror of demoteRootIntoGoal. Dependency edges are preserved as
+// node-level edges, so a demote that would manufacture a same-goal edge or
+// close a loop through the combined step order is refused.
+export function demoteDraftItem(
+  forest: DraftForest,
+  args: { itemId: string; targetRootId: string },
+  precedence?: DraftPrecedenceState,
+): DraftRelocationOpResult {
+  const fail = (id: string, reason: string): DraftRelocationOpResult => ({
+    forest,
+    updatedRootIds: [],
+    deletedGoalIds: [],
+    failures: [{ id, reason }],
+    relocation: null,
+  });
+
+  const next = cloneForest(forest);
+  const source = next.goals.find((g) => g.id === args.itemId);
+  if (!source) {
+    return fail(
+      args.itemId ?? "",
+      "only top-level items can be nested (id not found at the top level)",
+    );
+  }
+  if (source.plannerType === "plan") {
+    return fail(args.itemId, "plans cannot be nested");
+  }
+  if (args.itemId === args.targetRootId) {
+    return fail(args.itemId, "an item cannot be nested into itself");
+  }
+  const target = next.goals.find((g) => g.id === args.targetRootId);
+  if (!target) return fail(args.targetRootId ?? "", "target not found at the top level");
+  if (target.plannerType === "plan") {
+    return fail(args.targetRootId, "plans cannot hold subtasks");
+  }
+
+  if (precedence) {
+    const sourceIds = new Set<string>();
+    const targetIds = new Set<string>();
+    const collect = (node: DraftNode, into: Set<string>) => {
+      if (node.id) into.add(node.id);
+      for (const child of node.children) collect(child, into);
+    };
+    collect(source, sourceIds);
+    collect(target, targetIds);
+    const crosses = precedence.dependencies.some(
+      (d) =>
+        (sourceIds.has(d.predecessorId) && targetIds.has(d.successorId)) ||
+        (targetIds.has(d.predecessorId) && sourceIds.has(d.successorId)),
+    );
+    if (crosses) {
+      return fail(
+        args.itemId,
+        `a prerequisite links "${source.title}" with an item inside "${target.title}" — remove that dependency first`,
+      );
+    }
+  }
+
+  next.goals = next.goals.filter((g) => g.id !== args.itemId);
+  const demoted: DraftNode = {
+    ...source,
+    // Own-value-first resolution would pin the subtree to a stale category;
+    // the stale day cap and repeat rule are inert on nested rows but the
+    // contract would heal them later — clear all three, plus the root-only
+    // color/anchor (children inherit the target's color at save).
+    categoryId: null,
+    maxMinutesPerDay: null,
+    recurrence: null,
+    color: null,
+    starts: null,
+    isReady: null,
+  };
+  target.children.push(demoted);
+
+  const validated = coerceForestTypes(next);
+  if (precedence) {
+    const cycle = draftValidateSubtreeOrder(validated, precedence, args.targetRootId);
+    if (cycle) {
+      return fail(
+        args.itemId,
+        "nesting would create a loop through existing dependencies and step orders — the move was not applied",
+      );
+    }
+  }
+
+  return {
+    forest: validated,
+    updatedRootIds: [args.targetRootId],
+    deletedGoalIds: [args.itemId],
+    failures: [],
+    relocation: {
+      kind: "demote",
+      itemId: args.itemId,
+      targetRootId: args.targetRootId,
+    },
+  };
+}
+
+// Pull capture-inbox jots into the working forest as plain top-level tasks.
+// Entries are pre-resolved by the handler from the turn's inbox list; ids are
+// the CANONICAL row ids (the save replay flips isTriaged on those rows, so
+// the regular apply then retains them as roots).
+export function triageDraftInboxItems(
+  forest: DraftForest,
+  entries: { id: string; title: string; notes: string | null }[],
+): DraftOpsResult & { relocations: DraftRelocation[] } {
+  const next = cloneForest(forest);
+  const failures: DraftOpFailure[] = [];
+  const relocations: DraftRelocation[] = [];
+  const updatedRootIds: string[] = [];
+
+  for (const entry of entries) {
+    if (next.goals.some((g) => g.id === entry.id)) {
+      failures.push({ id: entry.id, reason: "already in the library" });
+      continue;
+    }
+    next.goals.push({
+      id: entry.id,
+      title: entry.title,
+      plannerType: "task",
+      // A placeholder the model is expected to right-size with update_items.
+      duration: 30,
+      deadline: null,
+      priority: PRIORITY_DEFAULT,
+      isReady: true,
+      categoryId: null,
+      color: null,
+      splitting: null,
+      maxMinutesPerDay: null,
+      recurrence: null,
+      earliestStartDate: null,
+      allowedTimes: null,
+      starts: null,
+      locationId: null,
+      notes: entry.notes,
+      completed: false,
+      linkedItemId: null,
+      children: [],
+    });
+    updatedRootIds.push(entry.id);
+    relocations.push({ kind: "triage", itemId: entry.id });
+  }
+
+  return {
+    forest: next,
+    updatedRootIds,
+    deletedGoalIds: [],
+    failures,
+    relocations,
   };
 }

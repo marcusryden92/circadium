@@ -7,6 +7,9 @@ import {
   type DraftPrecedenceState,
 } from "@/utils/draft/draftPrecedence";
 import { pruneDraftHabits, type DraftHabitsState } from "@/utils/draft/draftHabits";
+import type { DraftRelocation } from "@/utils/draft/draftRelocations";
+import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
+import type { DraftInboxItem } from "./types";
 
 // The one callback the tool handlers reach the caller through — the same
 // event-name/payload contract the old SSE emit used (see eventDispatch).
@@ -33,8 +36,17 @@ export interface TurnState {
   // Fetch-before-modify + draft adoption bookkeeping.
   existingGoalIds: Set<string>;
   fetchedGoalIds: Set<string>;
+  // Sanctioned cross-boundary moves (promote/demote/triage), ordered. Ops
+  // append; the full list re-emits so the caller can replay it at Save.
+  workingRelocations: DraftRelocation[];
+  // Untriaged capture jots still available to triage_items; entries leave the
+  // list as they are pulled into the forest.
+  workingInbox: DraftInboxItem[];
+  workingSettings: DraftSchedulingSettings;
   readonly recurringPlanIdSet: Set<string>;
   readonly validLocationIds: Set<string>;
+  readonly templateExceptionIds: ReadonlySet<string>;
+  readonly windowExceptionIds: ReadonlySet<string>;
   readonly send: SendFn;
 }
 

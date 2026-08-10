@@ -88,6 +88,11 @@ const updateItemsTool: Anthropic.Tool = {
               description:
                 "Mark the item done (true) or not done (false). Tasks and goals only — plans and repeating items complete per occurrence on the calendar.",
             },
+            linkedItemId: {
+              type: ["string", "null"],
+              description:
+                "Detour link, on a SUBTASK only: a top-level task/goal id whose steps the scheduler splices in at this position (the subtask's own duration is then ignored). Null unlinks. Refused when ordering already connects the two goals.",
+            },
             splitting: {
               type: ["object", "null"],
               properties: {
@@ -815,7 +820,7 @@ const removeQueueMembersTool: Anthropic.Tool = {
 const addDependenciesTool: Anthropic.Tool = {
   name: "add_dependencies",
   description:
-    "Create prerequisite links between top-level items: the predecessor must finish before the successor starts. An item may have several prerequisites (it starts after ALL finish). A link that would create a loop is refused with the closing path.",
+    "Create prerequisite links: the predecessor must finish before the successor starts. Endpoints may be top-level items OR subtasks at any depth (subtask ids from get_goal_trees/search_items) — but never two nodes of the SAME goal (its steps are already ordered by the list). An item may have several prerequisites (it starts after ALL finish). A link that would create a loop is refused with the closing path.",
   input_schema: {
     type: "object",
     properties: {
@@ -1040,6 +1045,68 @@ const removeHabitItemsTool: Anthropic.Tool = {
   } as Anthropic.Tool["input_schema"],
 };
 
+// -- Structure + settings -----------------------------------------------------
+
+const promoteItemTool: Anthropic.Tool = {
+  name: "promote_item",
+  description:
+    "Break a subtask out of its goal so it becomes its own top-level item, KEEPING its identity and connections (unlike delete + recreate). A childless item becomes a ready task; one with subtasks stays a goal. Its effective category is kept; inherited constraints and any detour link are dropped.",
+  input_schema: {
+    type: "object",
+    properties: {
+      itemId: { type: "string" },
+    },
+    required: ["itemId"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const demoteItemTool: Anthropic.Tool = {
+  name: "demote_item",
+  description:
+    "Nest an existing top-level item as the LAST step of another top-level goal, keeping its identity. Its own category, color, daily limit, and repeat rule are dropped (it inherits the goal's); queue membership is removed; prerequisite links survive as step-level links. Refused if it would create an ordering loop.",
+  input_schema: {
+    type: "object",
+    properties: {
+      itemId: { type: "string" },
+      targetGoalId: { type: "string" },
+    },
+    required: ["itemId", "targetGoalId"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const triageItemsTool: Anthropic.Tool = {
+  name: "triage_items",
+  description:
+    "Pull raw jots from the CAPTURE INBOX (ids from the live state) into the library as top-level tasks. Each arrives with a 30-minute placeholder duration — follow up with update_items to set real durations, deadlines, categories, or retype to goal/plan.",
+  input_schema: {
+    type: "object",
+    properties: {
+      itemIds: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    required: ["itemIds"],
+  } as Anthropic.Tool["input_schema"],
+};
+
+const updateSchedulingSettingsTool: Anthropic.Tool = {
+  name: "update_scheduling_settings",
+  description:
+    "Change the user's scheduling preferences: bufferTimeMinutes (breathing room after each placement, 0-240), weekStartDay (0 = Sunday .. 6 = Saturday), defaultTransportMode (DRIVING | TRANSIT | BICYCLING | WALKING — used for travel times between locations). Partial patches; only change what the user asked for.",
+  input_schema: {
+    type: "object",
+    properties: {
+      bufferTimeMinutes: { type: "integer", minimum: 0, maximum: 240 },
+      weekStartDay: { type: "integer", minimum: 0, maximum: 6 },
+      defaultTransportMode: {
+        type: "string",
+        enum: ["DRIVING", "TRANSIT", "BICYCLING", "WALKING"],
+      },
+    },
+  } as Anthropic.Tool["input_schema"],
+};
+
 // The array passed to every stream call. ORDER IS LOAD-BEARING — see the note
 // at the top of this file. Preserve it byte-for-byte when adding tools.
 export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
@@ -1076,4 +1143,8 @@ export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
   removeHabitItemsTool,
   proposeGoalsTool,
   showGoalsTool,
+  promoteItemTool,
+  demoteItemTool,
+  triageItemsTool,
+  updateSchedulingSettingsTool,
 ];

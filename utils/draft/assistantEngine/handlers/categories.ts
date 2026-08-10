@@ -135,6 +135,20 @@ export function handleUpdateTimeWindows(
   ) as DraftTimeWindowUpdate[];
   state.send("status", { tool: tu.name, count: updates.length });
   const result = updateDraftTimeWindows(state.workingWindows, updates);
+  // A day/start re-anchor drops the window's per-occurrence exceptions at
+  // Save — warn so the model can tell the user before they save.
+  const retimed = updates
+    .filter(
+      (u) =>
+        (u.day !== undefined || u.startTime !== undefined) &&
+        typeof u.id === "string" &&
+        state.windowExceptionIds.has(u.id),
+    )
+    .map((u) => u.id);
+  const warning =
+    retimed.length > 0
+      ? ` WARNING: window(s) ${retimed.join(", ")} carry hand-moved or skipped occurrences; saving this re-timing will discard those one-off changes — tell the user.`
+      : "";
   return (
     applyWindowOpResult(state, result, `Updated ${updates.length} window(s)`) +
     buildOverlapNote(
@@ -145,7 +159,8 @@ export function handleUpdateTimeWindows(
           .map((u) => u.id)
           .filter((id): id is string => typeof id === "string"),
       ),
-    )
+    ) +
+    warning
   );
 }
 

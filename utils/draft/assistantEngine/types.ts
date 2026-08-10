@@ -3,6 +3,15 @@ import type { DraftTemplate } from "@/utils/draft/draftTemplates";
 import type { DraftWindowsState } from "@/utils/draft/draftWindows";
 import type { DraftPrecedenceState } from "@/utils/draft/draftPrecedence";
 import type { DraftHabitsState } from "@/utils/draft/draftHabits";
+import type { DraftRelocation } from "@/utils/draft/draftRelocations";
+import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
+
+// A capture-inbox jot the assistant may triage into the library.
+export interface DraftInboxItem {
+  id: string;
+  title: string;
+  notes: string | null;
+}
 
 export interface StreamChatMessage {
   role: "user" | "assistant";
@@ -45,6 +54,20 @@ export interface StreamDraftArgs {
   focus: StreamDraftFocus | null;
   categories: StreamDraftCategory[];
   locations: DraftLocationRef[];
+  // Untriaged capture-inbox jots (excluding anything already triaged in the
+  // working state) — the triage_items tool pulls them into the forest.
+  currentInbox: DraftInboxItem[];
+  // Sanctioned cross-boundary moves recorded by earlier turns this session
+  // (promote/demote/triage); the engine appends and re-emits the full list.
+  currentRelocations: DraftRelocation[];
+  // The user's scheduling preferences; update_scheduling_settings patches the
+  // working copy, applied at Save through the direct settings actions.
+  currentSettings: DraftSchedulingSettings;
+  // Template / category-window ids carrying per-occurrence exceptions
+  // (hand-moved or skipped occurrences). Re-timing one of these drops its
+  // exceptions at Save, so ops warn in the tool result.
+  templateExceptionIds: string[];
+  windowExceptionIds: string[];
   today: string;
   // Programmatic session hint (e.g. "onboarding") — keys a prompt preamble.
   // Prompt-only; never alters tool/apply semantics.
@@ -69,6 +92,10 @@ export interface StreamDraftArgs {
   onPrecedence: (state: DraftPrecedenceState) => void;
   // Habit-tracker ops emit the full authoritative state — same contract.
   onHabits: (state: DraftHabitsState) => void;
+  // Relocation ops emit the full ordered record list — same contract.
+  onRelocations: (relocations: DraftRelocation[]) => void;
+  // Settings ops emit the full settings object — same contract.
+  onSettings: (settings: DraftSchedulingSettings) => void;
   // show_goals: display-only request to bring goals into the tree pane.
   onShow: (payload: { goalIds: string[]; all: boolean }) => void;
   // Tool activity (e.g. the model fetching goal trees) — for a progress hint

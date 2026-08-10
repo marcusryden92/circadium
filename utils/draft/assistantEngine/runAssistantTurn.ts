@@ -54,6 +54,11 @@ export async function runAssistantTurn({
   focus,
   categories,
   locations,
+  currentInbox,
+  currentRelocations,
+  currentSettings,
+  templateExceptionIds,
+  windowExceptionIds,
   today,
   intent,
   apiKey,
@@ -65,6 +70,8 @@ export async function runAssistantTurn({
   onWindows,
   onPrecedence,
   onHabits,
+  onRelocations,
+  onSettings,
   onShow,
   onStatus,
   onDone,
@@ -79,6 +86,8 @@ export async function runAssistantTurn({
     onWindows,
     onPrecedence,
     onHabits,
+    onRelocations,
+    onSettings,
     onShow,
     onStatus,
     onDone,
@@ -135,8 +144,16 @@ export async function runAssistantTurn({
       currentForest.goals.map((g) => g.id).filter((id) => id.length > 0),
     ),
     fetchedGoalIds,
+    workingRelocations: [...currentRelocations],
+    // Anything already triaged into the working forest is no longer inbox.
+    workingInbox: currentInbox.filter(
+      (entry) => !currentForest.goals.some((g) => g.id === entry.id),
+    ),
+    workingSettings: currentSettings,
     recurringPlanIdSet: new Set(recurringPlanIds),
     validLocationIds: new Set(locations.map((l) => l.id)),
+    templateExceptionIds: new Set(templateExceptionIds),
+    windowExceptionIds: new Set(windowExceptionIds),
     send,
   };
 
@@ -154,6 +171,10 @@ export async function runAssistantTurn({
     focus,
     categories,
     locations,
+    inbox: state.workingInbox,
+    settings: state.workingSettings,
+    templateExceptionIds: state.templateExceptionIds,
+    windowExceptionIds: state.windowExceptionIds,
     today,
   });
 

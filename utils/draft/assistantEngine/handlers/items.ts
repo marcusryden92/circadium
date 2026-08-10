@@ -71,6 +71,7 @@ export function handleUpdateItems(
       updates,
       currentCategoryIds(state),
       state.validLocationIds,
+      state.workingPrecedence,
     ),
     `Updated ${updates.length} item(s)`,
   );

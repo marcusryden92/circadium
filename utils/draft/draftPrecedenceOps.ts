@@ -1,12 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 import { isHexColor } from "@/utils/colorUtils";
-import { findCycle, findCycleInGraph } from "@/utils/precedence/findCycle";
+import { findCycleInGraph } from "@/utils/precedence/findCycle";
 import type { PrecedenceEdge } from "@/utils/precedence/types";
 import type { DraftOpFailure } from "./draftForestOps";
 import type { DraftForest } from "./plannerForestToJson";
+import type { DraftNode } from "./plannerTreeToJson";
 import {
+  buildDraftLeafGraph,
   dependencyKey,
-  draftPrecedenceEdges,
   MAX_DRAFT_QUEUE_TITLE_CHARS,
   type DraftPrecedenceState,
   type DraftQueue,
@@ -33,22 +34,38 @@ export interface DraftQueueUpdate {
   color?: string | null;
 }
 
-function titleOf(forest: DraftForest, id: string): string {
-  return forest.goals.find((g) => g.id === id)?.title ?? "an item";
+function collectNodeTitles(forest: DraftForest): Map<string, string> {
+  const titles = new Map<string, string>();
+  const walk = (node: DraftNode) => {
+    if (node.id) titles.set(node.id, node.title);
+    for (const child of node.children) walk(child);
+  };
+  for (const goal of forest.goals) walk(goal);
+  return titles;
 }
 
 // Mirror of describeCycle for draft shapes: titles joined by arrows, queue
-// hops named. The route feeds this to the model, which relays it in prose.
+// hops named. Cycles come from the leaf-granular graph, so an edge's node ids
+// (when present) name the authored endpoints and internal step-order hops are
+// folded into the arrow rather than listed. The route feeds this to the
+// model, which relays it in prose.
 function describeDraftCycle(
   cycle: PrecedenceEdge[],
   state: DraftPrecedenceState,
   forest: DraftForest,
 ): string {
-  if (cycle.length === 0) return "";
+  const authored = cycle.filter((e) => e.source !== "internal");
+  if (authored.length === 0) return "";
+  const titles = collectNodeTitles(forest);
+  const titleOf = (edge: PrecedenceEdge, which: "from" | "to") => {
+    const id =
+      which === "from" ? edge.fromNodeId ?? edge.fromId : edge.toNodeId ?? edge.toId;
+    return titles.get(id) ?? "an item";
+  };
   const queueById = new Map(state.queues.map((q) => [q.id, q]));
-  const parts: string[] = [`"${titleOf(forest, cycle[0].fromId)}"`];
-  for (const edge of cycle) {
-    const hop = `"${titleOf(forest, edge.toId)}"`;
+  const parts: string[] = [`"${titleOf(authored[0], "from")}"`];
+  for (const edge of authored) {
+    const hop = `"${titleOf(edge, "to")}"`;
     if (edge.source === "queue" && edge.queueId) {
       const queue = queueById.get(edge.queueId);
       parts.push(queue ? `${hop} (through the ${queue.title} queue)` : hop);
@@ -77,21 +94,41 @@ function endpointFailure(
   return null;
 }
 
-// Dependency adds stay root-only for this tool even though node-level edges
-// (between subtasks) exist — those are authored in the app UI for now.
-function dependencyEndpointFailure(
+// Dependency endpoints accept any node (subtasks included) — the mirror of
+// isValidDependencyEndpoint: a non-plan node whose top-level root is a
+// non-plan, non-repeating item. Returns the failure reason, or the node's
+// structural root id for the same-goal check.
+function resolveDependencyEndpoint(
   forest: DraftForest,
   plannerId: string,
-): string | null {
-  const root = forest.goals.find((g) => g.id === plannerId);
-  if (!root) {
-    return "not a top-level item — this tool links top-level tasks and goals only (node-level dependencies between subtasks exist but are authored in the app UI for now)";
+): { failure: string } | { rootId: string } {
+  for (const root of forest.goals) {
+    const found = findNodeIn(root, plannerId);
+    if (!found) continue;
+    if (found.plannerType === "plan" || root.plannerType === "plan") {
+      return {
+        failure: "a plan — plans have fixed start times and cannot be sequenced",
+      };
+    }
+    if ((root.recurrence ?? null) !== null) {
+      return {
+        failure:
+          "part of a repeating item — each occurrence schedules in its own period, so it cannot be sequenced",
+      };
+    }
+    return { rootId: root.id };
   }
-  if (root.plannerType === "plan") {
-    return "a plan — plans have fixed start times and cannot be sequenced";
-  }
-  if ((root.recurrence ?? null) !== null) {
-    return "a repeating item — each occurrence schedules in its own period, so it cannot be sequenced";
+  return {
+    failure:
+      "not in the library — use an id from the goal index or search_items (subtask ids work too)",
+  };
+}
+
+function findNodeIn(node: DraftNode, id: string): DraftNode | null {
+  if (node.id === id) return node;
+  for (const child of node.children) {
+    const found = findNodeIn(child, id);
+    if (found) return found;
   }
   return null;
 }
@@ -121,7 +158,9 @@ function memberInsertionCycle(
       return { ...q, memberPlannerIds };
     }),
   };
-  const cycle = findCycleInGraph(draftPrecedenceEdges(simulated));
+  // The leaf-granular graph so a loop closing through a goal's internal step
+  // order (via node-level dependency edges) is caught, not just root chains.
+  const cycle = findCycleInGraph(buildDraftLeafGraph(forest, simulated).edges);
   return cycle
     ? `would create a loop: ${describeDraftCycle(cycle, simulated, forest)}`
     : null;
@@ -399,7 +438,7 @@ export function moveDraftQueueMember(
       q.id === args.queueId ? { ...q, memberPlannerIds } : q,
     ),
   };
-  const cycle = findCycleInGraph(draftPrecedenceEdges(next));
+  const cycle = findCycleInGraph(buildDraftLeafGraph(forest, next).edges);
   if (cycle) {
     return {
       state,
@@ -480,14 +519,24 @@ export function addDraftDependencies(
       });
       continue;
     }
-    const predecessorFailure = dependencyEndpointFailure(forest, predecessorId);
-    if (predecessorFailure) {
-      failures.push({ id: predecessorId, reason: predecessorFailure });
+    const predecessor = resolveDependencyEndpoint(forest, predecessorId);
+    if ("failure" in predecessor) {
+      failures.push({ id: predecessorId, reason: predecessor.failure });
       continue;
     }
-    const successorFailure = dependencyEndpointFailure(forest, successorId);
-    if (successorFailure) {
-      failures.push({ id: successorId, reason: successorFailure });
+    const successor = resolveDependencyEndpoint(forest, successorId);
+    if ("failure" in successor) {
+      failures.push({ id: successorId, reason: successor.failure });
+      continue;
+    }
+    // Same-goal edges are banned outright — a goal's own steps are already
+    // totally ordered by the subtask list (root <-> own-subtask included).
+    if (predecessor.rootId === successor.rootId) {
+      failures.push({
+        id: successorId,
+        reason:
+          "both sides live in the same goal — its steps are already ordered by the subtask list (use move_item to reorder)",
+      });
       continue;
     }
     const pair = { predecessorId, successorId };
@@ -502,22 +551,19 @@ export function addDraftDependencies(
       });
       continue;
     }
-    const cycle = findCycle(draftPrecedenceEdges(current), {
-      fromId: predecessorId,
-      toId: successorId,
-      source: "dependency",
-    });
-    if (cycle) {
-      failures.push({
-        id: successorId,
-        reason: `would create a loop: ${describeDraftCycle(cycle, current, forest)}`,
-      });
-      continue;
-    }
-    current = {
+    const simulated: DraftPrecedenceState = {
       queues: current.queues,
       dependencies: [...current.dependencies, pair],
     };
+    const cycle = findCycleInGraph(buildDraftLeafGraph(forest, simulated).edges);
+    if (cycle) {
+      failures.push({
+        id: successorId,
+        reason: `would create a loop: ${describeDraftCycle(cycle, simulated, forest)}`,
+      });
+      continue;
+    }
+    current = simulated;
     changed = true;
   }
 

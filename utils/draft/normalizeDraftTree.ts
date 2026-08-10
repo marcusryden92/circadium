@@ -96,6 +96,12 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
         : undefined;
   const completed =
     typeof node.completed === "boolean" ? node.completed : undefined;
+  const linkedItemId =
+    typeof node.linkedItemId === "string" && node.linkedItemId.length > 0
+      ? node.linkedItemId
+      : node.linkedItemId === null
+        ? null
+        : undefined;
 
   const rawChildren = Array.isArray(node.children) ? node.children : [];
   const children = rawChildren
@@ -127,6 +133,7 @@ export function normalizeDraftTree(raw: unknown): DraftNode | null {
     locationId,
     notes,
     completed,
+    linkedItemId,
     children,
   };
 }

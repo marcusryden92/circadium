@@ -83,6 +83,10 @@ function diffNode(working: DraftNode, canonical: DraftNode): DiffNode {
       working.completed === undefined
         ? canonical.completed ?? false
         : working.completed,
+    linkedItemId:
+      working.linkedItemId === undefined
+        ? canonical.linkedItemId ?? null
+        : working.linkedItemId,
     status,
     children: diffedChildren,
     changedFields,
@@ -109,6 +113,7 @@ export function markSubtree(node: DraftNode, status: DiffStatus): DiffNode {
     locationId: node.locationId ?? null,
     notes: node.notes ?? null,
     completed: node.completed ?? false,
+    linkedItemId: node.linkedItemId ?? null,
     status,
     changedFields: [],
     children: node.children.map((c) => markSubtree(c, status)),
@@ -206,6 +211,12 @@ function fieldsThatChanged(a: DraftNode, b: DraftNode): string[] {
     a.completed !== b.completed
   )
     changed.push("completed");
+  if (
+    a.linkedItemId !== undefined &&
+    b.linkedItemId !== undefined &&
+    (a.linkedItemId ?? null) !== (b.linkedItemId ?? null)
+  )
+    changed.push("linkedItemId");
   return changed;
 }
 

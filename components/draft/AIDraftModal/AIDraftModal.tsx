@@ -23,6 +23,7 @@ import { ChatPane } from "@/components/draft/ChatPane";
 import { ChatHistoryPopover } from "@/components/draft/ChatHistoryPopover";
 import { useAIDraftState } from "@/hooks/useAIDraftState";
 import type { DraftConversationMessage } from "@/actions/draftConversations";
+import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useAiAccess } from "@/components/ui";
 import type {
   StreamChatMessage,
@@ -40,6 +41,22 @@ import {
 import { applyDraftTemplates } from "@/utils/draft/applyDraftTemplates";
 import { applyDraftWindows } from "@/utils/draft/applyDraftWindows";
 import { applyDraftPrecedence } from "@/utils/draft/applyDraftPrecedence";
+import { applyDraftDetours } from "@/utils/draft/applyDraftDetours";
+import {
+  replayDraftRelocations,
+  revertFailedRelocations,
+} from "@/utils/draft/draftRelocations";
+import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
+import {
+  updateUserSchedulingPreferences,
+  updateWeekStartDay,
+} from "@/actions/scheduling";
+import { updateDefaultTransportMode } from "@/actions/locations";
+import {
+  setBufferTimeMinutes,
+  setDefaultTransportMode,
+  setWeekStartDay,
+} from "@/redux/slices/schedulingSettingsSlice";
 import { templatesToDraft } from "@/utils/draft/draftTemplates";
 import { categoriesToDraftWindows } from "@/utils/draft/draftWindows";
 import { precedenceToDraft } from "@/utils/draft/draftPrecedence";
@@ -113,6 +130,7 @@ function formatDirtyDomains(
   windows: boolean,
   precedence: boolean,
   habits: boolean,
+  settings: boolean,
 ): string {
   const parts = [
     forest ? "goals" : null,
@@ -120,6 +138,7 @@ function formatDirtyDomains(
     windows ? "category windows" : null,
     precedence ? "queues" : null,
     habits ? "habits" : null,
+    settings ? "scheduling settings" : null,
   ].filter((p): p is string => p !== null);
   if (parts.length <= 1) return parts[0] ?? "plan";
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
@@ -182,6 +201,19 @@ export function AIDraftModal({
   const habitBucketRows = useSelector((s: RootState) => s.habits.buckets);
   const habitRows = useSelector((s: RootState) => s.habits.habits);
   const habitItemRows = useSelector((s: RootState) => s.habits.items);
+  const bufferTimeMinutes = useSelector(
+    (s: RootState) => s.schedulingSettings.bufferTimeMinutes,
+  );
+  const weekStartDay = useSelector(
+    (s: RootState) => s.schedulingSettings.weekStartDay,
+  );
+  const defaultTransportMode = useSelector(
+    (s: RootState) => s.schedulingSettings.defaultTransportMode,
+  );
+  const canonicalSettings = useMemo<DraftSchedulingSettings>(
+    () => ({ bufferTimeMinutes, weekStartDay, defaultTransportMode }),
+    [bufferTimeMinutes, weekStartDay, defaultTransportMode],
+  );
   // Unsaved-changes confirm covers three destructive intents: closing the
   // modal, starting a new chat, and loading another conversation — the latter
   // two reset the working drafts (drafts belong to the session, not the chat).
@@ -280,11 +312,16 @@ export function AIDraftModal({
     setWorkingPrecedence,
     workingHabits,
     setWorkingHabits,
+    workingRelocations,
+    setWorkingRelocations,
+    workingSettings,
+    setWorkingSettings,
     hasForestChanges,
     hasTemplateChanges,
     hasWindowChanges,
     hasPrecedenceChanges,
     hasHabitChanges,
+    hasSettingsChanges,
     hasChanges,
     messages,
     appendMessage,
@@ -301,6 +338,7 @@ export function AIDraftModal({
     canonicalWindows,
     canonicalPrecedence,
     canonicalHabits,
+    canonicalSettings,
     autoResume: intent !== "onboarding",
     resumeConversationId,
   });
@@ -331,12 +369,47 @@ export function AIDraftModal({
   const windowChangeCount = countWindowChanges(diffedWindows);
   const precedenceChangeCount = countPrecedenceChanges(diffedPrecedence);
   const habitChangeCount = countHabitChanges(diffedHabits);
+  const settingsChangeLines = useMemo(() => {
+    const dayName = (day: number) =>
+      [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ][day] ?? String(day);
+    const lines: string[] = [];
+    if (
+      workingSettings.bufferTimeMinutes !== canonicalSettings.bufferTimeMinutes
+    ) {
+      lines.push(
+        `Buffer time: ${canonicalSettings.bufferTimeMinutes} min → ${workingSettings.bufferTimeMinutes} min`,
+      );
+    }
+    if (workingSettings.weekStartDay !== canonicalSettings.weekStartDay) {
+      lines.push(
+        `Week starts: ${dayName(canonicalSettings.weekStartDay)} → ${dayName(workingSettings.weekStartDay)}`,
+      );
+    }
+    if (
+      workingSettings.defaultTransportMode !==
+      canonicalSettings.defaultTransportMode
+    ) {
+      lines.push(
+        `Transport: ${canonicalSettings.defaultTransportMode.toLowerCase()} → ${workingSettings.defaultTransportMode.toLowerCase()}`,
+      );
+    }
+    return lines;
+  }, [workingSettings, canonicalSettings]);
   const reviewChangeCount =
     goalChangeCount +
     templateChangeCount +
     windowChangeCount +
     precedenceChangeCount +
-    habitChangeCount;
+    habitChangeCount +
+    settingsChangeLines.length;
 
   // Member and dependency endpoints are top-level items; working roots cover
   // drafts, canonical roots cover rows deleted in the working copy.
@@ -423,6 +496,16 @@ export function AIDraftModal({
   useEffect(() => {
     workingHabitsRef.current = workingHabits;
   }, [workingHabits]);
+
+  const workingRelocationsRef = useRef(workingRelocations);
+  useEffect(() => {
+    workingRelocationsRef.current = workingRelocations;
+  }, [workingRelocations]);
+
+  const workingSettingsRef = useRef(workingSettings);
+  useEffect(() => {
+    workingSettingsRef.current = workingSettings;
+  }, [workingSettings]);
 
   const messagesRef = useRef(messages);
   useEffect(() => {
@@ -546,6 +629,19 @@ export function AIDraftModal({
             })),
         })),
         locations: locations.map((l) => ({ id: l.id, name: l.name })),
+        currentInbox: planner
+          .filter((p) => !p.parentId && !p.isTriaged)
+          .map((p) => ({ id: p.id, title: p.title, notes: p.notes ?? null })),
+        currentRelocations: workingRelocationsRef.current,
+        currentSettings: workingSettingsRef.current,
+        templateExceptionIds: template
+          .filter((t) => !!t.recurrenceExceptions)
+          .map((t) => t.id),
+        windowExceptionIds: categories.flatMap((c) =>
+          c.timeSlots
+            .filter((w) => !!w.recurrenceExceptions)
+            .map((w) => w.id),
+        ),
         // Local date, not server UTC — deadlines are user-local decisions.
         today: format(new Date(), "yyyy-MM-dd"),
         intent,
@@ -589,6 +685,11 @@ export function AIDraftModal({
           sawHabits = true;
           setWorkingHabits(state);
           autoSwitchTab("habits");
+        },
+        onRelocations: setWorkingRelocations,
+        onSettings: (settings) => {
+          setWorkingSettings(settings);
+          autoSwitchTab("week");
         },
         onStatus: ({ tool, count }) => {
           const plural = count === 1 ? "" : "s";
@@ -658,7 +759,17 @@ export function AIDraftModal({
                                                     : tool ===
                                                         "remove_dependencies"
                                                       ? `unlinking ${count} dependenc${count === 1 ? "y" : "ies"}…`
-                                                      : null;
+                                                      : tool === "promote_item"
+                                                        ? "promoting an item…"
+                                                        : tool === "demote_item"
+                                                          ? "nesting an item…"
+                                                          : tool ===
+                                                              "triage_items"
+                                                            ? `triaging ${count} item${plural}…`
+                                                            : tool ===
+                                                                "update_scheduling_settings"
+                                                              ? "updating settings…"
+                                                              : null;
           if (label) setStreamStatus(label);
         },
         onShow: ({ goalIds, all }) => {
@@ -747,10 +858,14 @@ export function AIDraftModal({
       setWorkingWindows,
       setWorkingPrecedence,
       setWorkingHabits,
+      setWorkingRelocations,
+      setWorkingSettings,
       autoSwitchTab,
       focus,
       categories,
       locations,
+      planner,
+      template,
       recurringPlanIds,
       intent,
       embedded,
@@ -825,6 +940,27 @@ export function AIDraftModal({
     // Clean domains pass undefined so their state keeps identity — one
     // updateAll call means one engine regen and one sync for all domains.
     const now = new Date().toISOString();
+    // Relocations first: sanctioned promote/demote/triage records replay on
+    // the canonical array through the app's own helpers, so the forest apply
+    // then sees every id exactly where the working forest holds it (identity
+    // preserved across the root boundary). A replay refusal (concurrent edit
+    // mid-conversation) reverts that item's working tree to canonical.
+    const relocationReplay = replayDraftRelocations({
+      planner,
+      relocations: workingRelocations,
+      queues,
+      dependencies,
+      now,
+    });
+    const plannerBase = relocationReplay.planner;
+    const forestForApply =
+      relocationReplay.failures.length > 0
+        ? revertFailedRelocations(
+            workingForest,
+            relocationReplay.failures,
+            plannerBase,
+          )
+        : workingForest;
     // Categories first: the forest apply validates goal categoryIds against
     // the SAVED category set, so a goal filed under a category created in
     // this same conversation keeps its assignment instead of being nulled.
@@ -842,20 +978,31 @@ export function AIDraftModal({
     // reference goals created this conversation, and their permanent ids only
     // exist once the forest apply mints them (reported through nodeIdMap —
     // all levels, so node-level dependency endpoints survive delete+recreate
-    // paths too).
+    // paths too). Detours apply right after the forest (both sides remap
+    // through nodeIdMap) and before precedence, whose cycle defense contracts
+    // detour components from the planner it receives.
     const nodeIdMap = new Map<string, string>();
-    const nextPlanner = hasForestChanges
-      ? applyDraftForestToPlanner({
-          planner,
-          workingForest,
-          userId,
-          validCategoryIds: new Set(categoriesForForest.map((c) => c.id)),
-          validLocationIds: new Set(locations.map((l) => l.id)),
-          categoryColorById: new Map(
-            categoriesForForest.map((c) => [c.id, c.color]),
-          ),
-          dependencies,
+    const forestDirty = hasForestChanges || workingRelocations.length > 0;
+    const nextPlanner = forestDirty
+      ? applyDraftDetours({
+          planner: applyDraftForestToPlanner({
+            planner: plannerBase,
+            workingForest: forestForApply,
+            userId,
+            validCategoryIds: new Set(categoriesForForest.map((c) => c.id)),
+            validLocationIds: new Set(locations.map((l) => l.id)),
+            categoryColorById: new Map(
+              categoriesForForest.map((c) => [c.id, c.color]),
+            ),
+            dependencies,
+            nodeIdMap,
+          }),
+          canonical,
+          working: forestForApply,
           nodeIdMap,
+          queues,
+          dependencies,
+          now,
         })
       : undefined;
     const nextTemplates = hasTemplateChanges
@@ -924,6 +1071,36 @@ export function AIDraftModal({
           .catch(() => {});
       }
     }
+    // Settings are out-of-band like habits: direct actions + slice dispatches
+    // for only the fields the assistant changed (the bufferTime dispatch also
+    // fires CalendarProvider's regen effect).
+    if (hasSettingsChanges) {
+      if (
+        workingSettings.bufferTimeMinutes !== canonicalSettings.bufferTimeMinutes
+      ) {
+        dispatch(setBufferTimeMinutes(workingSettings.bufferTimeMinutes));
+        void updateUserSchedulingPreferences({
+          bufferTimeMinutes: workingSettings.bufferTimeMinutes,
+        }).catch(() => {});
+      }
+      if (workingSettings.weekStartDay !== canonicalSettings.weekStartDay) {
+        dispatch(
+          setWeekStartDay(workingSettings.weekStartDay as WeekDayIntegers),
+        );
+        void updateWeekStartDay(workingSettings.weekStartDay).catch(() => {});
+      }
+      if (
+        workingSettings.defaultTransportMode !==
+        canonicalSettings.defaultTransportMode
+      ) {
+        dispatch(
+          setDefaultTransportMode(workingSettings.defaultTransportMode),
+        );
+        void updateDefaultTransportMode(
+          workingSettings.defaultTransportMode,
+        ).catch(() => {});
+      }
+    }
     captureEvent("assistant_draft_saved", {
       embedded,
       goals: hasForestChanges,
@@ -931,6 +1108,8 @@ export function AIDraftModal({
       categories: hasWindowChanges,
       precedence: hasPrecedenceChanges,
       habits: hasHabitChanges,
+      settings: hasSettingsChanges,
+      relocations: workingRelocations.length,
     });
     if (embedded) onSaved?.();
     else onClose();
@@ -940,16 +1119,21 @@ export function AIDraftModal({
     workingWindows,
     workingPrecedence,
     workingHabits,
+    workingRelocations,
+    workingSettings,
+    canonical,
     canonicalTemplates,
     canonicalWindows,
     canonicalPrecedence,
     canonicalHabits,
+    canonicalSettings,
     hasChanges,
     hasForestChanges,
     hasTemplateChanges,
     hasWindowChanges,
     hasPrecedenceChanges,
     hasHabitChanges,
+    hasSettingsChanges,
     habitBucketRows,
     habitRows,
     habitItemRows,
@@ -1114,8 +1298,10 @@ export function AIDraftModal({
                 onClick={() => selectTab("week")}
               >
                 <span className={paneTabLabel}>Week</span>
-                {templateChangeCount > 0 && (
-                  <span className={tabChangeCount}>{templateChangeCount}</span>
+                {templateChangeCount + settingsChangeLines.length > 0 && (
+                  <span className={tabChangeCount}>
+                    {templateChangeCount + settingsChangeLines.length}
+                  </span>
                 )}
               </button>
               <button
@@ -1192,10 +1378,21 @@ export function AIDraftModal({
               groupByCategory={showAll}
             />
           ) : activeTab === "week" ? (
-            <TemplateWeekView
-              templates={diffedTemplates}
-              locations={locations}
-            />
+            <>
+              {settingsChangeLines.length > 0 && (
+                <div style={{ padding: "8px 16px 0" }}>
+                  {settingsChangeLines.map((line) => (
+                    <p key={line} className={paneSubtitle} style={{ margin: 0 }}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <TemplateWeekView
+                templates={diffedTemplates}
+                locations={locations}
+              />
+            </>
           ) : activeTab === "windows" ? (
             <WindowsView diffed={diffedWindows} />
           ) : activeTab === "queues" ? (
@@ -1223,6 +1420,7 @@ export function AIDraftModal({
                 hasWindowChanges,
                 hasPrecedenceChanges,
                 hasHabitChanges,
+                hasSettingsChanges,
               )}
               .{" "}
               {discardIntent?.kind === "new"

@@ -3,8 +3,10 @@ import type { DraftNode } from "@/utils/draft/plannerTreeToJson";
 import type { DraftTemplate } from "@/utils/draft/draftTemplates";
 import type { DraftPrecedenceState } from "@/utils/draft/draftPrecedence";
 import type { DraftHabitsState } from "@/utils/draft/draftHabits";
+import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
 import { DAY_NAMES } from "./constants";
 import type {
+  DraftInboxItem,
   DraftLocationRef,
   StreamDraftCategory,
   StreamDraftFocus,
@@ -18,6 +20,10 @@ interface DynamicContextInput {
   focus: StreamDraftFocus | null;
   categories: StreamDraftCategory[];
   locations: DraftLocationRef[];
+  inbox: DraftInboxItem[];
+  settings: DraftSchedulingSettings;
+  templateExceptionIds: ReadonlySet<string>;
+  windowExceptionIds: ReadonlySet<string>;
   today: string;
 }
 
@@ -79,6 +85,7 @@ function buildGoalIndex(
 function buildCategoryList(
   categories: StreamDraftCategory[],
   locations: DraftLocationRef[],
+  windowExceptionIds: ReadonlySet<string>,
 ): string {
   if (categories.length === 0) return "(the user has no categories yet)";
   const locationNameById = new Map(locations.map((l) => [l.id, l.name]));
@@ -106,7 +113,11 @@ function buildCategoryList(
     lines.push(`${indent}- ${parts.join(" | ")}`);
     for (const w of category.timeSlots) {
       lines.push(
-        `${indent}  - window ${w.id} | ${DAY_NAMES[w.day]} ${w.startTime}-${w.endTime}`,
+        `${indent}  - window ${w.id} | ${DAY_NAMES[w.day]} ${w.startTime}-${w.endTime}${
+          windowExceptionIds.has(w.id)
+            ? " | HAS HAND-MOVED/SKIPPED OCCURRENCES (re-timing drops them)"
+            : ""
+        }`,
       );
     }
     for (const child of byParent.get(category.id) ?? []) {
@@ -120,6 +131,7 @@ function buildCategoryList(
 function buildTemplateList(
   templates: DraftTemplate[],
   locations: DraftLocationRef[],
+  templateExceptionIds: ReadonlySet<string>,
 ): string {
   if (templates.length === 0) return "(no weekly templates yet)";
   const locationNameById = new Map(locations.map((l) => [l.id, l.name]));
@@ -135,6 +147,9 @@ function buildTemplateList(
         location,
       ];
       if (t.color) parts.push(t.color);
+      if (templateExceptionIds.has(t.id)) {
+        parts.push("HAS HAND-MOVED/SKIPPED OCCURRENCES (re-timing drops them)");
+      }
       return `- ${parts.join(" | ")}`;
     })
     .join("\n");
@@ -245,9 +260,33 @@ export function buildDynamicContext({
   focus,
   categories,
   locations,
+  inbox,
+  settings,
+  templateExceptionIds,
+  windowExceptionIds,
   today,
 }: DynamicContextInput): string {
-  const categoryList = buildCategoryList(categories, locations);
+  const categoryList = buildCategoryList(
+    categories,
+    locations,
+    windowExceptionIds,
+  );
+
+  const inboxList =
+    inbox.length > 0
+      ? inbox
+          .map(
+            (entry) =>
+              `- ${entry.id} | "${entry.title}"${entry.notes ? ` | note: ${entry.notes}` : ""}`,
+          )
+          .join("\n")
+      : "(empty)";
+
+  const settingsList = [
+    `- buffer time between placements: ${settings.bufferTimeMinutes} min`,
+    `- week starts on: ${DAY_NAMES[settings.weekStartDay] ?? settings.weekStartDay}`,
+    `- default transport mode: ${settings.defaultTransportMode}`,
+  ].join("\n");
 
   const locationList =
     locations.length > 0
@@ -283,7 +322,13 @@ USER LOCATIONS (id: name) — read-only; you cannot create locations, only refer
 ${locationList}
 
 WEEKLY TEMPLATES (id | day start +duration | title | location | color)
-${buildTemplateList(currentTemplates, locations)}
+${buildTemplateList(currentTemplates, locations, templateExceptionIds)}
+
+CAPTURE INBOX (id | title — raw jots not yet in the library; triage_items pulls them in as tasks)
+${inboxList}
+
+SCHEDULING SETTINGS (update_scheduling_settings changes these)
+${settingsList}
 
 QUEUES AND DEPENDENCIES (queues with their members in schedule order; after the blank line, the prerequisite edges)
 ${buildPrecedenceList(currentPrecedence, currentForest, categories)}

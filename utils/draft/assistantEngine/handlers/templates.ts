@@ -76,14 +76,29 @@ export function handleUpdateTemplates(
     MAX_OP_ITEMS,
   ) as DraftTemplateUpdate[];
   state.send("status", { tool: tu.name, count: updates.length });
-  return applyTemplateOpResult(
-    state,
-    updateDraftTemplates(
-      state.workingTemplates,
-      updates,
-      state.validLocationIds,
-    ),
-    `Updated ${updates.length} template(s)`,
+  const result = updateDraftTemplates(
+    state.workingTemplates,
+    updates,
+    state.validLocationIds,
+  );
+  // Re-anchoring a template (day/start change) drops its per-occurrence
+  // exceptions at Save — the user's hand-moved or skipped occurrences. Warn
+  // so the model can tell the user before they save.
+  const retimed = updates
+    .filter(
+      (u) =>
+        (u.startDay !== undefined || u.startTime !== undefined) &&
+        typeof u.id === "string" &&
+        state.templateExceptionIds.has(u.id),
+    )
+    .map((u) => u.id);
+  const warning =
+    retimed.length > 0
+      ? ` WARNING: template(s) ${retimed.join(", ")} carry hand-moved or skipped occurrences; saving this re-timing will discard those one-off changes — tell the user.`
+      : "";
+  return (
+    applyTemplateOpResult(state, result, `Updated ${updates.length} template(s)`) +
+    warning
   );
 }
 
