@@ -1,0 +1,1 @@
+export { SuggestionWall } from "./SuggestionWall";

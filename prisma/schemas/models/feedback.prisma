@@ -1,0 +1,53 @@
+// User feedback: support messages (with an optional consented data snapshot
+// for debugging) and the public suggestion wall with per-user voting.
+
+model FeedbackReport {
+  id      String @id @default(uuid())
+  message String
+  // Full data-export blob captured at report time, stored only when the user
+  // checked the consent box. Read via the admin inspector; deletable once the
+  // report is resolved.
+  dataSnapshot Json?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt String @default(dbgenerated("(now())::text"))
+
+  @@index([userId])
+  @@map("FeedbackReports")
+}
+
+model Suggestion {
+  id    String  @id @default(uuid())
+  title String
+  body  String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  votes SuggestionVote[]
+
+  createdAt String @default(dbgenerated("(now())::text"))
+
+  @@index([userId])
+  @@map("Suggestions")
+}
+
+model SuggestionVote {
+  id String @id @default(uuid())
+  // +1 or -1; one row per user per suggestion (the unique below).
+  value Int
+
+  suggestionId String
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt String @default(dbgenerated("(now())::text"))
+
+  @@unique([suggestionId, userId])
+  @@index([userId])
+  @@map("SuggestionVotes")
+}

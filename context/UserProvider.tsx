@@ -13,6 +13,7 @@ import {
 import { fetchAllSchedulingData } from "@/actions/scheduling";
 import { retry } from "@/lib/retry";
 import { normalizeWeekStartDay } from "@/utils/calendarUtils";
+import { readInspectionTarget } from "@/utils/inspection";
 import { User } from "@/types/user";
 import React from "react";
 
@@ -24,6 +25,10 @@ export default function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status === "authenticated" && user) {
       dispatch(setUser(user));
+
+      // Snapshot impersonation hydrates these slices from the stored report
+      // instead — loading the admin's own rows here would race and overwrite.
+      if (readInspectionTarget()) return;
 
       // Load user's scheduling settings, travel times, and locations.
       // Retry through a cold-start window so these don't silently fail to load

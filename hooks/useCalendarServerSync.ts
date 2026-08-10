@@ -44,6 +44,11 @@ const useCalendarServerSync = (
     locations: SerializedLocation[];
     travelTimes: SerializedTravelTime[];
   },
+  // Hard off-switch for snapshot impersonation: Redux holds ANOTHER user's
+  // data, so a diff against the admin's own refs must never reach the server.
+  // Belt and braces — inspection also never calls initializeState, so
+  // isInitialized stays false — but the invariant deserves to be explicit.
+  disabled = false,
 ) => {
   // Previous state refs to track what the server has
   const previousPlanner = useRef<Planner[]>([]);
@@ -262,6 +267,7 @@ const useCalendarServerSync = (
   );
 
   const runSync = useCallback(async () => {
+    if (disabled) return;
     if (syncInFlightRef.current) {
       resyncQueuedRef.current = true;
       return;
@@ -386,6 +392,7 @@ const useCalendarServerSync = (
       syncInFlightRef.current = false;
     }
   }, [
+    disabled,
     hasPendingChanges,
     adoptFreshServerState,
     rollbackToLastConfirmedState,
@@ -393,7 +400,7 @@ const useCalendarServerSync = (
   ]);
 
   useEffect(() => {
-    if (!isInitialized || !userId) return;
+    if (disabled || !isInitialized || !userId) return;
     if (!hasPendingChanges(latestStateRef.current)) return;
 
     const timeout = setTimeout(() => void runSync(), 300);
@@ -415,6 +422,7 @@ const useCalendarServerSync = (
     travelTimes,
     isInitialized,
     userId,
+    disabled,
     runSync,
     hasPendingChanges,
   ]);

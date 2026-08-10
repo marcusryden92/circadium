@@ -48,6 +48,9 @@ model User {
   habitBuckets            HabitBucket[]
   habits                  Habit[]
   habitItems              HabitItem[]
+  feedbackReports         FeedbackReport[]
+  suggestions             Suggestion[]
+  suggestionVotes         SuggestionVote[]
 
   @@map("users")
 }

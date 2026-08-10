@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -66,6 +67,9 @@ import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletio
 import { getOccurrenceCompletions } from "@/actions/occurrenceCompletions";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
 import { getHabitData } from "@/actions/habits";
+import { readInspectionTarget } from "@/utils/inspection";
+import { useInspectionData } from "@/hooks/useInspectionData";
+import { InspectionBanner } from "@/components/ui/InspectionBanner";
 import type {
   ExternalCalendarSource,
   ExternalEvent,
@@ -173,6 +177,13 @@ export default function CalendarProvider({
 }) {
   const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.user.user);
+
+  // Snapshot impersonation (admin debugging): read once per mount, before any
+  // bootstrap effect fires. While set, Redux hydrates from the stored report
+  // snapshot instead of the account, the diff sync is hard-disabled, and every
+  // own-account bootstrap below is skipped.
+  const [inspectionTarget] = useState(readInspectionTarget);
+  const inspecting = inspectionTarget !== null;
 
   // Field-level subscriptions instead of whole-slice: a write to a field the
   // provider doesn't read (e.g. plannerScores after an engine run) no longer
@@ -394,9 +405,11 @@ export default function CalendarProvider({
   const { initializeState, markSynced } = useCalendarServerSync(
     userId,
     syncState,
+    inspecting,
   );
 
-  useFetchCalendarData(userId, initializeState);
+  useFetchCalendarData(inspecting ? undefined : userId, initializeState);
+  useInspectionData(inspectionTarget);
 
   // Capped background refresh of TTL-aged travel times, once per app load.
   // Silent and best-effort: the action bounds what a single session may spend
@@ -404,6 +417,7 @@ export default function CalendarProvider({
   // across sessions rather than in one large unconfirmed refetch.
   const staleTopUpFired = useRef(false);
   useEffect(() => {
+    if (inspecting) return;
     if (!isCalendarLoaded || !userId || staleTopUpFired.current) return;
     staleTopUpFired.current = true;
     void (async () => {
@@ -419,7 +433,14 @@ export default function CalendarProvider({
         // Stale values keep working until the next session's attempt.
       }
     })();
-  }, [isCalendarLoaded, userId, defaultTransportMode, dispatch, markSynced]);
+  }, [
+    isCalendarLoaded,
+    userId,
+    defaultTransportMode,
+    dispatch,
+    markSynced,
+    inspecting,
+  ]);
 
   const externalSources = useSelector(
     (state: RootState) => state.externalCalendar.sources,
@@ -435,6 +456,7 @@ export default function CalendarProvider({
   // feed keeps its lastError and stale rows.
   const externalBootstrapFired = useRef(false);
   useEffect(() => {
+    if (inspecting) return;
     if (!isCalendarLoaded || !userId || externalBootstrapFired.current) return;
     externalBootstrapFired.current = true;
     void (async () => {
@@ -466,7 +488,7 @@ export default function CalendarProvider({
         // The calendar works without external feeds until the next load.
       }
     })();
-  }, [isCalendarLoaded, userId, dispatch, updateAll]);
+  }, [isCalendarLoaded, userId, dispatch, updateAll, inspecting]);
 
   // Occurrence-completion + habit-tracker bootstrap, once per app load:
   // hydrate the completion log from the DB, then regen once so completed
@@ -476,6 +498,7 @@ export default function CalendarProvider({
   // boot.
   const occurrenceBootstrapFired = useRef(false);
   useEffect(() => {
+    if (inspecting) return;
     if (!isCalendarLoaded || !userId || occurrenceBootstrapFired.current) {
       return;
     }
@@ -496,7 +519,7 @@ export default function CalendarProvider({
         // The habits page shows its loading state until the next visit.
       }
     })();
-  }, [isCalendarLoaded, userId, dispatch, updateAll]);
+  }, [isCalendarLoaded, userId, dispatch, updateAll, inspecting]);
 
   const queueCategoryByRootId = useMemo(
     () => buildQueueCategoryByRootId(queues),
@@ -595,6 +618,9 @@ export default function CalendarProvider({
   return (
     <CalendarContext.Provider value={value}>
       {children}
+      {inspectionTarget && (
+        <InspectionBanner targetLabel={inspectionTarget.label} />
+      )}
     </CalendarContext.Provider>
   );
 }

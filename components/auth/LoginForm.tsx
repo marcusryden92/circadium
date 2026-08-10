@@ -26,12 +26,6 @@ import {
   submit,
 } from "./AuthForm.css";
 
-interface LoginResponse {
-  error?: string;
-  success?: string;
-  twoFactor?: boolean;
-}
-
 export const LoginForm = () => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
@@ -55,7 +49,7 @@ export const LoginForm = () => {
     setSuccess("");
     startTransition(() => {
       login(values, callbackUrl)
-        .then((data: LoginResponse) => {
+        .then((data) => {
           if (data?.error) {
             form.reset();
             setError(data.error);
@@ -68,7 +62,16 @@ export const LoginForm = () => {
             setShowTwoFactor(true);
           }
         })
-        .catch((err) => setError("An unexpected error occurred: " + err));
+        .catch((err: unknown) => {
+          // A successful signIn redirects by throwing NEXT_REDIRECT; the
+          // router still navigates, so it must not surface as an error.
+          if (
+            (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
+          ) {
+            return;
+          }
+          setError("An unexpected error occurred.");
+        });
     });
   };
 

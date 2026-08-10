@@ -52,6 +52,8 @@
   │   │   ├── capture/                  # Quick-entry surface
   │   │   ├── categories/               # Role + category management (top-level categories are surfaced as "Roles")
   │   │   ├── dashboard/                # Default landing after login
+  │   │   ├── feedback/                 # Support contact (message + consented data snapshot) + suggestion wall with voting
+  │   │   ├── admin/feedback/           # ADMIN-only report inspector — picker over stored FeedbackReport snapshots (structured read-only views + download) plus IMPERSONATION: "Impersonate" writes the target to sessionStorage ([utils/inspection.ts](utils/inspection.ts)) and reloads; CalendarProvider + UserProvider then hydrate ALL Redux slices from the snapshot instead of the account, every own-account bootstrap is skipped, and useCalendarServerSync takes an explicit `disabled` flag (double gate: initializeState is also never called) so nothing on screen can sync back to the admin's rows. Warning banner (InspectionBanner) with Exit; per-tab, cleared on exit/reload
   │   │   ├── graph/                    # Directional precedence graph — queues as lanes + dependencies as connectors on a time axis (_lib/graphModel + GraphCanvas)
   │   │   ├── mindmap/                  # Mind-map canvas — roles → categories → items/leaves as a zoomable radial/horizontal tree (_lib/mindmapModel + MindmapCanvas/MindmapControls)
   │   │   ├── items/[id]/               # Item detail (Overview/Subtasks/Schedule/Alerts tabs); sub-routes: subtasks/, schedule/, alerts/ (+ _components/, _hooks/useItemHandlers, _constants.ts)
@@ -78,6 +80,8 @@
   │   ├── microsoftCalendar.ts          # Microsoft Graph calendar connection: status / list calendars / add source / disconnect (no provider revoke — local delete only)
   │   ├── occurrenceCompletions.ts      # Occurrence-completion log (recurring tasks/goal leaves + plan check-offs): get/log/unlog — direct actions, outside the OCC diff sync
   │   ├── habits.ts                     # Habit trackers + buckets: getHabitData/createHabitBucket/updateHabitBucket/deleteHabitBucket/create/update/delete/addItem/removeItem (addItem rejects non-repeating items) + the assistant's batch applyHabitChanges — direct actions, outside the OCC diff sync
+  │   ├── feedback.ts                   # Support messages (FeedbackReport rows + Resend notification to support@circadium.app; optional exportUserData snapshot stored ON the row, never emailed) + suggestion wall list/create/vote/delete — direct actions, outside the OCC diff sync
+  │   ├── adminFeedback.ts              # ADMIN-gated report surface: list (snapshot presence via an id-only second query — blobs never ride the list), get snapshot blob, clear snapshot, delete report
   │   ├── dataExport.ts                 # GDPR export — exportUserData() serializes the whole account to one JSON blob (secrets excluded)
   │   ├── dataImport.ts                 # GDPR import/restore — importUserData(payload, "replace"|"add"): replace preserves ids (DB-migration restore), add remaps every id
   │   └── calendar-actions/
@@ -746,6 +750,7 @@
   | graph | `/graph` | Directional precedence graph — queue lanes + dependency connectors on a time axis (desktop nav only) |
   | mindmap | `/mindmap` | Mind-map canvas — roles → categories → items/leaves as a zoomable radial/horizontal tree (desktop nav only; distinct from the precedence graph) |
   | locations | `/locations` | Location + travel-time management |
+  | feedback | `/feedback` | Support contact + suggestion wall (admins get a header link to `/admin/feedback`, the report inspector — deliberately not in the nav) |
   | settings | `/settings` | Profile / Account / Scheduling / AI assistant / Notifications (stub) / Integrations / Data & export / Danger zone (Mobile "More" tab) |
 
   ---
@@ -898,6 +903,7 @@
   - `add_microsoft_calendar_connection` — `MicrosoftCalendarConnection` (one per user, `@unique userId`, stores the Microsoft OAuth `refreshToken` + display `email`, cascade delete). Backs the Microsoft Graph calendar flow (`app/api/integrations/microsoft/{connect,callback}`); `MICROSOFT`-kind `ExternalCalendarSource`s are created from the connection and dropped when it is disconnected. Microsoft rotates refresh tokens (persisted on every Graph fetch) and offers no revoke endpoint for consumer grants (disconnect is a local delete).
   - `retire_habit_type_add_habit_trackers` — habits become a tracking layer over ordinary planner items. New `Habits` (name, `color?`, bucket `categoryId?` SetNull, cascade with user) + `HabitItems` (`@@unique([habitId, plannerId])`, cascade on habit/planner/user) tables; every habit-typed planner row retyped to `task` (recurrence/allowedTimes/duration/splitting kept — scheduling behavior unchanged, completion keys stay valid since they anchor to the immutable `createdAt`), with one tracker minted per old row (planner id reused as habit id) linking to the retyped task; `habit` dropped from the `PlannerType` enum (retype dance across `Planners` + `EventExtendedProps`). The Prisma model `HabitCompletion` was renamed `OccurrenceCompletion` in code only (`@@map("HabitCompletions")` — no table rename); it now also logs recurring-goal leaf periods and plan check-offs. See "Flexible recurrence" in the domain model.
   - `add_habit_buckets` — `HabitBuckets` (name, `color?`, `sortOrder`, cascade with user): the habits surface's own grouping entity, distinct from the item Category tree. `Habits.categoryId` is replaced by `Habits.bucketId` (SetNull — a deleted bucket leaves its habits unsorted); every category referenced by an existing habit seeded one bucket (id, name, and color copied) before the column swap, so no habit lost its grouping.
+  - `add_feedback` — `FeedbackReports` (support message + optional `dataSnapshot` Json: the exportUserData blob captured at report time when the user consented via the feedback form's checkbox; read by the admin inspector, clearable per report once resolved), `Suggestions` + `SuggestionVotes` (`value` +1/-1, `@@unique([suggestionId, userId])` = one vote per user) — the suggestion wall. All cascade with the user; all outside the OCC diff sync.
 
   Prisma 7 requires a driver adapter at construction. Both `lib/db.ts` and `prisma/seed.ts` use `PrismaPg`. Don't construct `PrismaClient` without one.
 

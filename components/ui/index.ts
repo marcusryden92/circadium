@@ -36,6 +36,7 @@ export { UndoRedoControls } from "./UndoRedoControls";
 export { ToastStack } from "./ToastStack";
 export { SaveIndicator } from "./SaveIndicator";
 export { PageHeader } from "./PageHeader";
+export { InspectionBanner } from "./InspectionBanner";
 export { StubPage } from "./StubPage";
 export {
   AppShell,

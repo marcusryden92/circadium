@@ -113,3 +113,9 @@ export type HabitBucket = Prisma.HabitBucketGetPayload<undefined>;
 export type Habit = Prisma.HabitGetPayload<undefined>;
 
 export type HabitItem = Prisma.HabitItemGetPayload<undefined>;
+
+export type FeedbackReport = Prisma.FeedbackReportGetPayload<undefined>;
+
+export type Suggestion = Prisma.SuggestionGetPayload<undefined>;
+
+export type SuggestionVote = Prisma.SuggestionVoteGetPayload<undefined>;

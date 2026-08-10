@@ -10,6 +10,7 @@ import {
   MapPin,
   Repeat,
   GraduationCap,
+  MessageSquare,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -98,6 +99,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Tutorials",
     icon: GraduationCap,
     href: "/tutorials",
+    kind: "route",
+  },
+  {
+    key: "feedback",
+    label: "Feedback",
+    icon: MessageSquare,
+    href: "/feedback",
     kind: "route",
   },
 ];

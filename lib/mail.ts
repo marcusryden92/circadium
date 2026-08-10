@@ -185,6 +185,51 @@ export const sendAccountDeletionEmail = async (
   });
 };
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+export const sendFeedbackEmail = async ({
+  reportId,
+  userName,
+  userEmail,
+  message,
+  hasSnapshot,
+}: {
+  reportId: string;
+  userName: string | null;
+  userEmail: string;
+  message: string;
+  hasSnapshot: boolean;
+}) => {
+  const sender = userName ? `${escapeHtml(userName)} — ${escapeHtml(userEmail)}` : escapeHtml(userEmail);
+  const html = renderEmail({
+    preheader: `Support message from ${userEmail}`,
+    eyebrow: "Support",
+    heading: "New support message",
+    bodyHtml: `
+<p style="margin:0 0 12px;"><strong>From:</strong> ${sender}</p>
+<div style="margin:0 0 16px;padding:14px 16px;background:${palette.paper};border:1px solid ${palette.cardStroke};border-radius:12px;white-space:pre-wrap;">${escapeHtml(message)}</div>
+<p style="margin:0;font-size:13px;color:${palette.muted};">Report ${escapeHtml(reportId)} · ${
+      hasSnapshot
+        ? "data snapshot attached — open it in the admin feedback view"
+        : "no data snapshot"
+    }.</p>
+`,
+  });
+
+  await resend.emails.send({
+    from: "support@circadium.app",
+    to: "support@circadium.app",
+    replyTo: userEmail,
+    subject: `Support: ${message.slice(0, 60)}${message.length > 60 ? "…" : ""}`,
+    html,
+  });
+};
+
 export const sendPasswordResetEmail = async (email: string, token: string) => {
   const resetLink = `${domain}/auth/new-password?token=${token}`;
   const html = renderEmail({
