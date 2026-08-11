@@ -11,6 +11,7 @@ import type { Prisma } from "@/generated/client";
 const MAX_CONVERSATIONS = 50;
 const MAX_MESSAGES = 200;
 const MAX_MESSAGE_CHARS = 20_000;
+const MAX_TOOL_NOTE_CHARS = 1_000;
 const MAX_TITLE_CHARS = 80;
 const MAX_ID_CHARS = 64;
 
@@ -18,6 +19,9 @@ export interface DraftConversationMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  // App-authored ledger of the tools that actually ran in an assistant turn;
+  // fed back to the model with the prose so later turns see ground truth.
+  toolNote?: string;
 }
 
 export interface DraftConversationSummary {
@@ -37,11 +41,18 @@ function sanitizeMessages(raw: unknown): DraftConversationMessage[] {
   const messages: DraftConversationMessage[] = [];
   for (const entry of raw) {
     if (typeof entry !== "object" || entry === null) continue;
-    const { id, role, content } = entry as Record<string, unknown>;
+    const { id, role, content, toolNote } = entry as Record<string, unknown>;
     if (typeof id !== "string" || id.length === 0) continue;
     if (role !== "user" && role !== "assistant") continue;
     if (typeof content !== "string" || content.trim().length === 0) continue;
-    messages.push({ id, role, content: content.slice(0, MAX_MESSAGE_CHARS) });
+    messages.push({
+      id,
+      role,
+      content: content.slice(0, MAX_MESSAGE_CHARS),
+      ...(typeof toolNote === "string" && toolNote.trim().length > 0
+        ? { toolNote: toolNote.slice(0, MAX_TOOL_NOTE_CHARS) }
+        : {}),
+    });
     if (messages.length >= MAX_MESSAGES) break;
   }
   return messages;

@@ -127,6 +127,36 @@ function buildCategoryList(
   return lines.join("\n");
 }
 
+// End times are precomputed for the model: an overnight block's end lands on
+// the NEXT day, and leaving that arithmetic to the model produces wrong
+// "which morning does this collide with" conclusions.
+function blockEndLabel(startTime: string, durationMinutes: number): string {
+  const [h, m] = startTime.split(":").map(Number);
+  const total = h * 60 + m + durationMinutes;
+  const hh = String(Math.floor((total % 1440) / 60)).padStart(2, "0");
+  const mm = String(total % 60).padStart(2, "0");
+  return total >= 1440 ? `${hh}:${mm} next day` : `${hh}:${mm}`;
+}
+
+function movedOccurrenceEnd(
+  newStart: string,
+  durationMinutes: number,
+): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(newStart);
+  if (!match) return null;
+  const end = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]) + durationMinutes,
+  );
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(
+    end.getDate(),
+  )}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+}
+
 function buildTemplateList(
   templates: DraftTemplate[],
   locations: DraftLocationRef[],
@@ -140,23 +170,22 @@ function buildTemplateList(
         : "Anywhere";
       const parts = [
         t.id,
-        `${DAY_NAMES[t.startDay]} ${t.startTime} +${t.duration}min`,
+        `${DAY_NAMES[t.startDay]} ${t.startTime}-${blockEndLabel(t.startTime, t.duration)} (+${t.duration}min)`,
         `"${t.title}"`,
         location,
       ];
       if (t.color) parts.push(t.color);
       if (t.exceptions.length > 0) {
         const detail = t.exceptions
-          .map((e) =>
-            e.type === "deleted"
-              ? `skipped ${e.key.slice(0, 10)}`
-              : `${e.key.slice(0, 10)} moved to ${e.newStart}${
-                  e.durationMinutes !== undefined
-                    ? ` (+${e.durationMinutes}min)`
-                    : ""
-                }`,
-          )
-          .join(", ");
+          .map((e) => {
+            if (e.type === "deleted") return `skipped ${e.key.slice(0, 10)}`;
+            const duration = e.durationMinutes ?? t.duration;
+            const end = movedOccurrenceEnd(e.newStart, duration);
+            return `${e.key.slice(0, 10)} occurrence moved: starts ${e.newStart}${
+              end ? `, ends ${end}` : ` (+${duration}min)`
+            }`;
+          })
+          .join("; ");
         parts.push(
           `one-off occurrences: ${detail} (re-timing the series drops these)`,
         );
@@ -331,7 +360,7 @@ ${categoryList}
 USER LOCATIONS (id: name) — read-only; you cannot create locations, only reference these ids
 ${locationList}
 
-WEEKLY TEMPLATES (id | day start +duration | title | location | color; "one-off occurrences" are per-date skips/moves managed via update_template_exceptions)
+WEEKLY TEMPLATES (id | day start-end (+duration) | title | location | color; "one-off occurrences" are per-date skips/moves managed via update_template_exceptions — end times are precomputed, trust them)
 ${buildTemplateList(currentTemplates, locations)}
 
 CAPTURE INBOX (id | title — raw jots not yet in the library; triage_items pulls them in as tasks)

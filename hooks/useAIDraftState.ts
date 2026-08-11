@@ -40,6 +40,11 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  // App-authored ledger of the tools that actually ran in this assistant
+  // turn. Appended to the prose when history is sent to the model (so a later
+  // turn can tell real edits from unbacked claims); never rendered in the
+  // chat bubble.
+  toolNote?: string;
   // Streaming assistant messages render with a live indicator until the
   // response completes.
   streaming?: boolean;
@@ -330,7 +335,12 @@ export function useAIDraftState({
     if (messages.some((m) => m.streaming)) return;
     const settled: DraftConversationMessage[] = messages
       .filter((m) => m.content.trim().length > 0)
-      .map(({ id, role, content }) => ({ id, role, content }));
+      .map(({ id, role, content, toolNote }) => ({
+        id,
+        role,
+        content,
+        ...(toolNote ? { toolNote } : {}),
+      }));
     if (settled.length === 0) return;
     const serialized = JSON.stringify([conversationId, settled]);
     if (serialized === lastPersistedRef.current) return;

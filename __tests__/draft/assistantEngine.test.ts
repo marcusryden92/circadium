@@ -147,7 +147,10 @@ describe("runAssistantTurn", () => {
     expect(
       (callbacks.onText.mock.calls as [string][]).map((c) => c[0]).join(""),
     ).toBe("Hello there.");
-    expect(callbacks.onDone).toHaveBeenCalledWith("end_turn");
+    expect(callbacks.onDone).toHaveBeenCalledWith({
+      stopReason: "end_turn",
+      toolsRun: [],
+    });
     expect(callbacks.onError).not.toHaveBeenCalled();
     expect(mockCreateClient).toHaveBeenCalledWith("sk-ant-test", undefined);
   });
@@ -209,7 +212,10 @@ describe("runAssistantTurn", () => {
       tool: "update_items",
       count: 1,
     });
-    expect(callbacks.onDone).toHaveBeenCalledWith("end_turn");
+    expect(callbacks.onDone).toHaveBeenCalledWith({
+      stopReason: "end_turn",
+      toolsRun: [{ name: "update_items", count: 1 }],
+    });
     expect(callbacks.onError).not.toHaveBeenCalled();
   });
 

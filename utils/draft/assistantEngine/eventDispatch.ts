@@ -127,9 +127,14 @@ export function createSend(callbacks: EventCallbacks): SendFn {
         });
         break;
       }
-      case "done":
-        onDone((data as { stopReason: string | null }).stopReason);
+      case "done": {
+        const { stopReason, toolsRun } = data as {
+          stopReason: string | null;
+          toolsRun?: { name: string; count: number }[];
+        };
+        onDone({ stopReason, toolsRun: toolsRun ?? [] });
         break;
+      }
       case "error":
         onError((data as { message: string }).message);
         break;

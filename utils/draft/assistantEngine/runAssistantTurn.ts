@@ -209,6 +209,11 @@ export async function runAssistantTurn({
     // when there is no prior history (nothing to cache across turns yet).
     const historyBoundaryIndex = messages.length - 2;
 
+    // Ground-truth ledger of executed tools, reported through onDone. Stored
+    // chat history is prose-only, so without this a later turn cannot tell
+    // whether a past reply's claims were backed by real tool calls.
+    const toolRunCounts = new Map<string, number>();
+
     // Per-send usage totals, logged in dev to verify caching engages
     // (cache_read_input_tokens should be > 0 from iteration 2 onward).
     const usageTotals = {
@@ -351,6 +356,10 @@ export async function runAssistantTurn({
       );
       if (toolUses.length === 0) break;
 
+      for (const tu of toolUses) {
+        toolRunCounts.set(tu.name, (toolRunCounts.get(tu.name) ?? 0) + 1);
+      }
+
       const results: Anthropic.ToolResultBlockParam[] = toolUses.map((tu) => ({
         type: "tool_result",
         tool_use_id: tu.id,
@@ -367,7 +376,10 @@ export async function runAssistantTurn({
       );
     }
 
-    send("done", { stopReason });
+    send("done", {
+      stopReason,
+      toolsRun: [...toolRunCounts].map(([name, count]) => ({ name, count })),
+    });
   } catch (err) {
     // User-initiated abort is a normal exit, not an error to report.
     if (!signal?.aborted) {

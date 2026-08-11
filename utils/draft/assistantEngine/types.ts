@@ -101,7 +101,13 @@ export interface StreamDraftArgs {
   // Tool activity (e.g. the model fetching goal trees) — for a progress hint
   // while a tool round trip runs.
   onStatus?: (payload: { tool: string; count: number }) => void;
-  onDone: (stopReason: string | null) => void;
+  // stopReason plus the ground-truth ledger of tools that actually executed
+  // this turn. The caller records the ledger into the stored history so later
+  // turns can distinguish real edits from prose claims.
+  onDone: (payload: {
+    stopReason: string | null;
+    toolsRun: { name: string; count: number }[];
+  }) => void;
   onError: (message: string) => void;
 }
 

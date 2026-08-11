@@ -542,7 +542,9 @@ export function AIDraftModal({
           .filter((m) => m.content.trim().length > 0)
           .map((m) => ({
             role: m.role,
-            content: m.content,
+            content: m.toolNote
+              ? `${m.content}\n\n${m.toolNote}`
+              : m.content,
           })),
         { role: "user", content },
       ];
@@ -780,7 +782,7 @@ export function AIDraftModal({
             setShownGoalIds((prev) => new Set([...prev, ...goalIds]));
           }
         },
-        onDone: () => {
+        onDone: ({ toolsRun }) => {
           finished = true;
           setStreamStatus(null);
           // A tool-only turn produces no prose; fill the bubble so it isn't
@@ -801,8 +803,18 @@ export function AIDraftModal({
               : sawShow
                 ? "Brought them into view in the goals pane."
                 : "Done.";
+          // The ground-truth ledger enters future history alongside the
+          // prose: a later turn can tell whether this reply's claims were
+          // backed by real tool calls. Never shown in the chat bubble.
+          const toolNote =
+            toolsRun.length > 0
+              ? `[App log — tools run this turn: ${toolsRun
+                  .map((t) => `${t.name} x${t.count}`)
+                  .join(", ")}]`
+              : "[App log — no tools ran this turn; nothing was changed.]";
           updateMessage(assistantMessageId, {
             streaming: false,
+            toolNote,
             ...(assistantText.trim().length === 0 ? { content: fallback } : {}),
           });
         },
