@@ -100,7 +100,6 @@ function baseArgs(forest: DraftForest) {
       weekStartDay: 1,
       defaultTransportMode: "DRIVING" as const,
     },
-    templateExceptionIds: [],
     windowExceptionIds: [],
     today: "2026-07-17",
     intent: null,

@@ -10,6 +10,7 @@ import {
 import {
   handleAddTemplates,
   handleDeleteTemplates,
+  handleUpdateTemplateExceptions,
   handleUpdateTemplates,
 } from "./templates";
 import {
@@ -129,6 +130,8 @@ export function executeTool(
       return handleTriageItems(state, tu);
     case "update_scheduling_settings":
       return handleUpdateSchedulingSettings(state, tu);
+    case "update_template_exceptions":
+      return handleUpdateTemplateExceptions(state, tu);
     default:
       return "Goals displayed.";
   }

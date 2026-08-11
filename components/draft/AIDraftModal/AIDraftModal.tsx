@@ -634,9 +634,6 @@ export function AIDraftModal({
           .map((p) => ({ id: p.id, title: p.title, notes: p.notes ?? null })),
         currentRelocations: workingRelocationsRef.current,
         currentSettings: workingSettingsRef.current,
-        templateExceptionIds: template
-          .filter((t) => !!t.recurrenceExceptions)
-          .map((t) => t.id),
         windowExceptionIds: categories.flatMap((c) =>
           c.timeSlots
             .filter((w) => !!w.recurrenceExceptions)

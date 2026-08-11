@@ -154,6 +154,7 @@ const FIELD_LABELS: Record<string, string> = {
   startTime: "start",
   duration: "length",
   locationId: "location",
+  exceptions: "one-off occurrences",
 };
 
 function formatChangedFields(fields: string[]): string {

@@ -57,7 +57,6 @@ export async function runAssistantTurn({
   currentInbox,
   currentRelocations,
   currentSettings,
-  templateExceptionIds,
   windowExceptionIds,
   today,
   intent,
@@ -152,7 +151,6 @@ export async function runAssistantTurn({
     workingSettings: currentSettings,
     recurringPlanIdSet: new Set(recurringPlanIds),
     validLocationIds: new Set(locations.map((l) => l.id)),
-    templateExceptionIds: new Set(templateExceptionIds),
     windowExceptionIds: new Set(windowExceptionIds),
     send,
   };
@@ -173,7 +171,6 @@ export async function runAssistantTurn({
     locations,
     inbox: state.workingInbox,
     settings: state.workingSettings,
-    templateExceptionIds: state.templateExceptionIds,
     windowExceptionIds: state.windowExceptionIds,
     today,
   });

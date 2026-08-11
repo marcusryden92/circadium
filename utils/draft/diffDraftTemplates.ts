@@ -1,5 +1,5 @@
 import type { DiffStatus } from "./diffDraftTree";
-import type { DraftTemplate } from "./draftTemplates";
+import { exceptionListsEqual, type DraftTemplate } from "./draftTemplates";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { orderedWeekDays } from "@/utils/calendarUtils";
 
@@ -19,7 +19,13 @@ const COMPARED_FIELDS = [
 ] as const;
 
 function fieldsThatChanged(a: DraftTemplate, b: DraftTemplate): string[] {
-  return COMPARED_FIELDS.filter((field) => a[field] !== b[field]);
+  const changed: string[] = COMPARED_FIELDS.filter(
+    (field) => a[field] !== b[field],
+  );
+  if (!exceptionListsEqual(a.exceptions, b.exceptions)) {
+    changed.push("exceptions");
+  }
+  return changed;
 }
 
 // Match by id: working rows keep their order, canonical rows missing from

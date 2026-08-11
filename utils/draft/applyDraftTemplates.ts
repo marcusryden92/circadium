@@ -1,6 +1,7 @@
 import type { EventTemplate } from "@/types/prisma";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
-import type { DraftTemplate } from "./draftTemplates";
+import { serializeRecurrenceExceptions } from "@/utils/planRecurrence";
+import { exceptionListsEqual, type DraftTemplate } from "./draftTemplates";
 
 interface ApplyTemplatesArgs {
   // The provider's live template array at Save time.
@@ -36,6 +37,7 @@ export function applyDraftTemplates({
   now,
 }: ApplyTemplatesArgs): EventTemplate[] {
   const canonicalIds = new Set(canonical.map((t) => t.id));
+  const canonicalById = new Map(canonical.map((t) => [t.id, t]));
   const workingIds = new Set(working.map((t) => t.id));
   const currentById = new Map(current.map((t) => [t.id, t]));
 
@@ -48,7 +50,15 @@ export function applyDraftTemplates({
 
   const result = next.map((row) => {
     const draft = working.find((t) => t.id === row.id);
-    if (!draft || fieldsEqual(row, draft)) return row;
+    if (!draft) return row;
+    // Exceptions apply as a delta against the canonical snapshot, not a
+    // wholesale write: a calendar-made exception created while the modal was
+    // open survives an assistant edit that never touched exceptions.
+    const exceptionsChanged = !exceptionListsEqual(
+      draft.exceptions,
+      canonicalById.get(row.id)?.exceptions ?? [],
+    );
+    if (fieldsEqual(row, draft) && !exceptionsChanged) return row;
     return {
       ...row,
       title: draft.title,
@@ -60,8 +70,9 @@ export function applyDraftTemplates({
       // A day/time change re-anchors the series; per-occurrence exceptions
       // are keyed to the old weekly pattern and would go stale (ghost moved
       // one-offs, resurrected deleted occurrences).
-      recurrenceExceptions:
-        draft.startDay !== row.startDay || draft.startTime !== row.startTime
+      recurrenceExceptions: exceptionsChanged
+        ? serializeRecurrenceExceptions(draft.exceptions)
+        : draft.startDay !== row.startDay || draft.startTime !== row.startTime
           ? null
           : row.recurrenceExceptions,
       updatedAt: now,
@@ -78,7 +89,7 @@ export function applyDraftTemplates({
       duration: draft.duration,
       color: draft.color,
       locationId: draft.locationId,
-      recurrenceExceptions: null,
+      recurrenceExceptions: serializeRecurrenceExceptions(draft.exceptions),
       userId,
       createdAt: now,
       updatedAt: now,

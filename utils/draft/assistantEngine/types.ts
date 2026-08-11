@@ -63,10 +63,10 @@ export interface StreamDraftArgs {
   // The user's scheduling preferences; update_scheduling_settings patches the
   // working copy, applied at Save through the direct settings actions.
   currentSettings: DraftSchedulingSettings;
-  // Template / category-window ids carrying per-occurrence exceptions
-  // (hand-moved or skipped occurrences). Re-timing one of these drops its
-  // exceptions at Save, so ops warn in the tool result.
-  templateExceptionIds: string[];
+  // Category-window ids carrying per-occurrence exceptions (hand-moved or
+  // skipped occurrences). Re-timing one of these drops its exceptions at
+  // Save, so ops warn in the tool result. Templates need no equivalent set:
+  // their exceptions ride the DraftTemplate contract itself.
   windowExceptionIds: string[];
   today: string;
   // Programmatic session hint (e.g. "onboarding") — keys a prompt preamble.

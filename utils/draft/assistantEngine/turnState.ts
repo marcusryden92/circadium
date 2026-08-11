@@ -45,7 +45,6 @@ export interface TurnState {
   workingSettings: DraftSchedulingSettings;
   readonly recurringPlanIdSet: Set<string>;
   readonly validLocationIds: Set<string>;
-  readonly templateExceptionIds: ReadonlySet<string>;
   readonly windowExceptionIds: ReadonlySet<string>;
   readonly send: SendFn;
 }

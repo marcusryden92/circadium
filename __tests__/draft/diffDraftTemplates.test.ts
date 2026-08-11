@@ -14,6 +14,7 @@ function template(overrides: Partial<DraftTemplate> = {}): DraftTemplate {
     duration: 480,
     color: null,
     locationId: null,
+    exceptions: [],
     ...overrides,
   };
 }
@@ -39,6 +40,18 @@ describe("diffDraftTemplates", () => {
     ]);
     expect(diffed[1].changedFields).toEqual(["startTime", "duration"]);
     expect(countTemplateChanges(diffed)).toBe(3);
+  });
+
+  it("reports exception-only changes as a modified 'exceptions' field", () => {
+    const canonical = [template()];
+    const working = [
+      template({
+        exceptions: [{ key: "2026-08-10T09:00", type: "deleted" }],
+      }),
+    ];
+    const diffed = diffDraftTemplates(working, canonical);
+    expect(diffed[0].status).toBe("modified");
+    expect(diffed[0].changedFields).toEqual(["exceptions"]);
   });
 });
 

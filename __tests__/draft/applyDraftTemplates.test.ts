@@ -73,6 +73,7 @@ describe("applyDraftTemplates", () => {
           duration: 60,
           color: null,
           locationId: "loc-gym",
+          exceptions: [],
         },
       ],
       userId: USER,
@@ -144,6 +145,48 @@ describe("applyDraftTemplates", () => {
       now: SAVED_AT,
     });
     expect(result[0].recurrenceExceptions).toBe(exceptions);
+  });
+
+  it("writes assistant-edited exceptions, restamping updatedAt", () => {
+    const current = [row()];
+    const canonical = templatesToDraft(current);
+    const working = templatesToDraft(current);
+    working[0] = {
+      ...working[0],
+      exceptions: [{ key: "2026-08-10T09:00", type: "deleted" }],
+    };
+    const result = applyDraftTemplates({
+      current,
+      canonical,
+      working,
+      userId: USER,
+      now: SAVED_AT,
+    });
+    expect(result[0]).not.toBe(current[0]);
+    expect(result[0].updatedAt).toBe(SAVED_AT);
+    expect(JSON.parse(result[0].recurrenceExceptions ?? "[]")).toEqual([
+      { key: "2026-08-10T09:00", type: "deleted" },
+    ]);
+  });
+
+  it("keeps a calendar-made exception the assistant never touched", () => {
+    const opened = [row()];
+    const canonical = templatesToDraft(opened);
+    const working = templatesToDraft(opened);
+    working[0] = { ...working[0], title: "Deep work" };
+    const concurrentExceptions = JSON.stringify([
+      { key: "2026-08-10T09:00", type: "deleted" },
+    ]);
+    const current = [row({ recurrenceExceptions: concurrentExceptions })];
+    const result = applyDraftTemplates({
+      current,
+      canonical,
+      working,
+      userId: USER,
+      now: SAVED_AT,
+    });
+    expect(result[0].title).toBe("Deep work");
+    expect(result[0].recurrenceExceptions).toBe(concurrentExceptions);
   });
 
   it("preserves rows created elsewhere while the modal was open", () => {

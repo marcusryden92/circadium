@@ -3,6 +3,8 @@ import {
   addDraftTemplates,
   deleteDraftTemplates,
   updateDraftTemplates,
+  updateDraftTemplateExceptions,
+  type DraftTemplateExceptionEdit,
   type DraftTemplateOpsResult,
   type DraftTemplateUpdate,
 } from "@/utils/draft/draftTemplateOps";
@@ -76,29 +78,50 @@ export function handleUpdateTemplates(
     MAX_OP_ITEMS,
   ) as DraftTemplateUpdate[];
   state.send("status", { tool: tu.name, count: updates.length });
-  const result = updateDraftTemplates(
-    state.workingTemplates,
-    updates,
-    state.validLocationIds,
+  // Re-anchoring a template (day/start change) clears its per-occurrence
+  // exceptions — the user's hand-moved or skipped occurrences. Warn so the
+  // model can tell the user before they save. Checked against the WORKING
+  // state, so exceptions added earlier this turn count too.
+  const exceptionBearing = new Set(
+    state.workingTemplates.filter((t) => t.exceptions.length > 0).map((t) => t.id),
   );
-  // Re-anchoring a template (day/start change) drops its per-occurrence
-  // exceptions at Save — the user's hand-moved or skipped occurrences. Warn
-  // so the model can tell the user before they save.
   const retimed = updates
     .filter(
       (u) =>
         (u.startDay !== undefined || u.startTime !== undefined) &&
         typeof u.id === "string" &&
-        state.templateExceptionIds.has(u.id),
+        exceptionBearing.has(u.id),
     )
     .map((u) => u.id);
+  const result = updateDraftTemplates(
+    state.workingTemplates,
+    updates,
+    state.validLocationIds,
+  );
   const warning =
     retimed.length > 0
-      ? ` WARNING: template(s) ${retimed.join(", ")} carry hand-moved or skipped occurrences; saving this re-timing will discard those one-off changes — tell the user.`
+      ? ` WARNING: template(s) ${retimed.join(", ")} carried hand-moved or skipped occurrences; this re-timing discards those one-off changes — tell the user.`
       : "";
   return (
     applyTemplateOpResult(state, result, `Updated ${updates.length} template(s)`) +
     warning
+  );
+}
+
+export function handleUpdateTemplateExceptions(
+  state: TurnState,
+  tu: Anthropic.ToolUseBlock,
+): string {
+  const input = tu.input as Record<string, unknown>;
+  const edits = (Array.isArray(input?.edits) ? input.edits : []).slice(
+    0,
+    MAX_OP_ITEMS,
+  ) as DraftTemplateExceptionEdit[];
+  state.send("status", { tool: tu.name, count: edits.length });
+  return applyTemplateOpResult(
+    state,
+    updateDraftTemplateExceptions(state.workingTemplates, edits),
+    `Edited occurrence exceptions on ${edits.length} template(s)`,
   );
 }
 

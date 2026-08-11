@@ -2,6 +2,7 @@ import {
   addDraftTemplates,
   deleteDraftTemplates,
   updateDraftTemplates,
+  updateDraftTemplateExceptions,
 } from "@/utils/draft/draftTemplateOps";
 import {
   draftTemplatesEqual,
@@ -24,6 +25,7 @@ function template(overrides: Partial<DraftTemplate> = {}): DraftTemplate {
     duration: 480,
     color: "#F77F00",
     locationId: LOCATION_WORK,
+    exceptions: [],
     ...overrides,
   };
 }
@@ -143,6 +145,121 @@ describe("updateDraftTemplates", () => {
   });
 });
 
+describe("updateDraftTemplateExceptions", () => {
+  // tpl-1 runs Mondays 09:00; 2026-08-10 is a Monday, 2026-08-12 a Wednesday.
+  it("skips and moves dated occurrences, minting keys from the start time", () => {
+    const result = updateDraftTemplateExceptions(
+      [template()],
+      [
+        {
+          templateId: "tpl-1",
+          skip: ["2026-08-10"],
+          move: [
+            {
+              date: "2026-08-17",
+              newStart: "2026-08-18T01:30",
+              durationMinutes: 420,
+            },
+          ],
+        },
+      ],
+    );
+    expect(result.failures).toHaveLength(0);
+    expect(result.changed).toBe(true);
+    expect(result.templates[0].exceptions).toEqual(
+      expect.arrayContaining([
+        { key: "2026-08-10T09:00", type: "deleted" },
+        {
+          key: "2026-08-17T09:00",
+          type: "moved",
+          newStart: "2026-08-18T01:30",
+          durationMinutes: 420,
+        },
+      ]),
+    );
+  });
+
+  it("refuses dates that miss the template's weekday, with day names", () => {
+    const result = updateDraftTemplateExceptions(
+      [template()],
+      [{ templateId: "tpl-1", skip: ["2026-08-12"] }],
+    );
+    expect(result.changed).toBe(false);
+    expect(result.failures[0].reason).toContain("Wednesday");
+    expect(result.failures[0].reason).toContain("Monday");
+  });
+
+  it("restores an existing exception and refuses restoring a clean date", () => {
+    const withSkip = template({
+      exceptions: [{ key: "2026-08-10T09:00", type: "deleted" }],
+    });
+    const restored = updateDraftTemplateExceptions(
+      [withSkip],
+      [{ templateId: "tpl-1", restore: ["2026-08-10"] }],
+    );
+    expect(restored.templates[0].exceptions).toEqual([]);
+    expect(restored.changed).toBe(true);
+
+    const clean = updateDraftTemplateExceptions(
+      [template()],
+      [{ templateId: "tpl-1", restore: ["2026-08-10"] }],
+    );
+    expect(clean.changed).toBe(false);
+    expect(clean.failures[0].reason).toContain("no exception");
+  });
+
+  it("validates newStart shape and durationMinutes bounds", () => {
+    const result = updateDraftTemplateExceptions(
+      [template()],
+      [
+        {
+          templateId: "tpl-1",
+          move: [
+            { date: "2026-08-10", newStart: "tomorrow-ish" },
+            {
+              date: "2026-08-17",
+              newStart: "2026-08-17T10:00",
+              durationMinutes: 0,
+            },
+          ],
+        },
+      ],
+    );
+    expect(result.changed).toBe(false);
+    expect(result.failures).toHaveLength(2);
+  });
+
+  it("fails on unknown template id without touching others", () => {
+    const result = updateDraftTemplateExceptions(
+      [template()],
+      [{ templateId: "ghost", skip: ["2026-08-10"] }],
+    );
+    expect(result.changed).toBe(false);
+    expect(result.failures[0].reason).toBe("template not found");
+  });
+});
+
+describe("updateDraftTemplates exception clearing", () => {
+  it("clears exceptions when the series is re-anchored, keeps them otherwise", () => {
+    const withSkip = template({
+      exceptions: [{ key: "2026-08-10T09:00", type: "deleted" }],
+    });
+    const retimed = updateDraftTemplates(
+      [withSkip],
+      [{ id: "tpl-1", startTime: "10:00" }],
+      VALID_LOCATIONS,
+    );
+    expect(retimed.templates[0].exceptions).toEqual([]);
+
+    const renamed = updateDraftTemplates(
+      [withSkip],
+      [{ id: "tpl-1", title: "Deep work" }],
+      VALID_LOCATIONS,
+    );
+    expect(renamed.templates[0].exceptions).toHaveLength(1);
+  });
+});
+
 describe("deleteDraftTemplates", () => {
   it("removes rows, dedupes ids, and reports unknown ids", () => {
     const result = deleteDraftTemplates(
@@ -204,6 +321,7 @@ describe("templatesToDraft / normalizeDraftTemplates", () => {
         duration: 480,
         color: null,
         locationId: null,
+        exceptions: [],
       },
     ]);
   });

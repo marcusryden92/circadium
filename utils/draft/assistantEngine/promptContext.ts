@@ -22,7 +22,6 @@ interface DynamicContextInput {
   locations: DraftLocationRef[];
   inbox: DraftInboxItem[];
   settings: DraftSchedulingSettings;
-  templateExceptionIds: ReadonlySet<string>;
   windowExceptionIds: ReadonlySet<string>;
   today: string;
 }
@@ -131,7 +130,6 @@ function buildCategoryList(
 function buildTemplateList(
   templates: DraftTemplate[],
   locations: DraftLocationRef[],
-  templateExceptionIds: ReadonlySet<string>,
 ): string {
   if (templates.length === 0) return "(no weekly templates yet)";
   const locationNameById = new Map(locations.map((l) => [l.id, l.name]));
@@ -147,8 +145,21 @@ function buildTemplateList(
         location,
       ];
       if (t.color) parts.push(t.color);
-      if (templateExceptionIds.has(t.id)) {
-        parts.push("HAS HAND-MOVED/SKIPPED OCCURRENCES (re-timing drops them)");
+      if (t.exceptions.length > 0) {
+        const detail = t.exceptions
+          .map((e) =>
+            e.type === "deleted"
+              ? `skipped ${e.key.slice(0, 10)}`
+              : `${e.key.slice(0, 10)} moved to ${e.newStart}${
+                  e.durationMinutes !== undefined
+                    ? ` (+${e.durationMinutes}min)`
+                    : ""
+                }`,
+          )
+          .join(", ");
+        parts.push(
+          `one-off occurrences: ${detail} (re-timing the series drops these)`,
+        );
       }
       return `- ${parts.join(" | ")}`;
     })
@@ -262,7 +273,6 @@ export function buildDynamicContext({
   locations,
   inbox,
   settings,
-  templateExceptionIds,
   windowExceptionIds,
   today,
 }: DynamicContextInput): string {
@@ -321,8 +331,8 @@ ${categoryList}
 USER LOCATIONS (id: name) — read-only; you cannot create locations, only reference these ids
 ${locationList}
 
-WEEKLY TEMPLATES (id | day start +duration | title | location | color)
-${buildTemplateList(currentTemplates, locations, templateExceptionIds)}
+WEEKLY TEMPLATES (id | day start +duration | title | location | color; "one-off occurrences" are per-date skips/moves managed via update_template_exceptions)
+${buildTemplateList(currentTemplates, locations)}
 
 CAPTURE INBOX (id | title — raw jots not yet in the library; triage_items pulls them in as tasks)
 ${inboxList}

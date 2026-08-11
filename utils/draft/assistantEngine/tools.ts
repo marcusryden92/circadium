@@ -1107,6 +1107,56 @@ const updateSchedulingSettingsTool: Anthropic.Tool = {
   } as Anthropic.Tool["input_schema"],
 };
 
+const updateTemplateExceptionsTool: Anthropic.Tool = {
+  name: "update_template_exceptions",
+  description:
+    'Skip, move, or restore SPECIFIC DATED OCCURRENCES of a weekly template without changing the series — e.g. "skip my sleep block on Aug 12" or "start sleep at 01:30 the night after each late shift". skip: the occurrence on that date vanishes. move: the occurrence on `date` starts at `newStart` instead (any day/time; optional durationMinutes overrides its length for just that occurrence). restore: removes an existing skip/move so the date follows the weekly rule again. Dates must land on the template\'s weekday. This is the right tool for one-off adjustments; update_templates changes EVERY week (and re-timing a series discards its existing one-off occurrences).',
+  input_schema: {
+    type: "object",
+    properties: {
+      edits: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            templateId: { type: "string" },
+            skip: {
+              type: "array",
+              items: { type: "string" },
+              description: "YYYY-MM-DD dates to skip",
+            },
+            move: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  date: {
+                    type: "string",
+                    description: "YYYY-MM-DD date of the occurrence to move",
+                  },
+                  newStart: {
+                    type: "string",
+                    description: "YYYY-MM-DDTHH:MM local start it moves to",
+                  },
+                  durationMinutes: { type: "integer", minimum: 1 },
+                },
+                required: ["date", "newStart"],
+              },
+            },
+            restore: {
+              type: "array",
+              items: { type: "string" },
+              description: "YYYY-MM-DD dates whose skip/move to undo",
+            },
+          },
+          required: ["templateId"],
+        },
+      },
+    },
+    required: ["edits"],
+  } as Anthropic.Tool["input_schema"],
+};
+
 // The array passed to every stream call. ORDER IS LOAD-BEARING — see the note
 // at the top of this file. Preserve it byte-for-byte when adding tools.
 export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
@@ -1147,4 +1197,5 @@ export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
   demoteItemTool,
   triageItemsTool,
   updateSchedulingSettingsTool,
+  updateTemplateExceptionsTool,
 ];

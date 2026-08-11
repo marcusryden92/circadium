@@ -1,4 +1,8 @@
 import type { EventTemplate } from "@/types/prisma";
+import {
+  parseRecurrenceExceptions,
+  type PlanOccurrenceException,
+} from "@/utils/planRecurrence";
 
 // The assistant's contract for weekly recurring templates. A trimmed mirror
 // of EventTemplate: userId and timestamps are server concerns re-attached at
@@ -16,6 +20,10 @@ export interface DraftTemplate {
   color: string | null;
   // null = "Anywhere".
   locationId: string | null;
+  // Per-occurrence moved/deleted overrides, keyed by the occurrence's
+  // original local start (the same PlanOccurrenceException shape the calendar
+  // scope prompts write). Re-anchoring the series (day/startTime) clears them.
+  exceptions: PlanOccurrenceException[];
 }
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -44,7 +52,19 @@ export function templatesToDraft(templates: EventTemplate[]): DraftTemplate[] {
     duration: t.duration,
     color: t.color ?? null,
     locationId: t.locationId ?? null,
+    exceptions: parseRecurrenceExceptions(t.recurrenceExceptions),
   }));
+}
+
+// Same validation as parseRecurrenceExceptions but over an already-parsed
+// array (the `templates` events carry exceptions as objects, not JSON).
+export function normalizeExceptionList(raw: unknown): PlanOccurrenceException[] {
+  if (!Array.isArray(raw)) return [];
+  try {
+    return parseRecurrenceExceptions(JSON.stringify(raw));
+  } catch {
+    return [];
+  }
 }
 
 export function normalizeDraftTemplate(raw: unknown): DraftTemplate | null {
@@ -66,6 +86,7 @@ export function normalizeDraftTemplate(raw: unknown): DraftTemplate | null {
       typeof obj.locationId === "string" && obj.locationId.length > 0
         ? obj.locationId
         : null,
+    exceptions: normalizeExceptionList(obj.exceptions),
   };
 }
 
@@ -78,6 +99,28 @@ export function normalizeDraftTemplates(raw: unknown): DraftTemplate[] | null {
     .filter((t): t is DraftTemplate => t !== null);
 }
 
+// Order-insensitive by key: exceptions are a keyed set, and the JSON column
+// they round-trip through has no semantic order.
+export function exceptionListsEqual(
+  a: PlanOccurrenceException[],
+  b: PlanOccurrenceException[],
+): boolean {
+  if (a.length !== b.length) return false;
+  const byKey = new Map(b.map((e) => [e.key, e]));
+  if (byKey.size !== b.length) return false;
+  return a.every((e) => {
+    const other = byKey.get(e.key);
+    if (!other || other.type !== e.type) return false;
+    if (e.type === "moved" && other.type === "moved") {
+      return (
+        e.newStart === other.newStart &&
+        (e.durationMinutes ?? null) === (other.durationMinutes ?? null)
+      );
+    }
+    return true;
+  });
+}
+
 function draftTemplateEquals(a: DraftTemplate, b: DraftTemplate): boolean {
   return (
     a.title === b.title &&
@@ -85,7 +128,8 @@ function draftTemplateEquals(a: DraftTemplate, b: DraftTemplate): boolean {
     a.startTime === b.startTime &&
     a.duration === b.duration &&
     a.color === b.color &&
-    a.locationId === b.locationId
+    a.locationId === b.locationId &&
+    exceptionListsEqual(a.exceptions, b.exceptions)
   );
 }
 
