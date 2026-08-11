@@ -208,6 +208,34 @@ describe("updateDraftTemplateExceptions", () => {
     expect(clean.failures[0].reason).toContain("no exception");
   });
 
+  it("truncates seconds in newStart but refuses timezone suffixes", () => {
+    const withSeconds = updateDraftTemplateExceptions(
+      [template()],
+      [
+        {
+          templateId: "tpl-1",
+          move: [{ date: "2026-08-10", newStart: "2026-08-11T01:30:00" }],
+        },
+      ],
+    );
+    expect(withSeconds.failures).toHaveLength(0);
+    expect(withSeconds.templates[0].exceptions).toEqual([
+      { key: "2026-08-10T09:00", type: "moved", newStart: "2026-08-11T01:30" },
+    ]);
+
+    const withZone = updateDraftTemplateExceptions(
+      [template()],
+      [
+        {
+          templateId: "tpl-1",
+          move: [{ date: "2026-08-10", newStart: "2026-08-11T01:30:00Z" }],
+        },
+      ],
+    );
+    expect(withZone.changed).toBe(false);
+    expect(withZone.failures[0].reason).toContain("no timezone suffix");
+  });
+
   it("validates newStart shape and durationMinutes bounds", () => {
     const result = updateDraftTemplateExceptions(
       [template()],

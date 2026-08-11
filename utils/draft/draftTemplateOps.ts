@@ -219,7 +219,18 @@ const DAY_LABELS = [
 ];
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const LOCAL_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
+// Seconds/millis are tolerated and truncated (models emit ISO-ish strings);
+// an explicit timezone is refused — newStart is a local wall-clock time.
+const LOCAL_DATETIME_PATTERN =
+  /^(\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d)(?::[0-5]\d(?:\.\d+)?)?$/;
+
+function normalizeLocalDateTime(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = LOCAL_DATETIME_PATTERN.exec(value);
+  if (!match) return null;
+  if (!parseLocalDate(match[1].slice(0, 10))) return null;
+  return match[1];
+}
 
 function parseLocalDate(value: unknown): Date | null {
   if (typeof value !== "string" || !DATE_PATTERN.test(value)) return null;
@@ -295,13 +306,11 @@ export function updateDraftTemplateExceptions(
         failures.push({ id, reason: minted.error });
         continue;
       }
-      if (
-        typeof rawMove.newStart !== "string" ||
-        !LOCAL_DATETIME_PATTERN.test(rawMove.newStart)
-      ) {
+      const newStart = normalizeLocalDateTime(rawMove.newStart);
+      if (newStart === null) {
         failures.push({
           id,
-          reason: `move for ${String(rawMove.date)}: newStart must be "YYYY-MM-DDTHH:MM" (local)`,
+          reason: `move for ${String(rawMove.date)}: newStart must be "YYYY-MM-DDTHH:MM" local time (no timezone suffix)`,
         });
         continue;
       }
@@ -324,7 +333,7 @@ export function updateDraftTemplateExceptions(
       const moved: PlanOccurrenceException = {
         key: minted.key,
         type: "moved",
-        newStart: rawMove.newStart,
+        newStart,
         ...(durationMinutes !== undefined ? { durationMinutes } : {}),
       };
       byKey.set(minted.key, moved);
