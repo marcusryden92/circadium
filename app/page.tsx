@@ -104,7 +104,7 @@ const FEATURES: Feature[] = [
   {
     kind: "goals",
     name: "Goals with subtasks",
-    body: "Break large goals into ordered steps. The engine schedules them in sequence — each step placed after the one before, woven around everything else in your week.",
+    body: "Break large goals into ordered steps — and let goals depend on each other. Buying a car waits on the license, the savings, the job that pays for it. The engine schedules the whole chain knowing it, woven around everything else in your week.",
   },
 ];
 
@@ -150,6 +150,9 @@ const SECTIONS: Section[] = [
         text: "When something moves, the whole week is recomputed around what matters most right now. The gap arrives with its answer already in it.",
       },
       {
+        text: "And it's yours to overrule — drop anything in by hand, and the week flows around it.",
+      },
+      {
         text: "No end-of-day re-planning session, no willpower spent on triage.",
       },
       { text: "You decide what matters." },
@@ -167,10 +170,14 @@ const SECTIONS: Section[] = [
         text: "Doing more isn't the same as moving forward.",
         emphasis: true,
       },
-      { text: "Circadium is built on a simpler idea:" },
-      { text: "A schedule isn't for maximizing activity." },
       {
-        text: "It's for making sure your limited time goes where you actually want it.",
+        text: "Productivity is a means. Its point is what it buys — the language learned, the strength kept, the people you show up for.",
+      },
+      {
+        text: "That's why Circadium doesn't start with a task list. It starts with the roles you play in life — parent, friend, professional — and builds the week outward from them.",
+      },
+      {
+        text: "A schedule is a claim about what your life is for. Circadium's job is to make your weeks match it.",
         emphasis: true,
       },
     ],
@@ -254,8 +261,8 @@ export default function Home() {
             <p className={leadText}>
               The real cost of a broken plan isn&apos;t the lost hour —
               it&apos;s the deciding that follows. A gap opens, three things
-              could fill it, and choosing between them takes more energy than
-              any of them would.
+              could fill it, and you end up spending the free hour deciding
+              what the free hour is for.
             </p>
             <p className={leadText}>
               Circadium computes a week around your goals, commitments,
@@ -367,7 +374,8 @@ export default function Home() {
           <Reveal className={closeInner}>
             <h2 className={closeHeading}>Go live your week.</h2>
             <p className={closeBody}>
-              Circadium handles the planning — this one, and every one after it.
+              Circadium handles the planning, so the hours go where your life
+              actually points.
             </p>
             <div className={closeActions}>
               <Button variant="solidLight" size="lg" onClick={goRegister}>
