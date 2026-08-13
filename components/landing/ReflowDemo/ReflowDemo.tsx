@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { gsap, useGSAP, HOUSE_EASE, prefersReducedMotion } from "../gsap";
+import {
+  gsap,
+  useGSAP,
+  HOUSE_EASE,
+  prefersReducedMotion,
+  scrollerFor,
+} from "../gsap";
 import * as s from "./ReflowDemo.css";
 
 const HOURS = [
@@ -39,7 +45,12 @@ export function ReflowDemo() {
       gsap
         .timeline({
           defaults: { ease: HOUSE_EASE },
-          scrollTrigger: { trigger: root, start: "top 78%", once: true },
+          scrollTrigger: {
+            trigger: root,
+            scroller: scrollerFor(root),
+            start: "top 78%",
+            once: true,
+          },
         })
         .from(root, { autoAlpha: 0, y: 20, duration: 0.9 })
         .to(chip, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.8)

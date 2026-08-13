@@ -2,12 +2,23 @@
 
 import { useRef, type RefObject } from "react";
 import { vars } from "@/lib/theme";
-import { gsap, useGSAP, HOUSE_EASE, prefersReducedMotion } from "../gsap";
+import {
+  gsap,
+  useGSAP,
+  HOUSE_EASE,
+  prefersReducedMotion,
+  scrollerFor,
+} from "../gsap";
 import * as s from "./FeatureVignettes.css";
 
 export type FeatureVignetteKind = "engine" | "travel" | "windows" | "goals";
 
-const TRIGGER = { start: "top 78%", once: true } as const;
+const triggerFor = (root: Element) => ({
+  trigger: root,
+  scroller: scrollerFor(root),
+  start: "top 78%",
+  once: true,
+});
 
 function useVignette(
   ref: RefObject<HTMLDivElement | null>,
@@ -26,11 +37,37 @@ function useVignette(
 type WeekBlock = { tone: s.Tone; h: number } | { spacer: number };
 
 const WEEK: WeekBlock[][] = [
-  [{ tone: "blue", h: 52 }, { spacer: 10 }, { tone: "violet", h: 30 }, { tone: "green", h: 24 }],
-  [{ tone: "blue", h: 34 }, { tone: "amber", h: 26 }, { spacer: 18 }, { tone: "teal", h: 40 }],
-  [{ spacer: 8 }, { tone: "violet", h: 46 }, { tone: "blue", h: 24 }, { spacer: 12 }, { tone: "green", h: 22 }],
-  [{ tone: "amber", h: 30 }, { spacer: 14 }, { tone: "blue", h: 56 }, { tone: "rose", h: 20 }],
-  [{ tone: "teal", h: 26 }, { tone: "violet", h: 22 }, { spacer: 16 }, { tone: "blue", h: 38 }],
+  [
+    { tone: "blue", h: 52 },
+    { spacer: 10 },
+    { tone: "violet", h: 30 },
+    { tone: "green", h: 24 },
+  ],
+  [
+    { tone: "blue", h: 34 },
+    { tone: "amber", h: 26 },
+    { spacer: 18 },
+    { tone: "teal", h: 40 },
+  ],
+  [
+    { spacer: 8 },
+    { tone: "violet", h: 46 },
+    { tone: "blue", h: 24 },
+    { spacer: 12 },
+    { tone: "green", h: 22 },
+  ],
+  [
+    { tone: "amber", h: 30 },
+    { spacer: 14 },
+    { tone: "blue", h: 56 },
+    { tone: "rose", h: 20 },
+  ],
+  [
+    { tone: "teal", h: 26 },
+    { tone: "violet", h: 22 },
+    { spacer: 16 },
+    { tone: "blue", h: 38 },
+  ],
 ];
 
 // The week fills in day by day — the engine placing blocks.
@@ -45,7 +82,7 @@ function WeekGridVignette() {
       duration: 0.7,
       ease: HOUSE_EASE,
       stagger: 0.05,
-      scrollTrigger: { trigger: root, ...TRIGGER },
+      scrollTrigger: triggerFor(root),
     });
   });
 
@@ -95,7 +132,7 @@ function TravelVignette() {
     gsap
       .timeline({
         defaults: { ease: HOUSE_EASE },
-        scrollTrigger: { trigger: root, ...TRIGGER },
+        scrollTrigger: triggerFor(root),
       })
       .from(root.querySelectorAll("[data-v='chip']"), {
         autoAlpha: 0,
@@ -106,7 +143,11 @@ function TravelVignette() {
       .fromTo(
         svg,
         { clipPath: "inset(-5% 105% -5% -5%)" },
-        { clipPath: "inset(-5% -5% -5% -5%)", duration: 1.1, ease: "power2.inOut" },
+        {
+          clipPath: "inset(-5% -5% -5% -5%)",
+          duration: 1.1,
+          ease: "power2.inOut",
+        },
         0.4,
       )
       .from(
@@ -138,10 +179,18 @@ function TravelVignette() {
             {c.name}
           </span>
         ))}
-        <span data-v="time" className={s.travelTime} style={{ left: "31%", top: "50%" }}>
+        <span
+          data-v="time"
+          className={s.travelTime}
+          style={{ left: "31%", top: "50%" }}
+        >
           25 min
         </span>
-        <span data-v="time" className={s.travelTime} style={{ left: "72%", top: "46%" }}>
+        <span
+          data-v="time"
+          className={s.travelTime}
+          style={{ left: "72%", top: "46%" }}
+        >
           18 min
         </span>
       </div>
@@ -174,7 +223,7 @@ function WindowsVignette() {
     gsap
       .timeline({
         defaults: { ease: HOUSE_EASE },
-        scrollTrigger: { trigger: root, ...TRIGGER },
+        scrollTrigger: triggerFor(root),
       })
       .from(root.querySelectorAll("[data-v='band']"), {
         autoAlpha: 0,
@@ -185,7 +234,13 @@ function WindowsVignette() {
       })
       .from(
         root.querySelectorAll("[data-v='event']"),
-        { autoAlpha: 0, y: 8, duration: 0.5, stagger: 0.15, immediateRender: true },
+        {
+          autoAlpha: 0,
+          y: 8,
+          duration: 0.5,
+          stagger: 0.15,
+          immediateRender: true,
+        },
         0.7,
       );
   });
@@ -195,7 +250,11 @@ function WindowsVignette() {
       <div className={s.windowsGrid}>
         <div className={s.windowsRuler}>
           {RULER_HOURS.map((h) => (
-            <span key={h.label} className={s.windowsHour} style={{ top: h.top }}>
+            <span
+              key={h.label}
+              className={s.windowsHour}
+              style={{ top: h.top }}
+            >
               {h.label}
             </span>
           ))}
@@ -231,7 +290,7 @@ function GoalTreeVignette() {
     gsap
       .timeline({
         defaults: { ease: HOUSE_EASE },
-        scrollTrigger: { trigger: root, ...TRIGGER },
+        scrollTrigger: triggerFor(root),
       })
       .from(root.querySelectorAll("[data-v='row']"), {
         autoAlpha: 0,

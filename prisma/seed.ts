@@ -25,7 +25,7 @@ const prisma = new PrismaClient({ adapter });
 
 // Flip to true to seed ONLY the admin account: the demo dataset (and the
 // clearing that precedes it) is skipped, leaving existing data untouched.
-const SEED_USER_ONLY = true;
+const SEED_USER_ONLY = false;
 
 async function main() {
   const userId = "1";
@@ -33,7 +33,9 @@ async function main() {
   // Basic admin account so the app has a predictable login during development.
   const passwordHash = await bcrypt.hash("password", 10);
 
-  const onboardedAt = null;
+  // The demo dataset assumes a populated account, so skip first-run onboarding
+  // and land straight on the dashboard. Set to null to exercise onboarding.
+  const onboardedAt = new Date();
 
   await prisma.user.upsert({
     where: { email: "admin@circadium.app" },
@@ -57,7 +59,7 @@ async function main() {
   if (SEED_USER_ONLY) {
     console.log("Seeding completed: admin account only (SEED_USER_ONLY set).");
     console.log(
-      `  - User: admin@circadium.app${onboardedAt !== null && " (onboarded)"}`,
+      `  - User: admin@circadium.app${onboardedAt !== null ? " (onboarded)" : ""}`,
     );
     return;
   }
@@ -115,7 +117,7 @@ async function main() {
   await prisma.planner.createMany({ data: plans });
 
   console.log("Seeding completed: admin account + demo calendar dataset.");
-  console.log(`  - User: admin@lifeplan.com (onboarded)`);
+  console.log(`  - User: admin@circadium.app (onboarded)`);
   console.log(
     `  - ${locations.length} locations, ${travelTimes.length} travel times, ${categories.length} categories`,
   );

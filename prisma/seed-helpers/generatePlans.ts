@@ -1,9 +1,10 @@
 import { Planner } from "../../generated/client";
 import { v4 as uuidv4 } from "uuid";
+import { LOCATION_IDS } from "./generateLocations";
 
 /**
  * Simplified plan data structure.
- * Plans are scheduled tasks with specific start times relative to the week.
+ * Plans are fixed-time anchors positioned relative to the current week.
  */
 export interface SimplePlanData {
   title: string;
@@ -13,54 +14,56 @@ export interface SimplePlanData {
   dayOffset: number;
   // Start time in HH:MM format
   startTime: string;
+  locationId?: string | null;
+  // Weekly repeats anchor on the seeded start (fixed-anchor plan recurrence).
+  weekly?: boolean;
 }
 
-/**
- * Seed data for plan-type planners (scheduled tasks).
- * These will be positioned at specific times within the current week.
- */
+// The fixed fabric of the personas' week: standing work meetings, the school
+// run, and a couple of one-offs that punch holes in the routine.
 export const planSeedData: SimplePlanData[] = [
-  // Monday plans
   {
-    title: "Morning Review",
-    color: "#E74C3C",
-    duration: 30,
-    dayOffset: 0, // Monday
-    startTime: "09:00",
-  },
-  {
-    title: "Project Work",
-    color: "#3498DB",
-    duration: 120,
-    dayOffset: 0, // Monday
-    startTime: "10:00",
-  },
-
-  // Tuesday plans
-  {
-    title: "Team Meeting",
-    color: "#9B59B6",
+    title: "Team sync",
+    color: "#6366F1",
     duration: 60,
     dayOffset: 1, // Tuesday
-    startTime: "14:00",
+    startTime: "13:00",
+    locationId: LOCATION_IDS.WORK,
+    weekly: true,
   },
-
-  // Wednesday plans
   {
-    title: "Deep Work Session",
-    color: "#1ABC9C",
-    duration: 180,
-    dayOffset: 2, // Wednesday
-    startTime: "09:00",
+    title: "1:1 with Sara",
+    color: "#6366F1",
+    duration: 30,
+    dayOffset: 3, // Thursday
+    startTime: "14:30",
+    locationId: LOCATION_IDS.WORK,
+    weekly: true,
   },
-
-  // Friday plans
+  ...[0, 1, 2, 3, 4].map((dayOffset) => ({
+    title: "School pickup",
+    color: "#D97706",
+    duration: 30,
+    dayOffset,
+    startTime: "15:30",
+    locationId: LOCATION_IDS.SCHOOL,
+    weekly: true,
+  })),
   {
-    title: "Weekly Planning",
-    color: "#F39C12",
-    duration: 45,
+    title: "Dentist (Sven)",
+    color: "#D97706",
+    duration: 60,
+    dayOffset: 3, // Thursday
+    startTime: "10:00",
+    locationId: null,
+  },
+  {
+    title: "Dinner with Elin",
+    color: "#E76F51",
+    duration: 120,
     dayOffset: 4, // Friday
-    startTime: "16:00",
+    startTime: "19:00",
+    locationId: null,
   },
 ];
 
@@ -118,7 +121,9 @@ export const generatePlans = (userId: string): Planner[] => {
       duration: data.duration,
       deadline: null,
       starts,
-      recurrence: null,
+      recurrence: data.weekly
+        ? JSON.stringify({ freq: "weekly", interval: 1, until: null })
+        : null,
       recurrenceExceptions: null,
       splitting: null,
       completedSegments: null,
@@ -133,7 +138,7 @@ export const generatePlans = (userId: string): Planner[] => {
       priority: 5,
       userId,
       color: data.color,
-      locationId: null,
+      locationId: data.locationId ?? null,
       useParentLocation: false,
       categoryId: null,
       createdAt: timestamp,

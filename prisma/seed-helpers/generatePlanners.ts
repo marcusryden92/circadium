@@ -33,12 +33,13 @@ interface SeedGoal {
 
 const SORT_STEP = 1024;
 
-// Ten multi-layer goals across the seeded roles. Each is a goal root with
-// sub-goal branches and leaf tasks; a couple carry split leaves, deadlines, or
-// a daily cap to exercise those engine features.
+// Multi-layer goals across the seeded roles — staged as the landing personas'
+// lives (work launches, a race, French, reading, family projects). Each is a
+// goal root with sub-goal branches and leaf tasks; several carry split leaves,
+// deadlines, or a daily cap to exercise those engine features.
 const seedGoals: SeedGoal[] = [
   {
-    title: "Launch Q3 Marketing Campaign",
+    title: "Launch the spring campaign",
     color: "#2563EB",
     categoryId: CATEGORY_IDS.DEEP_WORK,
     priority: 6,
@@ -72,10 +73,10 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Ship Mobile App v2",
+    title: "Ship the mobile app",
     color: "#3B82F6",
     categoryId: CATEGORY_IDS.DEEP_WORK,
-    priority: 6,
+    priority: 5,
     deadlineInDays: 45,
     children: [
       {
@@ -102,7 +103,7 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Quarterly Business Review Prep",
+    title: "Quarterly review prep",
     color: "#6366F1",
     categoryId: CATEGORY_IDS.MEETINGS,
     priority: 5,
@@ -120,7 +121,7 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Run a Half Marathon",
+    title: "Run a half marathon",
     color: "#10B981",
     categoryId: CATEGORY_IDS.FITNESS,
     priority: 5,
@@ -132,7 +133,11 @@ const seedGoals: SeedGoal[] = [
           {
             title: "Easy runs",
             duration: 210,
-            splitting: { minMinutes: 30, maxMinutes: 60, minSpacingMinutes: 720 },
+            splitting: {
+              minMinutes: 30,
+              maxMinutes: 60,
+              minSpacingMinutes: 720,
+            },
           },
           { title: "Weekend long run", duration: 90 },
         ],
@@ -148,27 +153,7 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Improve Nutrition Habits",
-    color: "#059669",
-    categoryId: CATEGORY_IDS.HEALTH,
-    priority: 4,
-    children: [
-      { title: "Plan weekly meals", duration: 45 },
-      {
-        title: "Grocery prep",
-        children: [
-          { title: "Weekly shopping", duration: 60, locationId: null },
-          {
-            title: "Batch cooking",
-            duration: 120,
-            locationId: LOCATION_IDS.HOME,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Renovate Home Office",
+    title: "Renovate the home office",
     color: "#F59E0B",
     categoryId: CATEGORY_IDS.HOME_PROJECTS,
     locationId: LOCATION_IDS.HOME,
@@ -192,9 +177,9 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Plan Summer Vacation",
+    title: "Plan the summer holiday",
     color: "#D97706",
-    categoryId: CATEGORY_IDS.PERSONAL,
+    categoryId: CATEGORY_IDS.FAMILY,
     priority: 5,
     deadlineInDays: 60,
     children: [
@@ -210,7 +195,7 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Learn Spanish",
+    title: "Learn French",
     color: "#8B5CF6",
     categoryId: CATEGORY_IDS.LEARNING,
     priority: 5,
@@ -223,7 +208,11 @@ const seedGoals: SeedGoal[] = [
           {
             title: "Vocabulary drills",
             duration: 200,
-            splitting: { minMinutes: 20, maxMinutes: 40, minSpacingMinutes: 120 },
+            splitting: {
+              minMinutes: 20,
+              maxMinutes: 40,
+              minSpacingMinutes: 120,
+            },
           },
           { title: "Grammar basics", duration: 120 },
         ],
@@ -238,64 +227,63 @@ const seedGoals: SeedGoal[] = [
     ],
   },
   {
-    title: "Read 12 Books This Year",
+    title: "Read 12 books this year",
     color: "#A78BFA",
     categoryId: CATEGORY_IDS.READING,
     priority: 3,
     children: [
       {
-        title: "Fiction",
-        children: [
-          {
-            title: "Finish current novel",
-            duration: 240,
-            splitting: { minMinutes: 45, maxMinutes: 90 },
-          },
-          {
-            title: "Start next novel",
-            duration: 240,
-            splitting: { minMinutes: 45, maxMinutes: 90 },
-          },
-        ],
+        title: "Finish the current novel",
+        duration: 240,
+        splitting: { minMinutes: 45, maxMinutes: 90 },
       },
       {
-        title: "Non-fiction",
-        children: [
-          {
-            title: "Read business book",
-            duration: 300,
-            splitting: { minMinutes: 45, maxMinutes: 90 },
-          },
-          {
-            title: "Read science book",
-            duration: 300,
-            splitting: { minMinutes: 45, maxMinutes: 90 },
-          },
-        ],
+        title: "Read the business book",
+        duration: 300,
+        splitting: { minMinutes: 45, maxMinutes: 90 },
       },
     ],
   },
+];
+
+// Standalone repeating tasks — flexible recurrence: one auto-placed
+// occurrence per period, composed with the item's own allowed times.
+interface SeedRecurringTask {
+  title: string;
+  color: string;
+  categoryId: string;
+  duration: number;
+  recurrence: { freq: "daily" | "weekly" | "monthly"; interval: number };
+  allowedTimes?: {
+    days: number[] | null;
+    ranges: { startTime: string; endTime: string }[] | null;
+  };
+  locationId?: string | null;
+  priority?: number;
+}
+
+const seedRecurringTasks: SeedRecurringTask[] = [
   {
-    title: "Organize Digital Life",
-    color: "#F97316",
-    categoryId: CATEGORY_IDS.PERSONAL,
-    priority: 3,
-    children: [
-      {
-        title: "Photos",
-        children: [
-          { title: "Back up photo library", duration: 60 },
-          { title: "Organize into albums", duration: 90 },
-        ],
-      },
-      {
-        title: "Files",
-        children: [
-          { title: "Clean up downloads", duration: 45 },
-          { title: "Archive old projects", duration: 75 },
-        ],
-      },
-    ],
+    title: "Guitar practice",
+    color: "#7C3AED",
+    categoryId: CATEGORY_IDS.LEARNING,
+    duration: 30,
+    recurrence: { freq: "daily", interval: 1 },
+    allowedTimes: {
+      days: null,
+      ranges: [{ startTime: "19:00", endTime: "21:30" }],
+    },
+    locationId: LOCATION_IDS.HOME,
+    priority: 4,
+  },
+  {
+    title: "Weekly review",
+    color: "#2563EB",
+    categoryId: CATEGORY_IDS.PROFESSIONAL,
+    duration: 30,
+    recurrence: { freq: "weekly", interval: 1 },
+    allowedTimes: { days: [0], ranges: null },
+    priority: 5,
   },
 ];
 
@@ -430,6 +418,42 @@ export const generatePlanners = (userId: string): Planner[] => {
       locationId: goal.locationId ?? null,
       useParentLocation: false,
       categoryId: goal.categoryId ?? null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  });
+
+  seedRecurringTasks.forEach((task, index) => {
+    out.push({
+      id: `seed-recurring-${index + 1}`,
+      title: task.title,
+      parentId: null,
+      plannerType: PlannerType.task,
+      isReady: true,
+      isTriaged: true,
+      duration: task.duration,
+      deadline: null,
+      starts: null,
+      recurrence: JSON.stringify({ ...task.recurrence, until: null }),
+      recurrenceExceptions: null,
+      splitting: null,
+      completedSegments: null,
+      maxMinutesPerDay: null,
+      earliestStartDate: null,
+      allowedTimes: task.allowedTimes
+        ? JSON.stringify(task.allowedTimes)
+        : null,
+      linkedItemId: null,
+      notes: null,
+      sortOrder: 0,
+      completedStartTime: null,
+      completedEndTime: null,
+      priority: task.priority ?? 4,
+      userId,
+      color: task.color,
+      locationId: task.locationId ?? null,
+      useParentLocation: task.locationId == null,
+      categoryId: task.categoryId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });

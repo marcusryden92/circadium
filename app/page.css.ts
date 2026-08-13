@@ -529,6 +529,58 @@ export const featureBody = style({
   margin: 0,
 });
 
+// ---------- capabilities index — quiet manifest under the feature rows ----------
+export const alsoSection = style({
+  padding: "clamp(64px, 7vw, 104px) clamp(12px, 1.6vw, 28px)",
+  borderTop: `1px solid ${vars.rule}`,
+  "@media": {
+    [media.mobile]: { padding: "56px 24px" },
+  },
+});
+
+export const alsoInner = style({
+  maxWidth: contentWidth["2xl"],
+  margin: "0 auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: "clamp(28px, 3vw, 40px)",
+});
+
+export const alsoGrid = style({
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "clamp(20px, 2.5vw, 32px) clamp(32px, 5vw, 72px)",
+  "@media": {
+    [media.mobile]: {
+      gridTemplateColumns: "1fr",
+      gap: space["5"],
+    },
+  },
+});
+
+export const alsoItem = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: space["1.5"],
+  maxWidth: contentWidth.xs,
+});
+
+export const alsoName = style({
+  fontFamily: vars.font.ui,
+  fontSize: 14.5,
+  fontWeight: 600,
+  letterSpacing: "-0.005em",
+  color: vars.ink,
+});
+
+export const alsoDesc = style({
+  fontFamily: vars.font.ui,
+  fontSize: 13.5,
+  lineHeight: 1.55,
+  color: vars.muted,
+  margin: 0,
+});
+
 // ---------- close — vector-field reprise ----------
 // Card width matches the hero: it fills the page bezel (12px inline margin),
 // so the section adds only vertical padding. The card hosts a calmer second

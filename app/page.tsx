@@ -56,6 +56,12 @@ import {
   featureIndex,
   featureName,
   featureBody,
+  alsoSection,
+  alsoInner,
+  alsoGrid,
+  alsoItem,
+  alsoName,
+  alsoDesc,
   closeSection,
   closeCard,
   closeScrim,
@@ -105,6 +111,49 @@ const FEATURES: Feature[] = [
     kind: "goals",
     name: "Goals with subtasks",
     body: "Break large goals into ordered steps — and let goals depend on each other. Buying a car waits on the license, the savings, the job that pays for it. The engine schedules the whole chain knowing it, woven around everything else in your week.",
+  },
+];
+
+const EXTRAS: { name: string; body: string }[] = [
+  {
+    name: "AI assistant",
+    body: "Set up goals, weeks, and categories in conversation. Runs on your own key, stored only on your device.",
+  },
+  {
+    name: "External calendars",
+    body: "Google, Outlook, or any calendar feed — the engine schedules around what's already booked.",
+  },
+  {
+    name: "Repeating items",
+    body: "Flexible repeats that find their own spot each period. Twenty minutes of French, every day, wherever it fits.",
+  },
+  {
+    name: "Habit tracking",
+    body: "A month grid over your repeating items: streaks, rates, and the days that count.",
+  },
+  {
+    name: "Capture inbox",
+    body: "Jot things down the moment they surface, triage later. Nothing untriaged clutters the calendar.",
+  },
+  {
+    name: "Split tasks",
+    body: "Big tasks placed as chunks — set minimum and maximum sizes, daily caps, and breathing room between them.",
+  },
+  {
+    name: "Queues",
+    body: "Ordered streams of work: each item scheduled after the one before it finishes.",
+  },
+  {
+    name: "Daily limits & allowed times",
+    body: "Cap a goal's minutes per day, or confine an item to the hours you allow.",
+  },
+  {
+    name: "Manual control",
+    body: "Drag anything anywhere — the rest of the week recomputes around your call.",
+  },
+  {
+    name: "Your data",
+    body: "Export everything you own as a single file, any time. Import it right back.",
   },
 ];
 
@@ -364,6 +413,22 @@ export default function Home() {
             );
           })}
         </div>
+      </section>
+
+      <section className={alsoSection}>
+        <Cascade className={alsoInner}>
+          <p className={featuresKicker} data-cascade>
+            Also in the box
+          </p>
+          <div className={alsoGrid}>
+            {EXTRAS.map((e) => (
+              <div key={e.name} className={alsoItem} data-cascade>
+                <span className={alsoName}>{e.name}</span>
+                <p className={alsoDesc}>{e.body}</p>
+              </div>
+            ))}
+          </div>
+        </Cascade>
       </section>
 
       <section className={closeSection}>
