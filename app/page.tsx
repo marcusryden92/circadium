@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Grain, Logo } from "@/components/ui";
 import { themeLight } from "@/lib/theme";
 import { VectorField } from "@/components/landing/VectorField";
-import { Reveal } from "@/components/landing/Reveal";
+import { Cascade } from "@/components/landing/Cascade";
 import {
   FeatureVignette,
   type FeatureVignetteKind,
@@ -239,7 +239,7 @@ export default function Home() {
             </Button>
           </div>
         </header>
-        <div className={heroContent}>
+        <Cascade className={heroContent} onMount>
           <h1 className={heroHeadline}>
             Always know what to do <em>next</em>
           </h1>
@@ -252,29 +252,27 @@ export default function Home() {
             </Button>
             <span className={heroCtaNote}>Free while in beta.</span>
           </div>
-        </div>
+        </Cascade>
       </section>
 
       <section className={leadSection}>
-        <Reveal>
-          <div className={leadInner}>
-            <p className={leadText}>
-              The real cost of a broken plan isn&apos;t the lost hour —
-              it&apos;s the deciding that follows. A gap opens, three things
-              could fill it, and you end up spending the free hour deciding
-              what the free hour is for.
-            </p>
-            <p className={leadText}>
-              Circadium computes a week around your goals, commitments,
-              locations, and constraints — and when life shifts, it re-sorts,
-              so the next right thing is already waiting.
-            </p>
-            <p className={leadEmphasis}>
-              The result isn&apos;t a perfectly optimized calendar. It&apos;s a
-              week you can actually live.
-            </p>
-          </div>
-        </Reveal>
+        <Cascade className={leadInner}>
+          <p className={leadText}>
+            The real cost of a broken plan isn&apos;t the lost hour — it&apos;s
+            the deciding that follows. A gap opens, three things could fill it,
+            and you end up spending the free hour deciding what the free hour is
+            for.
+          </p>
+          <p className={leadText}>
+            Circadium computes a week around your goals, commitments, locations,
+            and constraints — and when life shifts, it re-sorts, so the next
+            right thing is already waiting.
+          </p>
+          <p className={leadEmphasis}>
+            The result isn&apos;t a perfectly optimized calendar. It&apos;s a
+            week you can actually live.
+          </p>
+        </Cascade>
       </section>
 
       <div className={prose}>
@@ -284,62 +282,71 @@ export default function Home() {
             className={s.dark ? proseSectionDark : proseSection}
           >
             {s.dark ? <Grain /> : null}
-            <Reveal>
-              <div className={proseGrid}>
-                <aside className={proseAside}>
-                  <span className={proseNumber}>
-                    {String(i + 1).padStart(2, "0")}
-                    <span aria-hidden> / {SECTION_TOTAL}</span>
-                  </span>
-                  <span className={proseRule} aria-hidden />
-                  <span>{s.kicker}</span>
-                </aside>
-                <div>
-                  <h2 className={proseHeading}>{s.heading}</h2>
-                  <div className={proseBody}>
-                    {s.body.map((line, j) => (
-                      <p
-                        key={j}
-                        className={line.emphasis ? proseEmphasis : proseLine}
-                      >
-                        {line.text}
-                      </p>
-                    ))}
-                  </div>
-                  {s.demo ? <ReflowDemo /> : null}
+            <Cascade className={proseGrid}>
+              <aside className={proseAside} data-cascade>
+                <span className={proseNumber}>
+                  {String(i + 1).padStart(2, "0")}
+                  <span aria-hidden> / {SECTION_TOTAL}</span>
+                </span>
+                <span className={proseRule} aria-hidden />
+                <span>{s.kicker}</span>
+              </aside>
+              <div>
+                <h2 className={proseHeading} data-cascade>
+                  {s.heading}
+                </h2>
+                <div className={proseBody}>
+                  {s.body.map((line, j) => (
+                    <p
+                      key={j}
+                      className={line.emphasis ? proseEmphasis : proseLine}
+                      data-cascade
+                    >
+                      {line.text}
+                    </p>
+                  ))}
                 </div>
+                {s.demo ? <ReflowDemo /> : null}
               </div>
-            </Reveal>
+            </Cascade>
           </section>
         ))}
       </div>
 
       <section className={featuresSection}>
-        <Reveal>
+        <Cascade>
           <header className={featuresHeader}>
-            <p className={featuresKicker}>What&apos;s in it</p>
-            <h2 className={featuresHeading}>Four moving parts.</h2>
+            <p className={featuresKicker} data-cascade>
+              What&apos;s in it
+            </p>
+            <h2 className={featuresHeading} data-cascade>
+              Four moving parts.
+            </h2>
           </header>
-        </Reveal>
+        </Cascade>
         <div className={featuresList}>
           {FEATURES.map((f, i) => {
             const reversed = i % 2 === 1;
             const visual = (
-              <div className={featureVisual}>
+              <div className={featureVisual} data-cascade>
                 <FeatureVignette kind={f.kind} />
               </div>
             );
             const content = (
               <div className={featureContent}>
-                <span className={featureIndex}>
+                <span className={featureIndex} data-cascade>
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <h3 className={featureName}>{f.name}</h3>
-                <p className={featureBody}>{f.body}</p>
+                <h3 className={featureName} data-cascade>
+                  {f.name}
+                </h3>
+                <p className={featureBody} data-cascade>
+                  {f.body}
+                </p>
               </div>
             );
             return (
-              <Reveal key={f.name}>
+              <Cascade key={f.name}>
                 <article className={reversed ? featureRowReverse : featureRow}>
                   {reversed ? (
                     <>
@@ -353,7 +360,7 @@ export default function Home() {
                     </>
                   )}
                 </article>
-              </Reveal>
+              </Cascade>
             );
           })}
         </div>
@@ -371,7 +378,7 @@ export default function Home() {
           />
           <div className={closeScrim} aria-hidden />
           <Grain />
-          <Reveal className={closeInner}>
+          <Cascade className={closeInner}>
             <h2 className={closeHeading}>Go live your week.</h2>
             <p className={closeBody}>
               Circadium handles the planning, so the hours go where your life
@@ -385,7 +392,7 @@ export default function Home() {
             <p className={closeNote}>
               Free while in beta. Your data stays yours.
             </p>
-          </Reveal>
+          </Cascade>
         </div>
       </section>
 

@@ -1,7 +1,27 @@
+"use client";
+
+import { useRef, type RefObject } from "react";
 import { vars } from "@/lib/theme";
+import { gsap, useGSAP, HOUSE_EASE, prefersReducedMotion } from "../gsap";
 import * as s from "./FeatureVignettes.css";
 
 export type FeatureVignetteKind = "engine" | "travel" | "windows" | "goals";
+
+const TRIGGER = { start: "top 78%", once: true } as const;
+
+function useVignette(
+  ref: RefObject<HTMLDivElement | null>,
+  build: (root: HTMLDivElement) => void,
+) {
+  useGSAP(
+    () => {
+      const root = ref.current;
+      if (!root || prefersReducedMotion()) return;
+      build(root);
+    },
+    { scope: ref },
+  );
+}
 
 type WeekBlock = { tone: s.Tone; h: number } | { spacer: number };
 
@@ -13,9 +33,24 @@ const WEEK: WeekBlock[][] = [
   [{ tone: "teal", h: 26 }, { tone: "violet", h: 22 }, { spacer: 16 }, { tone: "blue", h: 38 }],
 ];
 
+// The week fills in day by day — the engine placing blocks.
 function WeekGridVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  useVignette(ref, (root) => {
+    gsap.from(root.querySelectorAll("[data-v='block']"), {
+      autoAlpha: 0,
+      y: 8,
+      scaleY: 0.6,
+      transformOrigin: "top center",
+      duration: 0.7,
+      ease: HOUSE_EASE,
+      stagger: 0.05,
+      scrollTrigger: { trigger: root, ...TRIGGER },
+    });
+  });
+
   return (
-    <div className={s.stage} aria-hidden>
+    <div ref={ref} className={s.stage} aria-hidden>
       <div className={s.weekDays}>
         {["M", "T", "W", "T", "F"].map((d, i) => (
           <span key={i}>{d}</span>
@@ -30,6 +65,7 @@ function WeekGridVignette() {
               ) : (
                 <div
                   key={j}
+                  data-v="block"
                   className={`${s.block} ${s.blockTones[b.tone]}`}
                   style={{ height: b.h }}
                 />
@@ -48,9 +84,40 @@ const TRAVEL_CHIPS = [
   { name: "Gym", tone: vars.swatches.green, left: "83.3%", top: "73%" },
 ];
 
+// Places appear, then the routes trace between them left to right (a clip
+// wipe — the paths are dashed, so a dashoffset draw would eat the pattern),
+// then the travel times settle in.
 function TravelVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  useVignette(ref, (root) => {
+    const svg = root.querySelector("svg");
+    if (!svg) return;
+    gsap
+      .timeline({
+        defaults: { ease: HOUSE_EASE },
+        scrollTrigger: { trigger: root, ...TRIGGER },
+      })
+      .from(root.querySelectorAll("[data-v='chip']"), {
+        autoAlpha: 0,
+        y: 8,
+        duration: 0.55,
+        stagger: 0.12,
+      })
+      .fromTo(
+        svg,
+        { clipPath: "inset(-5% 105% -5% -5%)" },
+        { clipPath: "inset(-5% -5% -5% -5%)", duration: 1.1, ease: "power2.inOut" },
+        0.4,
+      )
+      .from(
+        root.querySelectorAll("[data-v='time']"),
+        { autoAlpha: 0, duration: 0.5, stagger: 0.15, immediateRender: true },
+        1.0,
+      );
+  });
+
   return (
-    <div className={s.stage} aria-hidden>
+    <div ref={ref} className={s.stage} aria-hidden>
       <div className={s.travelStage}>
         <svg
           className={s.travelSvg}
@@ -63,6 +130,7 @@ function TravelVignette() {
         {TRAVEL_CHIPS.map((c) => (
           <span
             key={c.name}
+            data-v="chip"
             className={s.travelChip}
             style={{ left: c.left, top: c.top }}
           >
@@ -70,10 +138,10 @@ function TravelVignette() {
             {c.name}
           </span>
         ))}
-        <span className={s.travelTime} style={{ left: "31%", top: "50%" }}>
+        <span data-v="time" className={s.travelTime} style={{ left: "31%", top: "50%" }}>
           25 min
         </span>
-        <span className={s.travelTime} style={{ left: "72%", top: "46%" }}>
+        <span data-v="time" className={s.travelTime} style={{ left: "72%", top: "46%" }}>
           18 min
         </span>
       </div>
@@ -99,9 +167,31 @@ const RULER_HOURS = [
   { label: "18", top: "97%" },
 ];
 
+// The windows unfurl from their start times, then events land inside them.
 function WindowsVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  useVignette(ref, (root) => {
+    gsap
+      .timeline({
+        defaults: { ease: HOUSE_EASE },
+        scrollTrigger: { trigger: root, ...TRIGGER },
+      })
+      .from(root.querySelectorAll("[data-v='band']"), {
+        autoAlpha: 0,
+        scaleY: 0,
+        transformOrigin: "top center",
+        duration: 0.8,
+        stagger: 0.12,
+      })
+      .from(
+        root.querySelectorAll("[data-v='event']"),
+        { autoAlpha: 0, y: 8, duration: 0.5, stagger: 0.15, immediateRender: true },
+        0.7,
+      );
+  });
+
   return (
-    <div className={s.stage} aria-hidden>
+    <div ref={ref} className={s.stage} aria-hidden>
       <div className={s.windowsGrid}>
         <div className={s.windowsRuler}>
           {RULER_HOURS.map((h) => (
@@ -115,11 +205,13 @@ function WindowsVignette() {
             {col.map((band, j) => (
               <div
                 key={j}
+                data-v="band"
                 className={`${s.windowBand} ${s.bandTones[band.tone]}`}
                 style={{ top: band.top, height: band.h }}
               >
                 {band.event ? (
                   <div
+                    data-v="event"
                     className={`${s.block} ${s.windowEventTones[band.tone]} ${s.windowEvent}`}
                   />
                 ) : null}
@@ -132,31 +224,52 @@ function WindowsVignette() {
   );
 }
 
+// The tree writes itself top-down, then the finished step gets its check.
 function GoalTreeVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  useVignette(ref, (root) => {
+    gsap
+      .timeline({
+        defaults: { ease: HOUSE_EASE },
+        scrollTrigger: { trigger: root, ...TRIGGER },
+      })
+      .from(root.querySelectorAll("[data-v='row']"), {
+        autoAlpha: 0,
+        x: -10,
+        duration: 0.6,
+        stagger: 0.09,
+      })
+      .from(
+        root.querySelector("[data-v='done']"),
+        { scale: 0.3, duration: 0.45, immediateRender: true },
+        0.75,
+      );
+  });
+
   return (
-    <div className={s.stage} aria-hidden>
-      <div className={s.goalRoot}>
+    <div ref={ref} className={s.stage} aria-hidden>
+      <div data-v="row" className={s.goalRoot}>
         <span className={s.goalRootTitle}>Run a marathon</span>
         <span className={s.goalChip}>Goal</span>
       </div>
       <div className={s.goalChildren}>
-        <div className={s.goalRow}>
-          <span className={`${s.goalDot} ${s.goalDotDone}`} />
+        <div data-v="row" className={s.goalRow}>
+          <span data-v="done" className={`${s.goalDot} ${s.goalDotDone}`} />
           <span className={`${s.goalText} ${s.goalTextDone}`}>
             Buy running shoes
           </span>
         </div>
-        <div className={s.goalRow}>
+        <div data-v="row" className={s.goalRow}>
           <span className={s.goalDot} />
           <span className={s.goalText}>Follow the 10-week plan</span>
         </div>
         <div className={s.goalChildren}>
-          <div className={s.goalRow}>
+          <div data-v="row" className={s.goalRow}>
             <span className={s.goalDot} />
             <span className={s.goalText}>Long run on Sundays</span>
           </div>
         </div>
-        <div className={s.goalRow}>
+        <div data-v="row" className={s.goalRow}>
           <span className={s.goalDot} />
           <span className={s.goalText}>Sign up for the race</span>
           <span className={s.goalDate}>Oct 12</span>

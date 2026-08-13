@@ -53,9 +53,14 @@ export function useCanvas(sceneRef: RefObject<SceneState>) {
     canvas.addEventListener("mouseleave", onLeave);
 
     let raf = 0;
+    let firstFrame = true;
     const tick = () => {
       const scene = sceneRef.current;
       if (scene) renderFrame(ctx, W, H, scene, mouse, rs);
+      if (firstFrame) {
+        firstFrame = false;
+        canvas.style.opacity = "1";
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
