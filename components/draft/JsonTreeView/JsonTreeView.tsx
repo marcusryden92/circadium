@@ -63,8 +63,8 @@ export function JsonForestView({
       <div className={wrap}>
         <div className={empty}>
           {hiddenCount > 0
-            ? "Nothing in view — goals appear here as the assistant works on them, or ask it to show some."
-            : "No goals yet — ask the assistant for some."}
+            ? "Nothing in view — items appear here as the assistant works on them, or ask it to show some."
+            : "No items yet — ask the assistant for some."}
         </div>
       </div>
     );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { ChevronDown } from "lucide-react";
 import { assignInlineVars } from "@vanilla-extract/dynamic";
 import { v4 as uuidv4 } from "uuid";
 import { format } from "date-fns";
@@ -22,6 +23,7 @@ import { TemplateWeekView } from "@/components/draft/TemplateWeekView";
 import { ChatPane } from "@/components/draft/ChatPane";
 import { ChatHistoryPopover } from "@/components/draft/ChatHistoryPopover";
 import { useAIDraftState } from "@/hooks/useAIDraftState";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { DraftConversationMessage } from "@/actions/draftConversations";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useAiAccess } from "@/components/ui";
@@ -110,6 +112,11 @@ import {
   paneSubtitle,
   paneTab,
   paneTabLabel,
+  mobileTabSelectRow,
+  mobileTabSelectWrap,
+  mobileTabSelect,
+  mobileTabSelectChevron,
+  mobileTotalChanges,
   tabChangeCount,
   headerActionButton,
   headerActionCluster,
@@ -133,7 +140,7 @@ function formatDirtyDomains(
   settings: boolean,
 ): string {
   const parts = [
-    forest ? "goals" : null,
+    forest ? "items" : null,
     templates ? "weekly schedule" : null,
     windows ? "category windows" : null,
     precedence ? "queues" : null,
@@ -410,6 +417,18 @@ export function AIDraftModal({
     precedenceChangeCount +
     habitChangeCount +
     settingsChangeLines.length;
+  // "Items", not "Goals" — the forest pane holds tasks and plans too.
+  const reviewTabs: { key: DraftPaneTab; label: string; count: number }[] = [
+    { key: "goals", label: "Items", count: goalChangeCount },
+    {
+      key: "week",
+      label: "Week",
+      count: templateChangeCount + settingsChangeLines.length,
+    },
+    { key: "windows", label: "Categories", count: windowChangeCount },
+    { key: "queues", label: "Queues", count: precedenceChangeCount },
+    { key: "habits", label: "Habits", count: habitChangeCount },
+  ];
 
   // Member and dependency endpoints are top-level items; working roots cover
   // drafts, canonical roots cover rows deleted in the working copy.
@@ -428,6 +447,7 @@ export function AIDraftModal({
   // (last streamed domain wins) unless the user clicked a tab this turn; the
   // pin resets on each send.
   const [activeTab, setActiveTab] = useState<DraftPaneTab>("goals");
+  const isMobile = useIsMobile();
   const tabPinnedRef = useRef(false);
   const selectTab = useCallback((tab: DraftPaneTab) => {
     tabPinnedRef.current = true;
@@ -789,7 +809,7 @@ export function AIDraftModal({
           // blank (this fallback also enters future history as the
           // assistant's reply).
           const touchedTabs = [
-            sawForest ? "Goals" : null,
+            sawForest ? "Items" : null,
             sawTemplates ? "Week" : null,
             sawWindows ? "Categories" : null,
             sawPrecedence ? "Queues" : null,
@@ -801,7 +821,7 @@ export function AIDraftModal({
                   touchedTabs.length === 1 ? "" : "s"
                 }.`
               : sawShow
-                ? "Brought them into view in the goals pane."
+                ? "Brought them into view in the items pane."
                 : "Done.";
           // The ground-truth ledger enters future history alongside the
           // prose: a later turn can tell whether this reply's claims were
@@ -1288,67 +1308,50 @@ export function AIDraftModal({
           }`}
         >
           <div className={paneHeader}>
-            <div className={paneHeaderSection}>
-              <button
-                type="button"
-                className={paneTab}
-                data-active={activeTab === "goals" ? "true" : undefined}
-                onClick={() => selectTab("goals")}
-              >
-                <span className={paneTabLabel}>Goals</span>
-                {goalChangeCount > 0 && (
-                  <span className={tabChangeCount}>{goalChangeCount}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={paneTab}
-                data-active={activeTab === "week" ? "true" : undefined}
-                onClick={() => selectTab("week")}
-              >
-                <span className={paneTabLabel}>Week</span>
-                {templateChangeCount + settingsChangeLines.length > 0 && (
-                  <span className={tabChangeCount}>
-                    {templateChangeCount + settingsChangeLines.length}
+            {isMobile ? (
+              <div className={mobileTabSelectRow}>
+                <span className={mobileTabSelectWrap}>
+                  <select
+                    className={mobileTabSelect}
+                    value={activeTab}
+                    onChange={(e) => selectTab(e.target.value as DraftPaneTab)}
+                    aria-label="Review section"
+                  >
+                    {reviewTabs.map((tab) => (
+                      <option key={tab.key} value={tab.key}>
+                        {tab.count > 0
+                          ? `${tab.label} · ${tab.count}`
+                          : tab.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className={mobileTabSelectChevron} />
+                </span>
+                {reviewChangeCount > 0 && (
+                  <span className={mobileTotalChanges}>
+                    <span className={tabChangeCount}>{reviewChangeCount}</span>
+                    in all
                   </span>
                 )}
-              </button>
-              <button
-                type="button"
-                className={paneTab}
-                data-active={activeTab === "windows" ? "true" : undefined}
-                onClick={() => selectTab("windows")}
-              >
-                <span className={paneTabLabel}>Categories</span>
-                {windowChangeCount > 0 && (
-                  <span className={tabChangeCount}>{windowChangeCount}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={paneTab}
-                data-active={activeTab === "queues" ? "true" : undefined}
-                onClick={() => selectTab("queues")}
-              >
-                <span className={paneTabLabel}>Queues</span>
-                {precedenceChangeCount > 0 && (
-                  <span className={tabChangeCount}>
-                    {precedenceChangeCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={paneTab}
-                data-active={activeTab === "habits" ? "true" : undefined}
-                onClick={() => selectTab("habits")}
-              >
-                <span className={paneTabLabel}>Habits</span>
-                {habitChangeCount > 0 && (
-                  <span className={tabChangeCount}>{habitChangeCount}</span>
-                )}
-              </button>
-            </div>
+              </div>
+            ) : (
+              <div className={paneHeaderSection}>
+                {reviewTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={paneTab}
+                    data-active={activeTab === tab.key ? "true" : undefined}
+                    onClick={() => selectTab(tab.key)}
+                  >
+                    <span className={paneTabLabel}>{tab.label}</span>
+                    {tab.count > 0 && (
+                      <span className={tabChangeCount}>{tab.count}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className={paneSubheaderSection}>
               <span className={paneSubtitle}>
                 {hasChanges ? "unsaved changes" : "current state"}
@@ -1361,7 +1364,7 @@ export function AIDraftModal({
                       className={headerActionButton}
                       onClick={() => setShowAll(true)}
                     >
-                      Show all · {hiddenCount} more goal
+                      Show all · {hiddenCount} more item
                       {hiddenCount === 1 ? "" : "s"}
                     </button>
                   </span>

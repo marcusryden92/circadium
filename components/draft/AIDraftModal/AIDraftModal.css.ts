@@ -211,35 +211,26 @@ export const paneHeader = style({
   flexShrink: 0,
 });
 
+// A left-aligned group with a fixed gap: space-between reads fine at middling
+// widths but scatters five tabs across the whole pane at large scale. Wraps
+// when the pane is dragged narrow instead of overflowing.
 export const paneHeaderSection = style({
   display: "flex",
   alignItems: "baseline",
   width: "100%",
-  justifyContent: "space-between",
+  flexWrap: "wrap",
+  columnGap: space["5"],
+  rowGap: space["1"],
   paddingBottom: space["1"],
-  gap: space["3"],
   flexShrink: 0,
-  selectors: {
-    "&&": {
-      "@media": {
-        // A fixed two-column grid instead of a wrapped flex row: space-between
-        // only stays tidy at an even tab count, so pin the columns and the
-        // header holds up if a fifth tab ever appears.
-        [media.mobile]: {
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          columnGap: space["3"],
-          rowGap: space["0.5"],
-        },
-      },
-    },
-  },
 });
 
+// Horizontal padding 0 so the status label and actions share the tab labels'
+// left edge — the two rows read as one header block.
 export const paneSubheaderSection = style({
   display: "flex",
   alignItems: "baseline",
-  padding: `${space["0.5"]}px ${space["1"]}px`,
+  padding: `${space["0.5"]}px 0`,
   width: "100%",
   gap: space["3"],
   flexShrink: 0,
@@ -283,18 +274,6 @@ export const paneTab = style({
       color: vars.inkSoft,
     },
   },
-  "@media": {
-    // In the mobile two-column grid the buttons stretch to fill their cell;
-    // hug the right column's content to the outer edge so the row reads as a
-    // balanced 2x2 (left column left-aligned, right column right-aligned).
-    [media.mobile]: {
-      selectors: {
-        "&:nth-child(even)": {
-          justifyContent: "flex-end",
-        },
-      },
-    },
-  },
 });
 
 // paneTitle's look with the color left to the tab button, so active/inactive
@@ -305,6 +284,65 @@ export const paneTabLabel = style([
     color: "inherit",
     margin: 0,
     transition: themeTransition,
+  },
+]);
+
+// Mobile replaces the tab buttons with a native select dressed as the pane
+// title (same display face the active tab uses on desktop), so switching
+// domains is one tap into the platform picker.
+export const mobileTabSelectRow = style({
+  display: "flex",
+  alignItems: "center",
+  width: "100%",
+  gap: space["2"],
+  paddingBottom: space["1"],
+});
+
+export const mobileTabSelectWrap = style({
+  position: "relative",
+  display: "inline-flex",
+  alignItems: "center",
+  minWidth: 0,
+});
+
+export const mobileTabSelect = style([
+  display.modalTitle,
+  {
+    appearance: "none",
+    WebkitAppearance: "none",
+    background: "transparent",
+    border: "none",
+    margin: 0,
+    padding: 0,
+    paddingRight: 22,
+    color: vars.ink,
+    cursor: "pointer",
+    maxWidth: "100%",
+    textOverflow: "ellipsis",
+    transition: themeTransition,
+  },
+]);
+
+export const mobileTabSelectChevron = style({
+  position: "absolute",
+  right: 0,
+  top: "50%",
+  transform: "translateY(-50%)",
+  pointerEvents: "none",
+  color: vars.inkSoft,
+});
+
+// Sum of pending changes across every tab — visible even when the selected
+// domain itself is clean, so the dropdown never hides work elsewhere.
+export const mobileTotalChanges = style([
+  text.microLabel,
+  {
+    marginLeft: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: space["1"],
+    color: vars.inkSoft,
+    whiteSpace: "nowrap",
   },
 ]);
 
