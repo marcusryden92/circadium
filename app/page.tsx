@@ -89,7 +89,7 @@ const FEATURES: Feature[] = [
   {
     kind: "engine",
     name: "A scheduling engine",
-    body: "Tell Circadium what matters. It returns a week that respects your goals, your deadlines, and the constraints around them — without you arranging a single block.",
+    body: "Tell Circadium what matters — type it in, or talk it through with the built-in assistant. It returns a week that respects your goals, your deadlines, and the constraints around them, without you arranging a single block.",
   },
   {
     kind: "travel",
@@ -114,43 +114,46 @@ const SECTIONS: Section[] = [
     heading: "Planning is two jobs.",
     body: [
       {
-        text: "Deciding what matters — and arranging when it all happens.",
+        text: "Deciding what matters — and re-deciding when it all happens, every time something moves.",
         emphasis: true,
       },
       {
         text: "The first job is yours alone. It takes judgment: your goals, your values, your call.",
       },
       {
-        text: "The second is logistics. Durations, deadlines, locations, travel, open slots — a constraint problem with a thousand moving pieces.",
+        text: "The second is logistics. Durations, deadlines, locations, travel, open slots — a constraint problem with a thousand moving pieces, and it reopens every time the day shifts.",
       },
       { text: "You were never meant to solve that one by hand." },
       {
-        text: "Circadium takes the second job off your hands entirely.",
+        text: "Circadium takes the second job off your hands entirely. You set the direction, and it builds the week.",
         emphasis: true,
       },
-      { text: "You set the direction." },
-      { text: "It builds the week.", emphasis: true },
     ],
   },
   {
     kicker: "The friction",
     dark: true,
     demo: true,
-    heading: "Stop rebuilding your week by hand.",
+    heading: "When the plan breaks, the deciding begins.",
     body: [
-      { text: "Most planning systems break the moment something changes." },
-      { text: "A meeting gets added." },
-      { text: "A task takes longer than expected." },
-      { text: "A priority shifts." },
       {
-        text: "Now you're back to dragging blocks around a calendar and figuring out what needs to move.",
+        text: "A meeting runs over. The gym is now impossible, and there are ninety orphaned minutes where the plan used to be.",
       },
-      { text: "Circadium handles that automatically.", emphasis: true },
       {
-        text: "When circumstances change, the schedule is recomputed. When priorities change, the week changes with them.",
+        text: "The language, the instrument, the training, the side project — any of them would count. But choosing between them costs more energy than doing them, so too often the gap goes to nothing.",
+      },
+      {
+        text: "That deciding is the work Circadium takes over.",
+        emphasis: true,
+      },
+      {
+        text: "When something moves, the whole week is recomputed around what matters most right now. The gap arrives with its answer already in it.",
+      },
+      {
+        text: "No end-of-day re-planning session, no willpower spent on triage.",
       },
       { text: "You decide what matters." },
-      { text: "The engine handles the tradeoffs.", emphasis: true },
+      { text: "The engine decides what's next.", emphasis: true },
     ],
   },
   {
@@ -231,9 +234,11 @@ export default function Home() {
         </header>
         <div className={heroContent}>
           <h1 className={heroHeadline}>
-            Never <em>plan</em> a day again
+            Always know what to do <em>next</em>
           </h1>
-          <p className={heroSubhead}>Just live it.</p>
+          <p className={heroSubhead}>
+            Plans break. Priorities shift. Circadium re-sorts your day.
+          </p>
           <div className={heroCta}>
             <Button variant="solidLight" size="lg" onClick={goRegister}>
               Start free →
@@ -247,13 +252,15 @@ export default function Home() {
         <Reveal>
           <div className={leadInner}>
             <p className={leadText}>
-              Keeping a calendar is quiet, constant work. Arranging blocks,
-              resolving conflicts, rebuilding the week every time something
-              moves — hours of planning that produce nothing on their own.
+              The real cost of a broken plan isn&apos;t the lost hour —
+              it&apos;s the deciding that follows. A gap opens, three things
+              could fill it, and choosing between them takes more energy than
+              any of them would.
             </p>
             <p className={leadText}>
               Circadium computes a week around your goals, commitments,
-              locations, and constraints — then adapts as life changes.
+              locations, and constraints — and when life shifts, it re-sorts,
+              so the next right thing is already waiting.
             </p>
             <p className={leadEmphasis}>
               The result isn&apos;t a perfectly optimized calendar. It&apos;s a
