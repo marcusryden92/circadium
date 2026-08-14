@@ -1,4 +1,10 @@
-import { Category, EngineMessage, Planner, Queue } from "@/types/prisma";
+import {
+  Category,
+  EngineMessage,
+  EventTemplate,
+  Planner,
+  Queue,
+} from "@/types/prisma";
 import {
   buildEngineMessageLookups,
   renderEngineMessage,
@@ -16,6 +22,7 @@ export default function useRenderEngineMessages(
   locations: SerializedLocation[],
   queues: Queue[],
   categories: Category[],
+  templates: EventTemplate[],
   engineMessages: EngineMessage[],
   bufferMinutes: number,
   filterId?: string,
@@ -26,6 +33,7 @@ export default function useRenderEngineMessages(
       locations,
       queues,
       categories,
+      templates,
     );
     // renderEngineMessage returns null for payload shapes we don't recognize
     // (e.g. a persisted row from a newer client version). Drop those rather
@@ -62,7 +70,15 @@ export default function useRenderEngineMessages(
       active: engineMessages.filter((m) => !m.dismissed).flatMap(render),
       dismissed: engineMessages.filter((m) => m.dismissed).flatMap(render),
     };
-  }, [engineMessages, planner, locations, queues, categories, bufferMinutes]);
+  }, [
+    engineMessages,
+    planner,
+    locations,
+    queues,
+    categories,
+    templates,
+    bufferMinutes,
+  ]);
 
   // Item-page filter: a message belongs to the viewed item when any planner
   // it references sits in the item's subtree — a goal's alerts include every

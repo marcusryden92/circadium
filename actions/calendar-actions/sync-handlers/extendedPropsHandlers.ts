@@ -4,7 +4,7 @@ import type { EventExtendedProps } from "@/types/prisma";
 type Database = Prisma.TransactionClient;
 
 const COLUMN_LIST = `id, "eventId", "plannerType", "eventType", "parentId",
-      "completedStartTime", "completedEndTime"`;
+      "completedStartTime", "completedEndTime", "trespassingStart", "trespassingEnd"`;
 
 // EventExtendedProps has no userId column of its own, so ownership scoping
 // rides on the parent event: both write paths INSERT ... SELECT through a
@@ -35,6 +35,9 @@ function scopedInsert(
     push(props.parentId, "text");
     push(props.completedStartTime, "text");
     push(props.completedEndTime, "text");
+    // Flags are runtime-optional on the type; the columns are NOT NULL.
+    push(props.trespassingStart ?? false, "boolean");
+    push(props.trespassingEnd ?? false, "boolean");
     rowFragments.push(`(${cells.join(",")})`);
   }
 
@@ -43,7 +46,8 @@ function scopedInsert(
   const query = `
     INSERT INTO "EventExtendedProps" (${COLUMN_LIST})
     SELECT v.id, v."eventId", v."plannerType", v."eventType", v."parentId",
-           v."completedStartTime", v."completedEndTime"
+           v."completedStartTime", v."completedEndTime",
+           v."trespassingStart", v."trespassingEnd"
     FROM (VALUES ${rowFragments.join(",")}) AS v(${COLUMN_LIST})
     JOIN "SimpleEvents" se
       ON se.id = v."eventId" AND se."userId" = $${params.length}::text
@@ -87,7 +91,9 @@ export function handleExtendedPropsChanges(
           "plannerType" = EXCLUDED."plannerType",
           "parentId" = EXCLUDED."parentId",
           "completedStartTime" = EXCLUDED."completedStartTime",
-          "completedEndTime" = EXCLUDED."completedEndTime"`,
+          "completedEndTime" = EXCLUDED."completedEndTime",
+          "trespassingStart" = EXCLUDED."trespassingStart",
+          "trespassingEnd" = EXCLUDED."trespassingEnd"`,
       ),
     );
   }

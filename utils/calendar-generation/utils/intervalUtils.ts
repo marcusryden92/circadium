@@ -131,21 +131,33 @@ export interface TrespassingInfo {
 }
 
 /**
- * Detect trespassing (overlapping) events with different locations
- * Returns a map of event IDs to their trespassing border info
+ * One overlapping different-location pair, `a` sorted before `b`.
+ * Feeds the LOCATION_OVERLAP engine message alongside the border flags.
+ */
+export interface OverlapPair {
+  a: IntervalWithId;
+  b: IntervalWithId;
+  overlapStart: Date;
+}
+
+/**
+ * Detect trespassing (overlapping) events with different locations.
+ * Returns border info per event id plus the raw overlapping pairs.
  *
- * Rules:
+ * Border rules:
  * - Event A ends after Event B starts (A infringes on B): A gets red BOTTOM border
  * - Event B nested inside Event A: B gets BOTH red top AND bottom borders
  * - Start times equal: Both events get red TOP border
  * - End times equal: Both events get red BOTTOM border
  */
-export function detectTrespassingEvents(
-  intervals: IntervalWithId[],
-): Map<string, TrespassingInfo> {
+export function detectTrespassingEvents(intervals: IntervalWithId[]): {
+  borders: Map<string, TrespassingInfo>;
+  pairs: OverlapPair[];
+} {
   const trespassingMap = new Map<string, TrespassingInfo>();
+  const pairs: OverlapPair[] = [];
 
-  if (intervals.length <= 1) return trespassingMap;
+  if (intervals.length <= 1) return { borders: trespassingMap, pairs };
 
   // Helper to get or create trespassing info for an event
   const getOrCreate = (eventId: string): TrespassingInfo => {
@@ -190,6 +202,15 @@ export function detectTrespassingEvents(
       const bStart = eventB.start.getTime();
       const bEnd = eventB.end.getTime();
 
+      // Touching exactly is not an overlap — only a real intersection counts.
+      if (bStart < aEnd && aStart < bEnd) {
+        pairs.push({
+          a: eventA,
+          b: eventB,
+          overlapStart: new Date(Math.max(aStart, bStart)),
+        });
+      }
+
       // Check for overlaps
       const startsEqual = aStart === bStart;
       const endsEqual = aEnd === bEnd;
@@ -230,7 +251,7 @@ export function detectTrespassingEvents(
     }
   }
 
-  return trespassingMap;
+  return { borders: trespassingMap, pairs };
 }
 
 /**

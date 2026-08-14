@@ -17,10 +17,16 @@ import {
 } from "../../models/SchedulingModels";
 import { Slot } from "../../models/TimeSlot";
 import {
+  masksToIntervals,
+  type PerTemplateMask,
+} from "../../utils/intervalUtils";
+import {
   buildCategoryEvents,
   markTrespassingEvents,
   assembleFinalEventList,
   stampCategoryEventBorders,
+  type TemplateObstacle,
+  type LocationOverlap,
 } from "../EventAssembler";
 
 export function assembleFinalEvents(
@@ -32,11 +38,13 @@ export function assembleFinalEvents(
   endDate: Date,
   plannerLocationMap: Map<string, string | null>,
   slots: Slot[],
+  perTemplateMasks: PerTemplateMask[] = [],
   logging?: LoggingConfig,
 ): {
   events: SimpleEvent[];
   categoryEvents: CategoryEvent[];
   travelEvents: TravelEvent[];
+  locationOverlaps: LocationOverlap[];
 } {
   const travelEvents = travelManager.generateTravelEvents(userId);
 
@@ -69,7 +77,28 @@ export function assembleFinalEvents(
 
   const events = assembleFinalEventList(context.scheduledEvents);
 
-  markTrespassingEvents(events, plannerLocationMap);
+  // Template occurrences aren't part of the assembled list (they render from
+  // EventTemplate config), so item-over-template conflicts re-enter detection
+  // as concrete obstacle intervals — the same masksToIntervals expansion the
+  // slot fabric uses, so the two can never disagree on which occurrences
+  // exist. Anywhere templates never conflict; skip expanding them.
+  const templateObstacles: TemplateObstacle[] = perTemplateMasks.flatMap(
+    (mask) =>
+      mask.locationId
+        ? masksToIntervals([mask], startDate, endDate).map((interval) => ({
+            templateId: mask.templateId,
+            start: interval.start,
+            end: interval.end,
+            locationId: mask.locationId ?? null,
+          }))
+        : [],
+  );
+
+  const locationOverlaps = markTrespassingEvents(
+    events,
+    plannerLocationMap,
+    templateObstacles,
+  );
 
   const categoryEvents = buildCategoryEvents(
     userId,
@@ -83,5 +112,5 @@ export function assembleFinalEvents(
   // row so the renderer reads it on cold load without re-running the engine.
   stampCategoryEventBorders(categoryEvents, slots);
 
-  return { events, categoryEvents, travelEvents };
+  return { events, categoryEvents, travelEvents, locationOverlaps };
 }

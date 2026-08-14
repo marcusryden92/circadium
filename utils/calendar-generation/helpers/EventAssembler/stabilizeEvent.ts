@@ -20,6 +20,20 @@ export function stabilizeEvent(
       ? {
           ...candidate.extendedProps,
           id: prev.extendedProps?.id ?? candidate.extendedProps.id,
+          // Trespass flags are mark-pass-owned: builders never set them, but
+          // persisted rows carry them explicitly. When the previous emit has
+          // them, carry the values forward (markTrespassingEvents recomputes
+          // after assembly) so the key-count-sensitive equality below can
+          // still match; when it doesn't, add nothing — a fresh key would
+          // break identity against a flagless previous emit.
+          ...(candidate.extendedProps.trespassingStart === undefined &&
+          prev.extendedProps?.trespassingStart !== undefined
+            ? { trespassingStart: prev.extendedProps.trespassingStart }
+            : {}),
+          ...(candidate.extendedProps.trespassingEnd === undefined &&
+          prev.extendedProps?.trespassingEnd !== undefined
+            ? { trespassingEnd: prev.extendedProps.trespassingEnd }
+            : {}),
         }
       : candidate.extendedProps,
   };

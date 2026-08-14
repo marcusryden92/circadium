@@ -28,6 +28,7 @@ import { resolveInheritedDeadline } from "../PrioritySorter/schedulingOrder";
 import type { SplitRelaxation } from "../Scheduler/scheduleSplitTask";
 import type { GoalCapRelaxation } from "../Scheduler/goalDayCap";
 import type { SequenceBreak } from "../Scheduler/precedenceGate";
+import type { LocationOverlap } from "../EventAssembler";
 import {
   CAPACITY_LIMITING_AXES,
   type CapacityLimitingAxis,
@@ -35,6 +36,7 @@ import {
   dependencyBrokenId,
   goalDayCapRelaxedId,
   insufficientTravelId,
+  locationOverlapId,
   queueSequenceBrokenId,
   scheduledLateId,
   scheduledOkId,
@@ -55,6 +57,7 @@ export function buildEngineMessages(
   splitRelaxations: SplitRelaxation[] = [],
   goalCapRelaxations: GoalCapRelaxation[] = [],
   sequenceBreaks: SequenceBreak[] = [],
+  locationOverlaps: LocationOverlap[] = [],
 ): EngineMessage[] {
   const priorDismissed = buildDismissedSet(previousMessages);
 
@@ -62,6 +65,7 @@ export function buildEngineMessages(
     ...emitSchedulerFailureMessages(schedulerFailures),
     ...emitScheduledLateMessages(planners, finalEvents, currentDate),
     ...emitInsufficientTravelMessages(travelEvents),
+    ...emitLocationOverlapMessages(locationOverlaps),
     ...emitSplitRelaxationMessages(splitRelaxations),
     ...emitGoalCapRelaxationMessages(goalCapRelaxations),
     ...emitSequenceBreakMessages(sequenceBreaks),
@@ -154,6 +158,64 @@ function emitSchedulerFailureMessages(
         reason: f.reason,
         ...(remainingMinutes !== undefined ? { remainingMinutes } : {}),
         ...(placedMinutes !== undefined ? { placedMinutes } : {}),
+      },
+    });
+  }
+  return emits;
+}
+
+/**
+ * LOCATION_OVERLAP coalesces per (pair, locations) — the INSUFFICIENT_TRAVEL
+ * pattern: recurring instances of the same conflict (a weekly plan sitting on
+ * a weekly template) fold to one row with affectedCount, and the payload
+ * carries the earliest overlap in the horizon for the console jump link.
+ * affectedCount stays OUT of the id so horizon growth alone never resurfaces
+ * a dismissed row.
+ */
+function emitLocationOverlapMessages(
+  overlaps: LocationOverlap[],
+): EngineMessageEmit[] {
+  type Bucket = {
+    overlap: LocationOverlap;
+    count: number;
+    earliestStart: string;
+  };
+  const buckets = new Map<string, Bucket>();
+
+  for (const overlap of overlaps) {
+    const id = locationOverlapId(overlap);
+    const existing = buckets.get(id);
+    if (existing) {
+      existing.count += 1;
+      if (overlap.overlapStart < existing.earliestStart) {
+        existing.earliestStart = overlap.overlapStart;
+      }
+    } else {
+      buckets.set(id, {
+        overlap,
+        count: 1,
+        earliestStart: overlap.overlapStart,
+      });
+    }
+  }
+
+  const emits: EngineMessageEmit[] = [];
+  for (const [id, b] of buckets) {
+    emits.push({
+      id,
+      type: "LOCATION_OVERLAP",
+      tone: "fail",
+      dismissed: false,
+      payload: {
+        type: "LOCATION_OVERLAP",
+        firstKind: b.overlap.firstKind,
+        firstId: b.overlap.firstId,
+        secondKind: b.overlap.secondKind,
+        secondId: b.overlap.secondId,
+        firstLocationId: b.overlap.firstLocationId,
+        secondLocationId: b.overlap.secondLocationId,
+        overlapStart: b.earliestStart,
+        affectedCount: b.count,
       },
     });
   }

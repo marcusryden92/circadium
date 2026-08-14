@@ -8,9 +8,6 @@ export type RuntimeEventExtendedProps = EventExtendedProps & {
   isStrict?: boolean;
   // Link from scheduled tasks/plans to their category wrapper
   categoryWrapperId?: string | null;
-  // Trespassing (overlap) indicators for UI borders
-  trespassingStart?: boolean;
-  trespassingEnd?: boolean;
   // Template UI flag
   isTemplateItem?: boolean;
   // Travel-specific runtime fields (not persisted in Prisma schema)

@@ -24,6 +24,8 @@ model EventExtendedProps {
   completedStartTime String?
   completedEndTime   String?
   parentId           String?
+  trespassingStart   Boolean      @default(false) // Location-conflict border flags, stamped by markTrespassingEvents each regen.
+  trespassingEnd     Boolean      @default(false) // Persisted (CategoryEvent precedent) so red borders survive cold load without a regen.
   eventId            String       @unique
   event              SimpleEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 

@@ -46,6 +46,7 @@ export default function ItemAlertsPage() {
     locations,
     queues,
     categories,
+    template,
     engineMessages,
     calendarEvents,
   } = useCalendarProvider();
@@ -61,6 +62,7 @@ export default function ItemAlertsPage() {
       locations,
       queues,
       categories,
+      template,
       engineMessages,
       bufferTimeMinutes,
       item.id,

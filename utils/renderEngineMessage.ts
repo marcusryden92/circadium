@@ -10,7 +10,13 @@
  *     re-parsing prose.
  */
 
-import type { Category, Planner, EngineMessage, Queue } from "@/types/prisma";
+import type {
+  Category,
+  EventTemplate,
+  Planner,
+  EngineMessage,
+  Queue,
+} from "@/types/prisma";
 import type { SerializedLocation } from "@/redux/slices/schedulingSettingsSlice";
 import type {
   EngineMessagePayload,
@@ -43,6 +49,7 @@ export type EngineMessageLookups = {
   locationById: Map<string, SerializedLocation>;
   queueById: Map<string, Queue>;
   categoryById: Map<string, Category>;
+  templateById: Map<string, EventTemplate>;
 };
 
 export function buildEngineMessageLookups(
@@ -50,12 +57,14 @@ export function buildEngineMessageLookups(
   locations: SerializedLocation[],
   queues: Queue[] = [],
   categories: Category[] = [],
+  templates: EventTemplate[] = [],
 ): EngineMessageLookups {
   return {
     plannerById: new Map(planners.map((p) => [p.id, p])),
     locationById: new Map(locations.map((l) => [l.id, l])),
     queueById: new Map(queues.map((q) => [q.id, q])),
     categoryById: new Map(categories.map((c) => [c.id, c])),
+    templateById: new Map(templates.map((t) => [t.id, t])),
   };
 }
 
@@ -78,6 +87,7 @@ export function renderEngineMessage(
     "TASK_UNSCHEDULABLE",
     "SCHEDULED_LATE",
     "INSUFFICIENT_TRAVEL",
+    "LOCATION_OVERLAP",
     "SPLIT_CONSTRAINT_RELAXED",
     "GOAL_DAY_CAP_RELAXED",
     "QUEUE_SEQUENCE_BROKEN",
@@ -196,6 +206,47 @@ export function renderEngineMessage(
         title,
         body: [shortage, ...(scale ? [scale] : [])],
         goToDate: null,
+      };
+    }
+
+    case "LOCATION_OVERLAP": {
+      const sideLabel = (
+        kind: "planner" | "template",
+        id: string,
+        fallback: string,
+      ): string => {
+        if (kind === "template") {
+          const template = lookups.templateById.get(id);
+          return template ? `"${template.title}"` : "a weekly block";
+        }
+        return plannerLabel(id, fallback);
+      };
+      const firstLabel = sideLabel(
+        payload.firstKind,
+        payload.firstId,
+        "An item",
+      );
+      const secondLabel = sideLabel(
+        payload.secondKind,
+        payload.secondId,
+        "another item",
+      );
+      const firstLocation = locationLabel(payload.firstLocationId, lookups);
+      const secondLocation = locationLabel(payload.secondLocationId, lookups);
+      const scale =
+        payload.affectedCount > 1
+          ? `Recurs ${payload.affectedCount}× in the horizon.`
+          : null;
+      return {
+        id: message.id,
+        tag: "CONFLICT",
+        tone,
+        title: `${firstLabel} overlaps ${secondLabel} at a different location`,
+        body: [
+          `They're at ${firstLocation} and ${secondLocation} — you'd need to be in two places at once. Move one of them or align their locations.`,
+          ...(scale ? [scale] : []),
+        ],
+        goToDate: payload.overlapStart,
       };
     }
 
@@ -333,8 +384,31 @@ export function renderEngineMessage(
  */
 export function plannerIdFromPayload(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
+  const overlapPlannerIds = locationOverlapPlannerIds(payload);
+  if (overlapPlannerIds.length > 0) return overlapPlannerIds[0];
   const p = payload as { plannerId?: unknown };
   return typeof p.plannerId === "string" ? p.plannerId : null;
+}
+
+// LOCATION_OVERLAP references planners through kind-tagged sides rather than
+// a plannerId key; extract the planner-kind ids in payload order.
+function locationOverlapPlannerIds(payload: object): string[] {
+  const p = payload as {
+    type?: unknown;
+    firstKind?: unknown;
+    firstId?: unknown;
+    secondKind?: unknown;
+    secondId?: unknown;
+  };
+  if (p.type !== "LOCATION_OVERLAP") return [];
+  const ids: string[] = [];
+  if (p.firstKind === "planner" && typeof p.firstId === "string") {
+    ids.push(p.firstId);
+  }
+  if (p.secondKind === "planner" && typeof p.secondId === "string") {
+    ids.push(p.secondId);
+  }
+  return ids;
 }
 
 /**
@@ -351,7 +425,10 @@ export function plannerSubjectIdsFromPayload(payload: unknown): string[] {
     "predecessorId",
     "successorId",
   ] as const;
-  return keys.flatMap((key) => (typeof p[key] === "string" ? [p[key]] : []));
+  return [
+    ...keys.flatMap((key) => (typeof p[key] === "string" ? [p[key]] : [])),
+    ...locationOverlapPlannerIds(payload),
+  ];
 }
 
 function locationLabel(

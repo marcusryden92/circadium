@@ -17,6 +17,7 @@
  * dismissal survives regens as long as the id matches). Per type the id
  * fields are:
  *   - INSUFFICIENT_TRAVEL: from | to | actualMinutes | timeOfDay | dayOfWeek
+ *   - LOCATION_OVERLAP:    firstId | secondId | firstLocationId | secondLocationId
  *   - SCHEDULED_LATE:      plannerId | scheduledStart
  *   - TASK_TOO_LARGE:      plannerId
  *   - TASK_UNSCHEDULABLE:  plannerId | reason
@@ -47,6 +48,7 @@ export type EngineMessageType =
   | "TASK_UNSCHEDULABLE"
   | "SCHEDULED_LATE"
   | "INSUFFICIENT_TRAVEL"
+  | "LOCATION_OVERLAP"
   | "SPLIT_CONSTRAINT_RELAXED"
   | "GOAL_DAY_CAP_RELAXED"
   | "QUEUE_SEQUENCE_BROKEN"
@@ -118,6 +120,23 @@ export type EngineMessagePayload =
       shortageMinutes: number;
       dayOfWeek: number;
       timeOfDay: string;
+      affectedCount: number;
+    }
+  | {
+      // Two placed items overlap while resolving to different locations —
+      // the user would need to be in two places at once. Sides reference
+      // ids (planner rows or weekly templates) so a rename never rots the
+      // prose; recurring occurrences fold per (pair, locations) with
+      // affectedCount, and overlapStart is an emit-time fact outside the id
+      // (earliest overlap in the horizon, used for the console jump link).
+      type: "LOCATION_OVERLAP";
+      firstKind: "planner" | "template";
+      firstId: string;
+      secondKind: "planner" | "template";
+      secondId: string;
+      firstLocationId: string | null;
+      secondLocationId: string | null;
+      overlapStart: string;
       affectedCount: number;
     }
   | {
@@ -261,6 +280,26 @@ export function insufficientTravelId(fields: {
     fields.actualMinutes,
     fields.timeOfDay,
     fields.dayOfWeek,
+  )}`;
+}
+
+/**
+ * LOCATION_OVERLAP id — the conflicting pair plus both emit-time locations.
+ * Recurring occurrences of the same conflict (a weekly plan over a weekly
+ * template) share this id and fold to one row; relocating either side while
+ * the overlap persists produces a new id and resurfaces a dismissed row.
+ */
+export function locationOverlapId(fields: {
+  firstId: string;
+  secondId: string;
+  firstLocationId: string | null;
+  secondLocationId: string | null;
+}): string {
+  return `LOCATION_OVERLAP${MESSAGE_ID_DELIM}${joinBody(
+    fields.firstId,
+    fields.secondId,
+    fields.firstLocationId,
+    fields.secondLocationId,
   )}`;
 }
 

@@ -8,6 +8,18 @@ export {
   ExternalCalendarMode,
 } from "@/generated/client";
 
+// Trespass flags are persisted columns but runtime-optional: event builders
+// never set them — stabilizeEvent carries them forward from the previous emit
+// and markTrespassingEvents owns the truth each regen (absent reads as false).
+type EventExtendedPropsRow = Prisma.EventExtendedPropsGetPayload<undefined>;
+export type EventExtendedProps = Omit<
+  EventExtendedPropsRow,
+  "trespassingStart" | "trespassingEnd"
+> & {
+  trespassingStart?: boolean;
+  trespassingEnd?: boolean;
+};
+
 // SimpleEvent with runtime fields added to extendedProps
 export type SimpleEvent = Omit<
   Prisma.SimpleEventGetPayload<{
@@ -16,7 +28,7 @@ export type SimpleEvent = Omit<
   "extendedProps"
 > & {
   extendedProps:
-    | (Prisma.EventExtendedPropsGetPayload<undefined> & {
+    | (EventExtendedProps & {
         categoryWrapperId?: string | null;
         wrapperId?: string | null;
         fromLocationId?: string | null;
@@ -38,8 +50,6 @@ type RawEventTemplate = Prisma.EventTemplateGetPayload<undefined>;
 export type EventTemplate = Omit<RawEventTemplate, "startDay"> & {
   startDay: WeekDayIntegers;
 };
-
-export type EventExtendedProps = Prisma.EventExtendedPropsGetPayload<undefined>;
 
 export type Location = Prisma.LocationGetPayload<undefined>;
 

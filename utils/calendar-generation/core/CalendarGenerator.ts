@@ -410,6 +410,7 @@ export class CalendarGenerator {
       events: allEvents,
       categoryEvents,
       travelEvents,
+      locationOverlaps,
     } = assembleFinalEvents(
       input.userId,
       travelManager,
@@ -419,6 +420,7 @@ export class CalendarGenerator {
       schedulingEndDate,
       plannerLocationMap,
       timeSlotManager.slots,
+      perTemplateMasks,
       input.config?.logging,
     );
 
@@ -489,6 +491,7 @@ export class CalendarGenerator {
       schedulingResult.splitRelaxations,
       schedulingResult.goalCapRelaxations,
       schedulingResult.sequenceBreaks,
+      locationOverlaps,
     );
 
     return {

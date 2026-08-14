@@ -324,3 +324,66 @@ describe("renderEngineMessage constraint attribution", () => {
     expect(rendered!.body.join(" ")).toContain("Largest available gap");
   });
 });
+
+// LOCATION_OVERLAP: sides are kind-tagged (planner rows or weekly templates)
+// and resolve from the current entity tree, degrading to generic labels for
+// deleted entities; the card jumps to the earliest overlap.
+describe("renderEngineMessage LOCATION_OVERLAP", () => {
+  const overlapMessage = (extra: Record<string, unknown>): EngineMessage =>
+    ({
+      ...baseRow,
+      tone: "fail",
+      id: "LOCATION_OVERLAP::a|b|loc-a|loc-b",
+      type: "LOCATION_OVERLAP",
+      payload: {
+        type: "LOCATION_OVERLAP",
+        firstKind: "planner",
+        firstId: "p1",
+        secondKind: "template",
+        secondId: "t1",
+        firstLocationId: "loc-a",
+        secondLocationId: "loc-b",
+        overlapStart: "2026-01-06T10:00:00.000Z",
+        affectedCount: 1,
+        ...extra,
+      },
+    }) as unknown as EngineMessage;
+
+  it("resolves planner, template, and location names from the lookups", () => {
+    const lookups = buildEngineMessageLookups(
+      [{ id: "p1", title: "Dentist" }] as never[],
+      [
+        { id: "loc-a", name: "Clinic" },
+        { id: "loc-b", name: "Office" },
+      ] as never[],
+      [],
+      [],
+      [{ id: "t1", title: "Work hours" }] as never[],
+    );
+
+    const rendered = renderEngineMessage(overlapMessage({}), lookups);
+    expect(rendered).not.toBeNull();
+    expect(rendered!.tag).toBe("CONFLICT");
+    expect(rendered!.title).toContain('"Dentist"');
+    expect(rendered!.title).toContain('"Work hours"');
+    expect(rendered!.body.join(" ")).toContain("Clinic");
+    expect(rendered!.body.join(" ")).toContain("Office");
+    expect(rendered!.goToDate).toBe("2026-01-06T10:00:00.000Z");
+  });
+
+  it("degrades to generic labels when both sides are deleted", () => {
+    const rendered = renderEngineMessage(overlapMessage({}), emptyLookups);
+    expect(rendered).not.toBeNull();
+    expect(rendered!.title).toContain("An item");
+    expect(rendered!.title).toContain("a weekly block");
+    expect(rendered!.body.join(" ")).toContain("two places at once");
+  });
+
+  it("notes recurrence when the conflict folds multiple occurrences", () => {
+    const rendered = renderEngineMessage(
+      overlapMessage({ affectedCount: 3 }),
+      emptyLookups,
+    );
+    expect(rendered!.body.join(" ")).toContain("Recurs 3×");
+  });
+});
