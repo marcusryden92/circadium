@@ -420,6 +420,35 @@ export const proseEmphasis = style({
   borderLeft: `2px solid ${vars.accent.primary}`,
 });
 
+// ---------- product screenshots — framed figures attached to their claims ----------
+export const shotFigure = style({
+  margin: 0,
+  marginTop: "clamp(36px, 4.5vw, 56px)",
+  maxWidth: 1040,
+});
+
+export const shotFrame = style({
+  borderRadius: radii["xl+2"],
+  border: `1px solid ${vars.rule}`,
+  overflow: "hidden",
+  boxShadow: vars.shadow.panel,
+  background: vars.paper,
+});
+
+export const shotImg = style({
+  display: "block",
+  width: "100%",
+  height: "auto",
+});
+
+export const shotCaption = style({
+  marginTop: space["3"],
+  fontFamily: vars.font.ui,
+  fontSize: 12.5,
+  lineHeight: 1.5,
+  color: vars.muted,
+});
+
 // ---------- features — concrete capability vignettes ----------
 export const featuresSection = style({
   padding: "clamp(96px, 10vw, 160px) clamp(12px, 1.6vw, 28px)",

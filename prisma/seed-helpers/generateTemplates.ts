@@ -48,7 +48,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days: WEEKDAYS,
     startTime: "12:00",
     duration: 45,
-    color: "#F59E0B",
+    color: "#C9A87C",
     locationId: null,
   },
   {
@@ -56,7 +56,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days,
     startTime: "18:00",
     duration: 60,
-    color: "#FB7185",
+    color: "#60A5FA",
     locationId: LOCATION_IDS.HOME,
   },
 ];

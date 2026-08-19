@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button, Grain, Logo } from "@/components/ui";
 import { themeLight } from "@/lib/theme";
 import { VectorField } from "@/components/landing/VectorField";
@@ -44,6 +45,10 @@ import {
   proseBody,
   proseLine,
   proseEmphasis,
+  shotFigure,
+  shotFrame,
+  shotImg,
+  shotCaption,
   featuresSection,
   featuresHeader,
   featuresKicker,
@@ -77,12 +82,38 @@ import {
 
 type Line = { text: string; emphasis?: boolean };
 
+type ShotKey = "calendar" | "mindmap" | "graph";
+
+type Shot = { src: string; alt: string; caption: string };
+
+const SHOTS: Record<ShotKey, Shot> = {
+  calendar: {
+    src: "/images/landing_page/landing_page_calendar.png",
+    alt: "The Circadium calendar: a generated week of goals, fixed plans, and travel blocks, with the engine console open beside it.",
+    caption:
+      "A generated week — deadlines, windows, the school run, and the travel between them, placed in one pass. The engine explains itself in the console on the right.",
+  },
+  mindmap: {
+    src: "/images/landing_page/landing_page_mindmap.png",
+    alt: "The Circadium mindmap: roles radiating from the center into categories, goals, and tasks.",
+    caption:
+      "Roles at the center; everything you're working on grows outward from them.",
+  },
+  graph: {
+    src: "/images/landing_page/landing_page_graph.png",
+    alt: "The Circadium graph view: queues and dependency connectors between goals laid out on a time axis.",
+    caption:
+      "Queues and dependencies across goals, resolved on a time axis. You never have to look at this — it just has to be true.",
+  },
+};
+
 type Section = {
   heading: string;
   kicker: string;
   body: Line[];
   dark?: boolean;
   demo?: boolean;
+  shot?: ShotKey;
 };
 
 type Feature = {
@@ -161,6 +192,7 @@ const SECTIONS: Section[] = [
   {
     kicker: "The problem",
     heading: "Planning is two jobs.",
+    shot: "calendar",
     body: [
       {
         text: "Deciding what matters — and re-deciding when it all happens, every time something moves.",
@@ -211,6 +243,7 @@ const SECTIONS: Section[] = [
   {
     kicker: "The point",
     heading: "A productive day can still be a wasted day.",
+    shot: "mindmap",
     body: [
       {
         text: "You can clear your inbox, finish a dozen tasks, sit through every meeting — and make no real progress on anything that matters.",
@@ -227,6 +260,23 @@ const SECTIONS: Section[] = [
       },
       {
         text: "A schedule is a claim about what your life is for. Circadium's job is to make your weeks match it.",
+        emphasis: true,
+      },
+    ],
+  },
+  {
+    kicker: "Under the hood",
+    heading: "The part you never think about.",
+    shot: "graph",
+    body: [
+      {
+        text: "Your goals aren't independent. The campaign feeds the quarterly review; the training plan leads to the race. Order lives between them.",
+      },
+      {
+        text: "Circadium holds that web — queues, dependencies, sequences across goals — and every placement, every re-sort, respects it.",
+      },
+      {
+        text: "You see a calm week. This is what's holding it up.",
         emphasis: true,
       },
     ],
@@ -356,6 +406,23 @@ export default function Home() {
                   ))}
                 </div>
                 {s.demo ? <ReflowDemo /> : null}
+                {s.shot ? (
+                  <figure className={shotFigure} data-cascade>
+                    <div className={shotFrame}>
+                      <Image
+                        src={SHOTS[s.shot].src}
+                        alt={SHOTS[s.shot].alt}
+                        width={2880}
+                        height={1800}
+                        className={shotImg}
+                        sizes="(max-width: 767px) 92vw, (max-width: 1440px) 64vw, 1040px"
+                      />
+                    </div>
+                    <figcaption className={shotCaption}>
+                      {SHOTS[s.shot].caption}
+                    </figcaption>
+                  </figure>
+                ) : null}
               </div>
             </Cascade>
           </section>

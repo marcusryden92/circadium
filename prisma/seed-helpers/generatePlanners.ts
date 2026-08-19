@@ -40,7 +40,7 @@ const SORT_STEP = 1024;
 const seedGoals: SeedGoal[] = [
   {
     title: "Launch the spring campaign",
-    color: "#6366F1",
+    color: "#2563EB",
     categoryId: CATEGORY_IDS.DEEP_WORK,
     priority: 6,
     deadlineInDays: 30,
@@ -104,7 +104,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Quarterly review prep",
-    color: "#06B6D4",
+    color: "#0D9488",
     categoryId: CATEGORY_IDS.MEETINGS,
     priority: 5,
     deadlineInDays: 20,
@@ -154,7 +154,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Renovate the home office",
-    color: "#F59E0B",
+    color: "#F97316",
     categoryId: CATEGORY_IDS.HOME_PROJECTS,
     locationId: LOCATION_IDS.HOME,
     priority: 4,
@@ -178,7 +178,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Plan the summer holiday",
-    color: "#F43F5E",
+    color: "#EF4444",
     categoryId: CATEGORY_IDS.FAMILY,
     priority: 5,
     deadlineInDays: 60,
