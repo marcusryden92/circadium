@@ -13,6 +13,7 @@ import {
   type FeatureVignetteKind,
 } from "@/components/landing/FeatureVignettes";
 import { ReflowDemo } from "@/components/landing/ReflowDemo";
+import { TeaserVideo } from "@/components/landing/TeaserVideo";
 import {
   page,
   hero,
@@ -34,6 +35,7 @@ import {
   leadInner,
   leadText,
   leadEmphasis,
+  leadVideoFigure,
   prose,
   proseSection,
   proseSectionDark,
@@ -371,6 +373,13 @@ export default function Home() {
             The result isn&apos;t a perfectly optimized calendar. It&apos;s a
             week you can actually live.
           </p>
+          <figure className={leadVideoFigure}>
+            <TeaserVideo />
+            <figcaption className={shotCaption}>
+              The whole idea in two minutes — a week built, a plan broken, and
+              the re-sort that follows.
+            </figcaption>
+          </figure>
         </Cascade>
       </section>
 

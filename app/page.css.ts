@@ -265,6 +265,13 @@ export const leadEmphasis = style({
   maxWidth: contentWidth.md,
 });
 
+export const leadVideoFigure = style({
+  margin: 0,
+  marginTop: "clamp(36px, 4.5vw, 56px)",
+  width: "100%",
+  maxWidth: 1040,
+});
+
 // ---------- editorial sections ----------
 export const prose = style({
   display: "flex",
