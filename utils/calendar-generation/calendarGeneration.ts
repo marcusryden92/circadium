@@ -116,22 +116,22 @@ export function generateCalendar(
   // recorder accumulates decision/action/slot-snapshot records for every
   // failed task on every retry pass — real per-keystroke cost, not just
   // console noise. Flip locally when debugging.
-  const enableLogging = false;
+  const enableLogging = true;
   const logging = {
     metrics: false,
-    failures: false,
-    travelDebug: false,
+    failures: true,
+    travelDebug: true,
     templateInfo: false,
     planners: false,
     templates: false,
     locations: false,
     strategySettings: false,
     finalEvents: false,
-    leanCalendar: false,
-    staticEventTravelPass: false,
+    leanCalendar: true,
+    staticEventTravelPass: true,
     dynamicScheduling: false,
-    dateRangeStart: null as Date | null,
-    dateRangeEnd: null as Date | null,
+    dateRangeStart: new Date(2026, 7, 19) as Date | null,
+    dateRangeEnd: new Date(2026, 7, 19, 23, 59, 59, 999) as Date | null,
   };
 
   const result = new CalendarGenerator(weekStartDay, {

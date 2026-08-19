@@ -32,7 +32,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days,
     startTime: "23:00",
     duration: 480,
-    color: "#1D3557",
+    color: "#1E3A8A",
     locationId: LOCATION_IDS.HOME,
   },
   {
@@ -40,7 +40,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days,
     startTime: "07:00",
     duration: 60,
-    color: "#475569",
+    color: "#64748B",
     locationId: LOCATION_IDS.HOME,
   },
   {
@@ -48,7 +48,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days: WEEKDAYS,
     startTime: "12:00",
     duration: 45,
-    color: "#F4A261",
+    color: "#F59E0B",
     locationId: null,
   },
   {
@@ -56,7 +56,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
     days,
     startTime: "18:00",
     duration: 60,
-    color: "#E76F51",
+    color: "#FB7185",
     locationId: LOCATION_IDS.HOME,
   },
 ];

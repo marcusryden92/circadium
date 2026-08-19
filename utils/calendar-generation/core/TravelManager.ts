@@ -29,6 +29,7 @@ import {
   findAdjacentTravelTo,
   findAdjacentTravelFrom,
   findPrecedingGapTravel,
+  findFollowingGapTravel,
   generateTravelEvents,
 } from "../helpers/TravelManager";
 
@@ -294,6 +295,18 @@ export class TravelManager {
       this.bufferTimeMinutes,
       slotStart,
     );
+  }
+
+  /**
+   * Find a gap-travel slot that starts flush at a given slot end and departs
+   * from the given location. Used to detect a pre-carved outbound leg whose
+   * origin goes stale when a differently-located task lands in the slot.
+   */
+  findFollowingGapTravel(
+    slotEnd: Date,
+    fromLocationId: string,
+  ): TravelShardSpan | null {
+    return findFollowingGapTravel(this.slots, slotEnd, fromLocationId);
   }
 
   /**

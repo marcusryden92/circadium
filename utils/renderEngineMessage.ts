@@ -253,14 +253,14 @@ export function renderEngineMessage(
     case "SPLIT_CONSTRAINT_RELAXED": {
       const planner = lookups.plannerById.get(payload.plannerId);
       const label = planner?.title ?? "Split task";
-      const chunkLabel =
-        payload.affectedCount === 1
-          ? "one chunk"
-          : `${payload.affectedCount} chunks`;
+      const singleChunk = payload.affectedCount === 1;
+      const chunkLabel = singleChunk
+        ? "one chunk"
+        : `${payload.affectedCount} chunks`;
       const body =
         payload.kind === "maxChunk"
-          ? `The remainder couldn't be divided without going below the minimum chunk size, so ${chunkLabel} (${formatMinutes(payload.totalMinutes)}) exceeds the maximum chunk size.`
-          : `There wasn't room within the daily limit, so ${chunkLabel} (${formatMinutes(payload.totalMinutes)}) was placed past it rather than dropped.`;
+          ? `The remainder couldn't be divided without going below the minimum chunk size, so ${chunkLabel} (${formatMinutes(payload.totalMinutes)}) ${singleChunk ? "exceeds" : "exceed"} the maximum chunk size.`
+          : `There wasn't room within the daily limit, so ${chunkLabel} (${formatMinutes(payload.totalMinutes)}) ${singleChunk ? "was" : "were"} placed past it rather than dropped.`;
       return {
         id: message.id,
         tag: "SPLIT",
@@ -274,14 +274,15 @@ export function renderEngineMessage(
     case "GOAL_DAY_CAP_RELAXED": {
       const planner = lookups.plannerById.get(payload.plannerId);
       const label = planner?.title ?? "Goal";
-      const blockLabel =
-        payload.affectedCount === 1
-          ? "one work block"
-          : `${payload.affectedCount} work blocks`;
+      const singleBlock = payload.affectedCount === 1;
+      const blockLabel = singleBlock
+        ? "one work block"
+        : `${payload.affectedCount} work blocks`;
+      const placedVerb = singleBlock ? "was" : "were";
       const body =
         payload.kind === "oversizedLeaf"
-          ? `A single work block needs more than the ${formatMinutes(payload.capMinutes)}/day limit, so ${blockLabel} (${formatMinutes(payload.totalMinutes)}) was placed whole.`
-          : `There wasn't room within the ${formatMinutes(payload.capMinutes)}/day limit before the horizon ran out, so ${blockLabel} (${formatMinutes(payload.totalMinutes)}) was placed past it rather than dropped.`;
+          ? `A single work block needs more than the ${formatMinutes(payload.capMinutes)}/day limit, so ${blockLabel} (${formatMinutes(payload.totalMinutes)}) ${placedVerb} placed whole.`
+          : `There wasn't room within the ${formatMinutes(payload.capMinutes)}/day limit before the horizon ran out, so ${blockLabel} (${formatMinutes(payload.totalMinutes)}) ${placedVerb} placed past it rather than dropped.`;
       return {
         id: message.id,
         tag: "DAILY LIMIT",

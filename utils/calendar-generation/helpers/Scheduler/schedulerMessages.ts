@@ -72,6 +72,15 @@ export const SM = {
       `Travel-after required ${taskLoc}→${nextLoc} = ${T}min`,
     dropRedundantFollowingInbound: (phantomLoc: string, taskLoc: string) =>
       `Next placement is at ${taskLoc}; slot's next=${phantomLoc} is only the origin of a following inbound to ${taskLoc}. No travel-after; that inbound is removed (collapses the round trip)`,
+    rerouteFollowingOutbound: (
+      boundaryLoc: string,
+      destLoc: string,
+      taskLoc: string,
+      directT: number,
+      spanStart: string,
+      spanEnd: string,
+    ) =>
+      `Following outbound ${boundaryLoc}→${destLoc} [${spanStart}-${spanEnd}] departs from the slot boundary; task is at ${taskLoc}. Reroute: direct ${taskLoc}→${destLoc} = ${directT}min, old leg removed at reservation`,
     travelAfterReusable: (spanStart: string, T: number) =>
       `Travel-after reuses existing inbound span starting at ${spanStart} (saves ${T}min inside slot)`,
     travelBeforeOutsideOK: (T: number) =>
@@ -145,6 +154,12 @@ export const SM = {
       spanEnd: string,
     ) =>
       `Removed pre-existing outbound travel (travelId=${travelId.slice(0, 8)}, span [${spanStart}-${spanEnd}]) before placing new outbound`,
+    reroutedFollowingOutbound: (
+      travelId: string,
+      spanStart: string,
+      spanEnd: string,
+    ) =>
+      `Removed rerouted following outbound (travelId=${travelId.slice(0, 8)}, span [${spanStart}-${spanEnd}]); slot tail extended over the freed span`,
     placedOutboundTravel: (
       taskLoc: string,
       nextLoc: string,

@@ -103,6 +103,7 @@ export function reserveSlotWithTravel(
   reclaimPrecedingGapTravel?: TravelShardSpan | null,
   recorder?: SchedulerRecorder | null,
   removableFollowingInbound?: TravelShardSpan | null,
+  reroutableFollowingOutbound?: TravelShardSpan | null,
 ): { success: boolean } {
   // Operate on local typed views of the unified slots array. Items are shared
   // by reference, so in-place mutations propagate; only structural changes
@@ -183,6 +184,41 @@ export function reserveSlotWithTravel(
         removed.spanEnd,
         gapSpan.travelFromLocationId ?? null,
       );
+    }
+  }
+
+  // Reroute a following outbound leg: the task's travel-after goes direct to
+  // the leg's destination (nextLocationId already carries it), so the old leg
+  // departing from the slot's stale boundary location is removed and the
+  // abutting available slot extends FORWARD over the freed span — the tail
+  // mirror of extendAvailSlotBackOverRemovedTravel. The extension target is
+  // located BEFORE removal so a miss (unexpected fabric shape) leaves the leg
+  // in place instead of tearing a hole in the fabric.
+  if (reroutableFollowingOutbound) {
+    const span = reroutableFollowingOutbound;
+    const target = availableSlots.find(
+      (s) =>
+        s.type !== "category" &&
+        s.end.getTime() === span.travelStart.getTime(),
+    );
+    if (target) {
+      const removed = removeTravelShards(occupiedSlots, span.travelId);
+      if (removed && removed.spanEnd.getTime() > target.end.getTime()) {
+        target.end = removed.spanEnd;
+        target.durationMinutes = Math.floor(
+          (target.end.getTime() - target.start.getTime()) / 60000,
+        );
+        if (span.travelToLocationId) {
+          target.nextLocationId = span.travelToLocationId;
+        }
+        recorder?.action(
+          SM.reserveSlotWithTravel.reroutedFollowingOutbound(
+            span.travelId,
+            recorder.fmtDate(removed.spanStart),
+            recorder.fmtDate(removed.spanEnd),
+          ),
+        );
+      }
     }
   }
 

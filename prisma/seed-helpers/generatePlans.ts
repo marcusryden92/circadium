@@ -24,7 +24,7 @@ export interface SimplePlanData {
 export const planSeedData: SimplePlanData[] = [
   {
     title: "Team sync",
-    color: "#6366F1",
+    color: "#06B6D4",
     duration: 60,
     dayOffset: 1, // Tuesday
     startTime: "13:00",
@@ -33,7 +33,7 @@ export const planSeedData: SimplePlanData[] = [
   },
   {
     title: "1:1 with Sara",
-    color: "#6366F1",
+    color: "#22D3EE",
     duration: 30,
     dayOffset: 3, // Thursday
     startTime: "14:30",
@@ -42,7 +42,7 @@ export const planSeedData: SimplePlanData[] = [
   },
   ...[0, 1, 2, 3, 4].map((dayOffset) => ({
     title: "School pickup",
-    color: "#D97706",
+    color: "#F43F5E",
     duration: 30,
     dayOffset,
     startTime: "15:30",
@@ -51,7 +51,7 @@ export const planSeedData: SimplePlanData[] = [
   })),
   {
     title: "Dentist (Sven)",
-    color: "#D97706",
+    color: "#22C55E",
     duration: 60,
     dayOffset: 3, // Thursday
     startTime: "10:00",
@@ -59,7 +59,7 @@ export const planSeedData: SimplePlanData[] = [
   },
   {
     title: "Dinner with Elin",
-    color: "#E76F51",
+    color: "#A78BFA",
     duration: 120,
     dayOffset: 4, // Friday
     startTime: "19:00",

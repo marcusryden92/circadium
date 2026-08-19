@@ -40,7 +40,7 @@ async function main() {
   await prisma.user.upsert({
     where: { email: "admin@circadium.app" },
     update: {
-      name: "Admin User",
+      name: "Jane Smith",
       // Demo data is seeded below, so skip first-run onboarding (which assumes
       // a blank calendar) and land straight on the dashboard with the dataset.
       onboardedAt: onboardedAt,
@@ -48,7 +48,7 @@ async function main() {
     create: {
       id: userId,
       email: "admin@circadium.app",
-      name: "Admin User",
+      name: "Jane Smith",
       emailVerified: new Date(),
       password: passwordHash,
       role: UserRole.ADMIN,

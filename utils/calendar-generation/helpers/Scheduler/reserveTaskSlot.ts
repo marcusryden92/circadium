@@ -35,6 +35,7 @@ export function reserveTaskSlot(
   slideIntoFreedTravel: boolean = true,
   durationMinutes?: number,
   removableFollowingInbound: TravelShardSpan | null = null,
+  reroutableFollowingOutbound: TravelShardSpan | null = null,
 ): ReservationResult | { failure: SchedulingFailure } {
   const recorder = context.schedulerRecorder;
   const bufferMinutes = slotManager.bufferTimeMinutes;
@@ -58,6 +59,13 @@ export function reserveTaskSlot(
   const effectivePrevLocationId = reclaimPrecedingGapTravel
     ? (reclaimPrecedingGapTravel.travelFromLocationId ?? slotPrevLoc ?? null)
     : (slotPrevLoc ?? null);
+
+  // When rerouting a following outbound leg, travel-after goes direct to the
+  // leg's DESTINATION — the slot's boundary location was only the leg's stale
+  // origin.
+  const effectiveNextLocationId = reroutableFollowingOutbound
+    ? (reroutableFollowingOutbound.travelToLocationId ?? slotNextLoc ?? null)
+    : (slotNextLoc ?? null);
 
   // Calculate task times.
   // Layouts:
@@ -152,12 +160,13 @@ export function reserveTaskSlot(
     effectiveTravelBefore,
     travelAfter,
     effectivePrevLocationId,
-    slotNextLoc ?? null,
+    effectiveNextLocationId,
     reusableTravelStart,
     absorbableTravel,
     reclaimPrecedingGapTravel,
     recorder,
     removableFollowingInbound,
+    reroutableFollowingOutbound,
   );
 
   if (!result.success) {

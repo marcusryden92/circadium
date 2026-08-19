@@ -111,6 +111,7 @@ export function selectBestSlot(
   let selectedAbsorbableTravel: TravelShardSpan | null = null;
   let selectedReclaimPrecedingGapTravel: TravelShardSpan | null = null;
   let selectedRemovableFollowingInbound: TravelShardSpan | null = null;
+  let selectedReroutableFollowingOutbound: TravelShardSpan | null = null;
   let selectedSlideIntoFreedTravel = true;
   let selectedGrantedMinutes = task.duration;
 
@@ -145,6 +146,7 @@ export function selectBestSlot(
     let absorbableTravel: TravelShardSpan | null = null;
     let reclaimPrecedingGapTravel: TravelShardSpan | null = null;
     let removableFollowingInbound: TravelShardSpan | null = null;
+    let reroutableFollowingOutbound: TravelShardSpan | null = null;
     let slideIntoFreedTravel = true;
 
     // For a CategorySlot, the task lands inside the category interior, so
@@ -334,19 +336,72 @@ export function selectBestSlot(
             slot.start.getTime() +
               (needTravelBefore + fitMinutes) * 60 * 1000,
           );
-          needTravelAfter = travelManager.getTravelTime(
-            taskLocationId,
-            slotNextLoc,
-            travelAfterDeparture,
-          );
-          recorder?.decision(
-            SM.selectBestSlot.travelAfterRequired(
-              recorder.locName(taskLocationId),
-              recorder.locName(slotNextLoc),
-              needTravelAfter,
-            ),
-            3,
-          );
+
+          // A pre-carved outbound leg flush after the slot, departing FROM
+          // the slot's boundary location toward a third place (the static
+          // pass routing toward the next fixed obligation), goes stale when
+          // this task sits at a different location: returning to the
+          // boundary just to catch it strands a detour. Reroute instead —
+          // travel direct from the task to the leg's destination and remove
+          // the old leg at reservation. Restricted to plain Available slots
+          // (a category's geometry is fixed, its tail cannot extend over
+          // the freed span) and to tasks without allowed-times clipping
+          // (the candidate may be a clipped fragment whose end is not the
+          // fabric slot's end, and the unit must stay inside the fragment).
+          if (
+            slot.type !== "category" &&
+            (!constraints?.allowedTimes ||
+              constraints.allowedTimes.length === 0)
+          ) {
+            const followingOutbound = travelManager.findFollowingGapTravel(
+              slot.end,
+              slotNextLoc,
+            );
+            const rerouteDestination = followingOutbound?.travelToLocationId;
+            if (
+              followingOutbound &&
+              rerouteDestination &&
+              rerouteDestination !== taskLocationId
+            ) {
+              const directTravel = travelManager.getTravelTime(
+                taskLocationId,
+                rerouteDestination,
+                travelAfterDeparture,
+              );
+              // 0 means the matrix has no direct route — not reroutable.
+              if (directTravel > 0) {
+                reroutableFollowingOutbound = followingOutbound;
+                needTravelAfter = directTravel;
+                recorder?.decision(
+                  SM.selectBestSlot.rerouteFollowingOutbound(
+                    recorder.locName(slotNextLoc),
+                    recorder.locName(rerouteDestination),
+                    recorder.locName(taskLocationId),
+                    directTravel,
+                    recorder.fmtDate(followingOutbound.travelStart),
+                    recorder.fmtDate(followingOutbound.travelEnd),
+                  ),
+                  3,
+                );
+              }
+            }
+          }
+
+          if (!reroutableFollowingOutbound) {
+            needTravelAfter = travelManager.getTravelTime(
+              taskLocationId,
+              slotNextLoc,
+              travelAfterDeparture,
+            );
+            recorder?.decision(
+              SM.selectBestSlot.travelAfterRequired(
+                recorder.locName(taskLocationId),
+                recorder.locName(slotNextLoc),
+                needTravelAfter,
+              ),
+              3,
+            );
+          }
         }
       } else if (taskLocationId && slotNextLoc) {
         recorder?.decision(SM.selectBestSlot.travelAfterNotNeeded, 3);
@@ -364,7 +419,7 @@ export function selectBestSlot(
     let effectiveTravelAfter = needTravelAfter;
     let reusableTravelStart: Date | null = null;
 
-    if (needTravelAfter > 0 && slotNextLoc) {
+    if (needTravelAfter > 0 && slotNextLoc && !reroutableFollowingOutbound) {
       const reusableTravelSpan = travelManager.findAdjacentTravelTo(
         slot.end,
         slotNextLoc,
@@ -441,6 +496,18 @@ export function selectBestSlot(
       );
       effectiveCapacity += spanDur;
     }
+    if (reroutableFollowingOutbound) {
+      // The rerouted leg's span is freed at reservation and the slot's tail
+      // extends over it, so it counts toward capacity for the direct leg.
+      // Independent of the slide flag — the task's start is unmoved; only
+      // the travel-after spills into the freed span.
+      const spanDur = Math.floor(
+        (reroutableFollowingOutbound.travelEnd.getTime() -
+          reroutableFollowingOutbound.travelStart.getTime()) /
+          60000,
+      );
+      effectiveCapacity += spanDur;
+    }
 
     // Check if this slot has enough capacity
     if (effectiveCapacity >= requiredInside) {
@@ -471,7 +538,9 @@ export function selectBestSlot(
         // bucket. Re-quote at the granted departure and shrink the grant if
         // the new price eats the headroom; converges because travel prices
         // are step functions of the departure bucket.
-        if (grantedTravelAfter > 0 && slotNextLoc && taskLocationId) {
+        const travelAfterDestination =
+          reroutableFollowingOutbound?.travelToLocationId ?? slotNextLoc;
+        if (grantedTravelAfter > 0 && travelAfterDestination && taskLocationId) {
           for (let i = 0; i < 3 && grantedMinutes > 0; i++) {
             const departure = new Date(
               slot.start.getTime() +
@@ -479,7 +548,7 @@ export function selectBestSlot(
             );
             const requote = travelManager.getTravelTime(
               taskLocationId,
-              slotNextLoc,
+              travelAfterDestination,
               departure,
             );
             if (requote <= grantedTravelAfter) break;
@@ -501,6 +570,7 @@ export function selectBestSlot(
       selectedAbsorbableTravel = canAbsorbPrevTravel ? absorbableTravel : null;
       selectedReclaimPrecedingGapTravel = reclaimPrecedingGapTravel;
       selectedRemovableFollowingInbound = removableFollowingInbound;
+      selectedReroutableFollowingOutbound = reroutableFollowingOutbound;
       selectedSlideIntoFreedTravel = slideIntoFreedTravel;
       selectedGrantedMinutes = grantedMinutes;
       break;
@@ -532,6 +602,7 @@ export function selectBestSlot(
     absorbableTravel: selectedAbsorbableTravel,
     reclaimPrecedingGapTravel: selectedReclaimPrecedingGapTravel,
     removableFollowingInbound: selectedRemovableFollowingInbound,
+    reroutableFollowingOutbound: selectedReroutableFollowingOutbound,
     slideIntoFreedTravel: selectedSlideIntoFreedTravel,
     grantedDurationMinutes: selectedGrantedMinutes,
   };

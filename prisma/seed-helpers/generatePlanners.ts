@@ -40,7 +40,7 @@ const SORT_STEP = 1024;
 const seedGoals: SeedGoal[] = [
   {
     title: "Launch the spring campaign",
-    color: "#2563EB",
+    color: "#6366F1",
     categoryId: CATEGORY_IDS.DEEP_WORK,
     priority: 6,
     deadlineInDays: 30,
@@ -104,7 +104,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Quarterly review prep",
-    color: "#6366F1",
+    color: "#06B6D4",
     categoryId: CATEGORY_IDS.MEETINGS,
     priority: 5,
     deadlineInDays: 20,
@@ -122,7 +122,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Run a half marathon",
-    color: "#10B981",
+    color: "#14B8A6",
     categoryId: CATEGORY_IDS.FITNESS,
     priority: 5,
     deadlineInDays: 90,
@@ -178,7 +178,7 @@ const seedGoals: SeedGoal[] = [
   },
   {
     title: "Plan the summer holiday",
-    color: "#D97706",
+    color: "#F43F5E",
     categoryId: CATEGORY_IDS.FAMILY,
     priority: 5,
     deadlineInDays: 60,
@@ -278,7 +278,7 @@ const seedRecurringTasks: SeedRecurringTask[] = [
   },
   {
     title: "Weekly review",
-    color: "#2563EB",
+    color: "#60A5FA",
     categoryId: CATEGORY_IDS.PROFESSIONAL,
     duration: 30,
     recurrence: { freq: "weekly", interval: 1 },

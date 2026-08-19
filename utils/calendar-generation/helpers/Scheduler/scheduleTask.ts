@@ -153,6 +153,7 @@ export function scheduleTask(
     selectionResult.slideIntoFreedTravel,
     selectionResult.grantedDurationMinutes,
     selectionResult.removableFollowingInbound,
+    selectionResult.reroutableFollowingOutbound,
   );
   if ("failure" in reservationResult) {
     recorder?.setOutcome({

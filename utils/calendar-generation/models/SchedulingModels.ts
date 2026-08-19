@@ -461,6 +461,15 @@ export interface SlotSelectionResult {
    */
   removableFollowingInbound: TravelShardSpan | null;
   /**
+   * An outbound travel departing FROM the slot's boundary location toward a
+   * third location, sitting flush after the slot (a static-pass leg toward
+   * the next fixed obligation). A task at a different location placed in the
+   * slot makes the leg's origin stale: instead of returning to the boundary
+   * to catch it, travel-after goes DIRECT to the leg's destination. The old
+   * span is removed at reservation and the slot's tail extends over it.
+   */
+  reroutableFollowingOutbound: TravelShardSpan | null;
+  /**
    * Whether the placement back-extends into the freed travel span (the
    * historical absorb/reclaim behavior). False when a constraint boundary
    * (allowed times / earliest start / chain bound) sits inside the freed

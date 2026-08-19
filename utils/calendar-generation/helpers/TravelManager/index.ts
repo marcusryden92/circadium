@@ -10,6 +10,7 @@ export {
   findAdjacentTravelTo,
   findAdjacentTravelFrom,
   findPrecedingGapTravel,
+  findFollowingGapTravel,
 } from "./findAdjacentTravels";
 export { staticEventTravelPass } from "./staticEventTravelPass";
 export { dropUnreachableCategoryVisits } from "./dropUnreachableCategoryVisits";
