@@ -111,6 +111,9 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
       (r) =>
         r.plannerId === planCheckPlannerId && r.occurrenceKey === planCheckKey,
     );
+  // Only recurring plans expose a check-off ("did this actually happen?",
+  // feeding habit tracking); a one-off static plan is purely fixed-time.
+  const isCheckablePlanTile = isPlanTile && !!planRow && planIsRecurring(planRow);
 
   // Completion is derived from the event data; the override only bridges the
   // gap between the optimistic click and the regen/sync confirming it. State
@@ -387,7 +390,7 @@ const EventContent: React.FC<EventContentProps> = ({ event }) => {
             <div className={actionGroup}>
               {(event.extendedProps.plannerType === PlannerType.goal ||
                 event.extendedProps.plannerType === PlannerType.task ||
-                isPlanTile) && (
+                isCheckablePlanTile) && (
                 <button
                   onClick={onComplete}
                   className={iconButton}

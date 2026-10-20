@@ -16,15 +16,26 @@ import {
   setUseParentLocation,
 } from "@/actions/locations";
 import { timeOnDate } from "@/utils/calendarUtils";
-import { plannerIdFromEventId } from "@/utils/planRecurrence";
+import {
+  plannerIdFromEventId,
+  planIsRecurring,
+} from "@/utils/planRecurrence";
 import { taskIsSplittable, splitCompletedMinutes } from "@/utils/taskSplitting";
+import { setSubtaskCompletedAt } from "@/utils/goal-handlers/subtaskCompletion";
+import { formatDatetimeLocal, parseDatetimeLocal } from "@/utils/datetime";
 import { PlannerType } from "@/types/prisma";
 import { calendarColors } from "@/data/calendarColors";
 import {
   getCompleteTaskTreeIds,
   getRootParentId,
 } from "@/utils/goalPageHandlers";
-import { Button, CategoryBadge, FieldStack, TypeBadge } from "@/components/ui";
+import {
+  Button,
+  CategoryBadge,
+  DateTimePicker,
+  FieldStack,
+  TypeBadge,
+} from "@/components/ui";
 import { vars } from "@/lib/theme";
 import { CalendarPopover } from "../CalendarPopover";
 import {
@@ -90,6 +101,7 @@ const EventPopover: React.FC<EventPopoverProps> = ({
     categories,
     updatePlannerArray,
     inheritedLocationMap,
+    weekStartDay,
   } = useCalendarProvider();
 
   // Recurring-plan occurrence events carry composite ids; resolve to the
@@ -209,14 +221,18 @@ const EventPopover: React.FC<EventPopoverProps> = ({
     | PlannerType
     | undefined;
   const isTemplate = !!event.extendedProps.isTemplateItem;
-  // Plans get the status row too: their Complete is a pure check-off record
-  // ("did this actually happen?") feeding the habit tracker, never a
-  // reschedule signal.
+  // Only a RECURRING plan gets the status row: its Complete is a pure check-off
+  // record ("did this actually happen?") feeding the habit tracker. A one-off
+  // static plan is purely fixed-time, so it shows no completion affordance.
+  const isCheckablePlan =
+    plannerType === PlannerType.plan &&
+    !!plannerItem &&
+    planIsRecurring(plannerItem);
   const showStatusActions =
     !isTemplate &&
     (plannerType === PlannerType.task ||
       plannerType === PlannerType.goal ||
-      plannerType === PlannerType.plan);
+      isCheckablePlan);
   // Only a real plan gets the plan-specific affordances (Duplicate).
   const isPlan = plannerType === PlannerType.plan;
 
@@ -269,6 +285,26 @@ const EventPopover: React.FC<EventPopoverProps> = ({
   const leafCategory = categoryChain[categoryChain.length - 1];
 
   const canEditTimes = !!(onEditStartTime || onEditEndTime);
+
+  // A completed dynamic leaf (task / goal leaf) is re-timed here, mirroring the
+  // subtask Edit Drawer's "Completed at". Split tasks complete per-segment and
+  // recurrence occurrences log their own window (composite ids), so both fall
+  // out of plannerId === event.id / taskIsSplittable below.
+  const isDynamicLeafCompleted =
+    isCompleted &&
+    !!plannerItem &&
+    plannerItem.plannerType !== PlannerType.plan &&
+    plannerId === event.id &&
+    !taskIsSplittable(plannerItem) &&
+    !planner.some((p) => p.parentId === plannerItem.id);
+
+  const onCompletedAtChange = (value: string) => {
+    const iso = parseDatetimeLocal(value) || null;
+    updatePlannerArray(
+      (prev) => setSubtaskCompletedAt(prev, plannerId, iso),
+      historyMessages.item.field("completion time", plannerItem?.title),
+    );
+  };
 
   return (
     <CalendarPopover
@@ -348,6 +384,18 @@ const EventPopover: React.FC<EventPopoverProps> = ({
                     : undefined,
                 }}
               />
+            )}
+
+            {isDynamicLeafCompleted && plannerItem && (
+              <FieldStack size="sm" label="Completed at">
+                <DateTimePicker
+                  value={formatDatetimeLocal(plannerItem.completedEndTime)}
+                  onChange={onCompletedAtChange}
+                  weekStartsOn={weekStartDay}
+                  clearable
+                  ariaLabel="Completed at"
+                />
+              </FieldStack>
             )}
 
             {plannerItem && taskIsSplittable(plannerItem) && (

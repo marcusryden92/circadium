@@ -39,6 +39,7 @@ import {
   serializeCompletedSegments,
 } from "./taskSplitting";
 import { historyMessages } from "./historyMessages";
+import { setCompletedWindow } from "./goal-handlers/subtaskCompletion";
 
 export const createPlanFromSelection = (
   userId: string | undefined,
@@ -191,6 +192,24 @@ export const applyEventStartEdit = (
           : ev,
       );
     },
+    historyMessages.calendarSurface.moveEvent(title),
+    { engineMode: "inline" },
+  );
+};
+
+// Dragging/resizing a COMPLETED dynamic item re-times its completion window
+// rather than editing starts/duration (which don't drive a completed tile) —
+// the tile renders from completedStartTime/End, so those are what move.
+export const applyCompletedWindowEdit = (
+  updatePlannerArray: UpdatePlannerArrayFn,
+  plannerId: string,
+  start: Date,
+  end: Date,
+  title?: string | null,
+) => {
+  updatePlannerArray(
+    (prev) =>
+      setCompletedWindow(prev, plannerId, start.toISOString(), end.toISOString()),
     historyMessages.calendarSurface.moveEvent(title),
     { engineMode: "inline" },
   );

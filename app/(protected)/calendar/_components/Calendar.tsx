@@ -44,6 +44,7 @@ import {
   applyTemplateOccurrenceDelete,
   applyTemplateOccurrenceResize,
   applyTemplateSeriesResize,
+  applyCompletedWindowEdit,
   resolveTemplateOccurrence,
 } from "@/utils/calendarEventHandlers";
 import {
@@ -63,9 +64,28 @@ import {
 } from "@/utils/template-handlers/templateEventHandlers";
 import { EventImpl } from "@fullcalendar/core/internal";
 import { RuntimeEventExtendedProps } from "@/types/ui";
-import { EventType } from "@/types/prisma";
+import { EventType, Planner, PlannerType } from "@/types/prisma";
 
 const EVENT_INTERACTION_ENABLED = true;
+
+// A completed whole-item dynamic tile (task / goal leaf) renders from its
+// completion window, so dragging or resizing it re-times completion rather than
+// editing starts/duration. Split segments and recurrence occurrences carry
+// composite ids (plannerId !== event.id) and are handled elsewhere; plans never
+// complete to a window.
+function completedLeafFromEvent(
+  event: EventImpl,
+  planner: Planner[],
+): Planner | null {
+  const plannerId = plannerIdFromEventId(event.id);
+  if (plannerId !== event.id) return null;
+  const ext = event.extendedProps as RuntimeEventExtendedProps | undefined;
+  if (!ext?.completedEndTime) return null;
+  const row = planner.find((p) => p.id === plannerId);
+  if (!row || row.plannerType === PlannerType.plan) return null;
+  if (planner.some((p) => p.parentId === plannerId)) return null;
+  return row;
+}
 
 // Identity-stable FullCalendar option values (see the note on Calendar below).
 const PLUGINS = [
@@ -307,9 +327,22 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
         });
         return;
       }
+
+      const completedRow = completedLeafFromEvent(event, plannerRef.current);
+      if (completedRow && event.start && event.end) {
+        applyCompletedWindowEdit(
+          updatePlannerArray,
+          completedRow.id,
+          event.start,
+          event.end,
+          completedRow.title,
+        );
+        return;
+      }
+
       handleEventResize(updateAll, resizeInfo);
     },
-    [updateAll, updateTemplateArray],
+    [updateAll, updatePlannerArray, updateTemplateArray],
   );
   // Dropping a recurring-plan occurrence defers to a scope prompt (this
   // occurrence vs the whole series); the tile stays at the drop position while
@@ -398,6 +431,19 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
         });
         return;
       }
+
+      const completedRow = completedLeafFromEvent(event, plannerRef.current);
+      if (completedRow && event.start && event.end) {
+        applyCompletedWindowEdit(
+          updatePlannerArray,
+          completedRow.id,
+          event.start,
+          event.end,
+          completedRow.title,
+        );
+        return;
+      }
+
       handleEventDrop(updatePlannerArray, dropInfo);
     },
     [updatePlannerArray, updateTemplateArray],

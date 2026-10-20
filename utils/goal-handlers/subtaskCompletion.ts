@@ -73,6 +73,33 @@ export function setSubtaskCompletedAt(
   return recomputeAncestors(next, task.parentId);
 }
 
+// Re-time an already-completed leaf by dragging/resizing its calendar tile:
+// write the dragged window verbatim (unlike setSubtaskCompletedAt, which
+// derives the start from duration), then re-derive ancestor completion.
+export function setCompletedWindow(
+  planner: Planner[],
+  taskId: string,
+  startIso: string,
+  endIso: string,
+): Planner[] {
+  const task = planner.find((p) => p.id === taskId);
+  if (!task || task.plannerType === PlannerType.plan) return planner;
+
+  const now = new Date();
+  const next = planner.map((p) =>
+    p.id === taskId
+      ? {
+          ...p,
+          completedStartTime: startIso,
+          completedEndTime: endIso,
+          updatedAt: now.toISOString(),
+        }
+      : p,
+  );
+
+  return recomputeAncestors(next, task.parentId);
+}
+
 function recomputeAncestors(
   planner: Planner[],
   startParentId: string | null,
