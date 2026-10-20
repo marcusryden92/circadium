@@ -397,6 +397,34 @@ export const headerActionButton = style([
   },
 ]);
 
+// Compact model picker in the chat pane header. Native select styled to sit
+// quietly next to the History / New chat action buttons.
+export const modelSelect = style([
+  text.microLabel,
+  {
+    appearance: "none",
+    background: "transparent",
+    border: "none",
+    borderRadius: radii.sm,
+    padding: `${space["1"]}px ${space["2"]}px`,
+    cursor: "pointer",
+    fontWeight: 600,
+    color: vars.inkSoft,
+    whiteSpace: "nowrap",
+    transition: themeTransition,
+    selectors: {
+      "&:hover:not(:disabled)": {
+        background: vars.interactive.hoverFill,
+        color: vars.ink,
+      },
+      "&:disabled": {
+        opacity: 0.5,
+        cursor: "default",
+      },
+    },
+  },
+]);
+
 export const chatPlaceholder = style([
   text.bodySm,
   {

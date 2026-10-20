@@ -1,6 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_AI_MODEL } from "@/lib/aiModels";
 
-export const MODEL = "claude-opus-4-8";
+// Fallback when a turn doesn't carry an explicit model (the caller passes the
+// user's chosen model; this is the floor). Lineup lives in lib/aiModels.ts.
+export const MODEL: string = DEFAULT_AI_MODEL;
 export const MAX_TOKENS = 16000;
 
 // Prompt-hygiene cap: persistent conversations can outgrow what a single

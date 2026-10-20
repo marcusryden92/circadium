@@ -17,17 +17,19 @@ export default async function CircadiumLayout({
 }) {
   let needsOnboarding = false;
   let aiMode: AiMode | null = null;
+  let aiModel: string | null = null;
   try {
     const session = await auth();
     if (session?.user?.id) {
       const user = await retry(() =>
         db.user.findUnique({
           where: { id: session.user.id },
-          select: { onboardedAt: true, aiMode: true },
+          select: { onboardedAt: true, aiMode: true, aiModel: true },
         }),
       );
       needsOnboarding = user?.onboardedAt == null;
       aiMode = user?.aiMode ?? null;
+      aiModel = user?.aiModel ?? null;
     }
   } catch {
     // If the session/DB check fails, don't trap the user in setup — fall
@@ -36,7 +38,11 @@ export default async function CircadiumLayout({
   }
 
   return (
-    <ProtectedProviders needsOnboarding={needsOnboarding} aiMode={aiMode}>
+    <ProtectedProviders
+      needsOnboarding={needsOnboarding}
+      aiMode={aiMode}
+      aiModel={aiModel}
+    >
       {children}
     </ProtectedProviders>
   );

@@ -10,6 +10,7 @@ import {
   useAiAccess,
 } from "@/components/ui";
 import { AiMode } from "@/generated/client";
+import { AI_MODELS, type AiModelId } from "@/lib/aiModels";
 import type { ServerActionStatus } from "@/hooks/useServerAction";
 import { StatusLine } from "../StatusLine";
 import { card, cardTitle, fieldNote, footerRow } from "../../page.css";
@@ -20,10 +21,13 @@ type ModeChoice = "byok" | "off";
 // does — it sits encrypted in this device's vault, so the key card is
 // explicitly per-device.
 export function AISection() {
-  const { mode, status, keyHint, saveKey, removeKey, setMode } = useAiAccess();
+  const { mode, status, keyHint, model, saveKey, removeKey, setMode, setModel } =
+    useAiAccess();
 
   const [modeStatus, setModeStatus] = useState<ServerActionStatus>(null);
   const [modeBusy, setModeBusy] = useState(false);
+
+  const [modelBusy, setModelBusy] = useState(false);
 
   const [keyDraft, setKeyDraft] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
@@ -49,6 +53,19 @@ export function AISection() {
     }
     setModeBusy(false);
   };
+
+  const handleModelChange = async (next: AiModelId) => {
+    if (modelBusy || next === model) return;
+    setModelBusy(true);
+    try {
+      await setModel(next);
+    } catch {
+      // setModel reverts local state on failure; nothing else to do here.
+    }
+    setModelBusy(false);
+  };
+
+  const selectedModel = AI_MODELS.find((m) => m.id === model);
 
   const handleSaveKey = async () => {
     if (keyBusy || keyDraft.trim().length === 0) return;
@@ -91,6 +108,21 @@ export function AISection() {
           <StatusLine status={modeStatus} />
         </div>
       </div>
+
+      {mode === AiMode.BYOK && (
+        <div className={card}>
+          <span className={cardTitle}>Default model</span>
+          <SegmentedControl<AiModelId>
+            options={AI_MODELS.map((m) => ({ key: m.id, label: m.label }))}
+            value={model}
+            onChange={(next) => void handleModelChange(next)}
+          />
+          <span className={fieldNote}>
+            {selectedModel?.blurb} You can also switch models from the model menu
+            inside the assistant.
+          </span>
+        </div>
+      )}
 
       <div className={card}>
         <span className={cardTitle}>API key on this device</span>

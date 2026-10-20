@@ -11,6 +11,7 @@ import { currentUser } from "@/lib/auth";
 import { generateVerificationToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/mail";
 import { AiMode } from "@/generated/client";
+import { AI_MODELS } from "@/lib/aiModels";
 
 export const settings = async (values: z.infer<typeof SettingsSchema>) => {
   const user = await currentUser();
@@ -123,4 +124,26 @@ export const updateAiMode = async (mode: AiMode) => {
   });
 
   return { success: "AI settings updated." };
+};
+
+// Which model BYOK requests use. The id is validated against the current
+// lineup so a stale/forged value can never reach the Anthropic API; the engine
+// falls back to the default for anything unknown regardless.
+export const updateAiModel = async (modelId: string) => {
+  const user = await currentUser();
+
+  if (!user?.id) {
+    return { error: "Unauthorized." };
+  }
+
+  if (!AI_MODELS.some((m) => m.id === modelId)) {
+    return { error: "Invalid model." };
+  }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { aiModel: modelId },
+  });
+
+  return { success: "AI model updated." };
 };

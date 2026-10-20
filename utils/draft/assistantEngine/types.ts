@@ -115,4 +115,7 @@ export type RunAssistantTurnArgs = StreamDraftArgs & {
   // The user's own Anthropic API key, freshly read from the device vault.
   apiKey: string;
   baseURL?: string;
+  // The user's chosen assistant model (id from lib/aiModels.ts). Unset or
+  // unknown falls back to the engine default.
+  model?: string;
 };

@@ -27,6 +27,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import type { DraftConversationMessage } from "@/actions/draftConversations";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useAiAccess } from "@/components/ui";
+import { AI_MODELS, type AiModelId } from "@/lib/aiModels";
 import type {
   StreamChatMessage,
   StreamDraftFocus,
@@ -120,6 +121,7 @@ import {
   tabChangeCount,
   headerActionButton,
   headerActionCluster,
+  modelSelect,
   a11yHiddenTitle,
 } from "./AIDraftModal.css";
 
@@ -200,7 +202,7 @@ export function AIDraftModal({
     userId,
     isLoaded,
   } = useCalendarProvider();
-  const { status: aiStatus, getApiKey } = useAiAccess();
+  const { status: aiStatus, getApiKey, model, setModel } = useAiAccess();
   const dispatch = useDispatch<AppDispatch>();
   // Habit trackers live outside the OCC sync (their own slice, direct
   // actions), so the modal reads them straight from Redux rather than the
@@ -625,6 +627,7 @@ export function AIDraftModal({
       );
       await runAssistantTurn({
         apiKey,
+        model,
         currentForest: turnStartForest,
         currentTemplates: workingTemplatesRef.current,
         currentPrecedence: workingPrecedenceRef.current,
@@ -880,6 +883,7 @@ export function AIDraftModal({
       isLoaded,
       aiStatus,
       getApiKey,
+      model,
       appendMessage,
       updateMessage,
       setWorkingForest,
@@ -1253,6 +1257,20 @@ export function AIDraftModal({
                 : "send a prompt to begin"}
             </span>
             <span className={headerActionCluster}>
+              <select
+                className={modelSelect}
+                value={model}
+                onChange={(e) => void setModel(e.target.value as AiModelId)}
+                disabled={isStreaming}
+                aria-label="Assistant model"
+                title="Assistant model"
+              >
+                {AI_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
               {intent !== "onboarding" && (
                 <ChatHistoryPopover
                   currentConversationId={conversationId}

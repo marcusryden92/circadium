@@ -22,6 +22,10 @@ model User {
   // itself never reaches the server in BYOK mode — it lives encrypted on the
   // user's device. MANAGED is reserved for a future app-key paid mode.
   aiMode                      AiMode?                      @map("ai_mode")
+  // Which assistant model BYOK requests use. Plain string (model id), null =
+  // the engine default. String not enum so the lineup in lib/aiModels.ts can
+  // change without a migration. See lib/aiModels.ts for the allowed set.
+  aiModel                     String?                      @map("ai_model")
   EventTemplate               EventTemplate[]
   Planner                     Planner[]
   SimpleEvent                 SimpleEvent[]

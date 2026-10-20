@@ -28,16 +28,22 @@ export function ProtectedProviders({
   children,
   needsOnboarding,
   aiMode,
+  aiModel,
 }: {
   children: ReactNode;
   needsOnboarding: boolean;
   aiMode: AiMode | null;
+  aiModel: string | null;
 }) {
   return (
     <StoreProvider>
       <UserProvider>
         <CalendarProvider>
-          <CircadiumShell needsOnboarding={needsOnboarding} aiMode={aiMode}>
+          <CircadiumShell
+            needsOnboarding={needsOnboarding}
+            aiMode={aiMode}
+            aiModel={aiModel}
+          >
             {children}
           </CircadiumShell>
         </CalendarProvider>
@@ -50,16 +56,18 @@ function CircadiumShell({
   children,
   needsOnboarding,
   aiMode,
+  aiModel,
 }: {
   children: ReactNode;
   needsOnboarding: boolean;
   aiMode: AiMode | null;
+  aiModel: string | null;
 }) {
   const user = useCurrentUser();
   const userName = user?.name ?? user?.email ?? "";
   const userInitial = userName.trim().charAt(0).toUpperCase() || "?";
   return (
-    <AiAccessProvider initialMode={aiMode}>
+    <AiAccessProvider initialMode={aiMode} initialModel={aiModel}>
       <AssistantProvider>
         <AppShell
           userName={userName}

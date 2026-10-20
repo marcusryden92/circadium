@@ -13,8 +13,8 @@ import {
   MAX_HISTORY_MESSAGES,
   MAX_TOKENS,
   MAX_TOOL_TURNS,
-  MODEL,
 } from "./constants";
+import { resolveAiModel } from "@/lib/aiModels";
 import { getSystemBlocks } from "./systemPrompt";
 import { buildDynamicContext } from "./promptContext";
 import { withCacheBreakpoints } from "./caching";
@@ -62,6 +62,7 @@ export async function runAssistantTurn({
   intent,
   apiKey,
   baseURL,
+  model,
   signal,
   onText,
   onForest,
@@ -77,6 +78,7 @@ export async function runAssistantTurn({
   onError,
 }: RunAssistantTurnArgs): Promise<void> {
   const client = createBrowserAnthropicClient(apiKey, baseURL);
+  const resolvedModel = resolveAiModel(model);
 
   const send = createSend({
     onText,
@@ -242,7 +244,7 @@ export async function runAssistantTurn({
       // paying for tokens nobody will receive.
       const anthropicStream = client.messages.stream(
         {
-          model: MODEL,
+          model: resolvedModel,
           max_tokens: MAX_TOKENS,
           // Output tokens are the priciest; medium effort consolidates tool
           // calls and terses replies. One-line revert if quality drops.
