@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 
-export const MODEL = "claude-sonnet-4-6";
+export const MODEL = "claude-opus-4-8";
 export const MAX_TOKENS = 16000;
 
 // Prompt-hygiene cap: persistent conversations can outgrow what a single

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useSession } from "next-auth/react";
 import { setUser } from "@/redux/slices/userSlice";
@@ -22,6 +22,14 @@ export default function UserProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const user: User | undefined = session?.user;
 
+  // NextAuth refetches the session on every window focus, handing down a new
+  // `user` object with identical data. Keying the account-scoped fetch below on
+  // this ref (not the object reference) stops a tab refocus from re-fetching
+  // scheduling settings and bumping setAllTravelTimes/setDefaultTransportMode —
+  // which otherwise cascade into CalendarProvider's settings-regen effect and
+  // trigger a full engine regen (that could clobber an unsynced edit).
+  const hydratedSchedulingForUserRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (status === "authenticated" && user) {
       dispatch(setUser(user));
@@ -29,6 +37,10 @@ export default function UserProvider({ children }: { children: ReactNode }) {
       // Snapshot impersonation hydrates these slices from the stored report
       // instead — loading the admin's own rows here would race and overwrite.
       if (readInspectionTarget()) return;
+
+      if (!user.id) return;
+      if (hydratedSchedulingForUserRef.current === user.id) return;
+      hydratedSchedulingForUserRef.current = user.id;
 
       // Load user's scheduling settings, travel times, and locations.
       // Retry through a cold-start window so these don't silently fail to load
@@ -49,6 +61,9 @@ export default function UserProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {
           // Scheduling settings fall back to slice defaults until the next load.
+          // Clear the guard so a later focus/remount can re-attempt the fetch
+          // rather than being permanently blocked by the optimistic mark.
+          hydratedSchedulingForUserRef.current = null;
         });
     }
   }, [status, user, dispatch]);
