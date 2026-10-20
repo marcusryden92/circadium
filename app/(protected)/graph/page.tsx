@@ -24,6 +24,7 @@ import { describeCycle } from "@/utils/precedence/describeCycle";
 import { historyMessages } from "@/utils/historyMessages";
 import {
   buildRootSpans,
+  buildRootOrderingSpans,
   buildLeafSpans,
   buildGraphLanes,
   layoutGraph,
@@ -237,6 +238,10 @@ export default function GraphPage() {
     () => buildRootSpans(calendar, planner),
     [calendar, planner],
   );
+  const orderingSpans = useMemo(
+    () => buildRootOrderingSpans(calendar, planner),
+    [calendar, planner],
+  );
   const leafSpans = useMemo(
     () => (leafView ? buildLeafSpans(calendar, planner) : null),
     [leafView, calendar, planner],
@@ -249,6 +254,7 @@ export default function GraphPage() {
         dependencies,
         categories,
         spans,
+        orderingSpans,
         leafSpans,
         showCompleted,
         showLooseTasks,
@@ -259,6 +265,7 @@ export default function GraphPage() {
       dependencies,
       categories,
       spans,
+      orderingSpans,
       leafSpans,
       showCompleted,
       showLooseTasks,

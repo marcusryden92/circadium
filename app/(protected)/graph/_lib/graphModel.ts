@@ -107,17 +107,17 @@ const makeStaleSegmentCheck = (planner: Planner[]) => {
     isCompletedSegmentEventId(eventId) && goalContainers.has(plannerId);
 };
 
-export function buildRootSpans(
+function aggregateRootSpans(
   calendar: SimpleEvent[],
   planner: Planner[],
+  accept: (eventId: string, plannerId: string) => boolean,
 ): Map<string, GraphSpan> {
   const rootOf = makeRootResolver(planner);
-  const isStaleSegment = makeStaleSegmentCheck(planner);
   const spans = new Map<string, GraphSpan>();
   for (const event of calendar) {
     if (event.extendedProps?.eventType !== "planner") continue;
     const plannerId = plannerIdFromEventId(event.id);
-    if (isStaleSegment(event.id, plannerId)) continue;
+    if (!accept(event.id, plannerId)) continue;
     const rootId = rootOf(plannerId);
     if (!rootId) continue;
     const start = Date.parse(event.start);
@@ -132,6 +132,36 @@ export function buildRootSpans(
     }
   }
   return spans;
+}
+
+export function buildRootSpans(
+  calendar: SimpleEvent[],
+  planner: Planner[],
+): Map<string, GraphSpan> {
+  const isStaleSegment = makeStaleSegmentCheck(planner);
+  return aggregateRootSpans(
+    calendar,
+    planner,
+    (eventId, plannerId) => !isStaleSegment(eventId, plannerId),
+  );
+}
+
+// Ordering span: like the root span but built from UNCOMPLETED work only
+// (finished split segments and completed leaves dropped). A dependency only
+// gates future work, so an early completed sub-item must not pull a root's
+// ordering start back and make a connector read as out-of-order.
+export function buildRootOrderingSpans(
+  calendar: SimpleEvent[],
+  planner: Planner[],
+): Map<string, GraphSpan> {
+  const isStaleSegment = makeStaleSegmentCheck(planner);
+  const plannerById = new Map(planner.map((p) => [p.id, p]));
+  return aggregateRootSpans(calendar, planner, (eventId, plannerId) => {
+    if (isStaleSegment(eventId, plannerId)) return false;
+    if (isCompletedSegmentEventId(eventId)) return false;
+    const row = plannerById.get(plannerId);
+    return !(row && plannerIsCompleted(row));
+  });
 }
 
 // Leaf-level spans grouped by root: rootId -> leaf plannerId -> span. A
@@ -180,6 +210,9 @@ export type GraphNode = {
   id: string;
   planner: Planner;
   span: GraphSpan | null;
+  // Span of uncompleted work only — drives the out-of-order connector check
+  // so completed sub-items never make a dependency read as broken.
+  orderingSpan: GraphSpan | null;
   laneKey: string;
   completed: boolean;
   unreadyGoal: boolean;
@@ -218,6 +251,7 @@ export function buildGraphLanes({
   dependencies,
   categories,
   spans,
+  orderingSpans,
   leafSpans,
   showCompleted,
   showLooseTasks,
@@ -227,6 +261,8 @@ export function buildGraphLanes({
   dependencies: PlannerDependency[];
   categories: Category[];
   spans: Map<string, GraphSpan>;
+  // Uncompleted-work spans for the out-of-order check; defaults to `spans`.
+  orderingSpans?: Map<string, GraphSpan>;
   leafSpans?: Map<string, Map<string, GraphSpan>> | null;
   showCompleted: boolean;
   /** Admit root tasks with no queue/dependency involvement as nodes. */
@@ -268,6 +304,7 @@ export function buildGraphLanes({
     id: row.id,
     planner: row,
     span: spans.get(row.id) ?? null,
+    orderingSpan: (orderingSpans ?? spans).get(row.id) ?? null,
     laneKey,
     completed: plannerIsCompleted(row),
     unreadyGoal: row.plannerType === "goal" && row.isReady !== true,

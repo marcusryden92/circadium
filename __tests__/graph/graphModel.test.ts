@@ -7,6 +7,7 @@ import type {
 } from "@/types/prisma";
 import {
   buildRootSpans,
+  buildRootOrderingSpans,
   buildLeafSpans,
   buildGraphLanes,
   layoutGraph,
@@ -208,6 +209,82 @@ describe("buildRootSpans", () => {
       start: Date.parse("2026-07-15T09:00:00.000Z"),
       end: Date.parse("2026-07-15T10:00:00.000Z"),
     });
+  });
+});
+
+describe("buildRootOrderingSpans", () => {
+  // Goal A (A1, A2 completed before B; A3 after B) depends on B. The full root
+  // span of A starts at A1 (before B ends), but its ordering span must start
+  // at A3 so the dependency never reads as out-of-order.
+  it("excludes completed leaves so an early done sub-item does not pull the start back", () => {
+    const planner = [
+      makePlanner({ id: "goal-a", plannerType: "goal" }),
+      makePlanner({
+        id: "a1",
+        parentId: "goal-a",
+        completedStartTime: "2026-07-13T09:00:00.000Z",
+        completedEndTime: "2026-07-13T10:00:00.000Z",
+      }),
+      makePlanner({
+        id: "a2",
+        parentId: "goal-a",
+        completedStartTime: "2026-07-13T10:00:00.000Z",
+        completedEndTime: "2026-07-13T11:00:00.000Z",
+      }),
+      makePlanner({ id: "a3", parentId: "goal-a" }),
+    ];
+    const calendar = [
+      makeEvent("a1", "2026-07-13T09:00:00.000Z", "2026-07-13T10:00:00.000Z"),
+      makeEvent("a2", "2026-07-13T10:00:00.000Z", "2026-07-13T11:00:00.000Z"),
+      makeEvent("a3", "2026-07-16T09:00:00.000Z", "2026-07-16T10:00:00.000Z"),
+    ];
+
+    expect(buildRootSpans(calendar, planner).get("goal-a")).toEqual({
+      start: Date.parse("2026-07-13T09:00:00.000Z"),
+      end: Date.parse("2026-07-16T10:00:00.000Z"),
+    });
+    expect(buildRootOrderingSpans(calendar, planner).get("goal-a")).toEqual({
+      start: Date.parse("2026-07-16T09:00:00.000Z"),
+      end: Date.parse("2026-07-16T10:00:00.000Z"),
+    });
+  });
+
+  it("drops finished split segments and omits a fully completed root entirely", () => {
+    const planner = [
+      makePlanner({
+        id: "task-split",
+        splitting: JSON.stringify({ minMinutes: 30, maxMinutes: 60 }),
+      }),
+      makePlanner({
+        id: "task-done",
+        completedStartTime: "2026-07-14T09:00:00.000Z",
+        completedEndTime: "2026-07-14T10:00:00.000Z",
+      }),
+    ];
+    const calendar = [
+      makeEvent(
+        "task-split|done:2026-07-14T09:00:00.000Z",
+        "2026-07-14T09:00:00.000Z",
+        "2026-07-14T10:00:00.000Z",
+      ),
+      makeEvent(
+        "task-split|chunk:1",
+        "2026-07-16T09:00:00.000Z",
+        "2026-07-16T10:00:00.000Z",
+      ),
+      makeEvent(
+        "task-done",
+        "2026-07-14T09:00:00.000Z",
+        "2026-07-14T10:00:00.000Z",
+      ),
+    ];
+
+    const ordering = buildRootOrderingSpans(calendar, planner);
+    expect(ordering.get("task-split")).toEqual({
+      start: Date.parse("2026-07-16T09:00:00.000Z"),
+      end: Date.parse("2026-07-16T10:00:00.000Z"),
+    });
+    expect(ordering.has("task-done")).toBe(false);
   });
 });
 

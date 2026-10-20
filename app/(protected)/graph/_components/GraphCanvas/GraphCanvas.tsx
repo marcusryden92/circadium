@@ -187,10 +187,12 @@ const edgePath = (
 };
 
 // Successor starts before its predecessor ends (minute slack for rounding).
+// Keys on the ordering span (uncompleted work only): a completed predecessor
+// or a successor whose only early placements are done is never out of order.
 const isBroken = (from: LaidNode, to: LaidNode): boolean =>
-  !!from.node.span &&
-  !!to.node.span &&
-  to.node.span.start < from.node.span.end - 60_000;
+  !!from.node.orderingSpan &&
+  !!to.node.orderingSpan &&
+  to.node.orderingSpan.start < from.node.orderingSpan.end - 60_000;
 
 const previewedOrder = (
   ids: string[],
