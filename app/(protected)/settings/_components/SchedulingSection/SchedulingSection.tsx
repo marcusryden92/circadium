@@ -73,13 +73,7 @@ export function SchedulingSection() {
   const bufferTimeMinutes = useSelector(
     (state: RootState) => state.schedulingSettings.bufferTimeMinutes,
   );
-  const weekStartDay = useSelector(
-    (state: RootState) => state.schedulingSettings.weekStartDay,
-  );
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
-  const { markSynced } = useCalendarProvider();
+  const { weekStartDay, locations, markSynced } = useCalendarProvider();
 
   const saveMode = useCallback(async (mode: TransportMode) => {
     await updateDefaultTransportMode(mode);

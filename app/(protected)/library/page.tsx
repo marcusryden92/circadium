@@ -20,7 +20,6 @@ import {
   Check,
   Minus,
 } from "lucide-react";
-import { useSelector } from "react-redux";
 import {
   Button,
   Caption,
@@ -35,7 +34,6 @@ import {
 } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { RootState } from "@/redux/store";
 import {
   buildCategoryTree,
   getCategoryAndDescendants,
@@ -186,11 +184,14 @@ function SortHeader({
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { planner, categories, updatePlannerArray, queues, dependencies } =
-    useCalendarProvider();
-  const isLoaded = useSelector(
-    (state: RootState) => state.calendarSource.isLoaded,
-  );
+  const {
+    planner,
+    categories,
+    updatePlannerArray,
+    queues,
+    dependencies,
+    isLoaded,
+  } = useCalendarProvider();
   const now = useMemo(() => new Date(), []);
   const isMobile = useIsMobile();
   const [newItemOpen, setNewItemOpen] = useState(false);

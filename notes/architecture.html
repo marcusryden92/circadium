@@ -1,0 +1,395 @@
+<title>Circadium — Architecture Flowchart</title>
+<style>
+  :root {
+    --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+    --ground: #0d111b;
+    --ground-2: #10151f;
+    --panel: #161d2b;
+    --panel-2: #1c2433;
+    --ink: #e8ebf3;
+    --ink-soft: #c3cad9;
+    --muted: #868fa5;
+    --line: rgba(255, 255, 255, 0.09);
+
+    --flow: #f5b544;      /* amber — main data flow */
+    --c-ui: #a78bfa;      /* contexts / UI */
+    --c-redux: #54d6c4;   /* redux state */
+    --c-engine: #f5b544;  /* engine */
+    --c-server: #7fb4ff;  /* server / sync */
+    --c-db: #f58bad;      /* database */
+    --c-ai: #c792ea;      /* ai assistant */
+    --c-ext: #8cd39a;     /* external / out-of-band */
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 650px at 82% -8%, rgba(245,181,68,.06), transparent 60%),
+      radial-gradient(800px 560px at 2% 2%, rgba(167,139,250,.06), transparent 55%),
+      var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1260px; margin: 0 auto; padding: 40px 24px 90px; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--flow); margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(30px, 4.5vw, 46px);
+    letter-spacing: -0.03em; line-height: 1.05; margin: 0 0 12px; font-weight: 700;
+  }
+  .lede { max-width: 70ch; color: var(--ink-soft); font-size: 16px; margin: 0; }
+  .lede code { font-family: var(--font-mono); font-size: .85em; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 9px 18px;
+    margin: 22px 0 10px; padding: 14px 18px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .legend .hint { flex-basis: 100%; font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+  .lg { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .lg .d { width: 11px; height: 11px; border-radius: 4px; background: var(--lc);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc) 16%, transparent); }
+  .lg.edge .d { width: 18px; height: 3px; border-radius: 2px; box-shadow: none; }
+
+  /* ---------- board ---------- */
+  .board-scroll { overflow-x: auto; margin-top: 18px; padding-bottom: 8px; }
+  .board {
+    position: relative;
+    min-width: 1060px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-auto-rows: minmax(0, auto);
+    column-gap: 96px;
+    row-gap: 58px;
+    padding: 34px 118px 40px;
+  }
+  svg.wires {
+    position: absolute; inset: 0;
+    z-index: 1; pointer-events: none; overflow: visible;
+  }
+  svg.wires path { fill: none; transition: opacity .18s, stroke-width .18s; }
+  svg.wires text {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    paint-order: stroke; stroke: var(--ground); stroke-width: 4px; stroke-linejoin: round;
+    transition: opacity .18s;
+  }
+
+  .nd {
+    position: relative; z-index: 2;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 12px 14px 13px;
+    align-self: center;
+    transition: border-color .18s, box-shadow .18s, opacity .18s, transform .18s;
+  }
+  .nd::before {
+    content: ""; position: absolute; left: 0; top: 11px; bottom: 11px;
+    width: 3px; border-radius: 3px; background: var(--lc, var(--muted));
+  }
+  .nd .t {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--lc, var(--muted)); display: block; margin-bottom: 4px;
+  }
+  .nd .n { font-size: 15px; font-weight: 640; letter-spacing: -.01em; }
+  .nd .n code { font-family: var(--font-mono); font-size: 13px; }
+  .nd .s { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .nd .s code { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); }
+
+  body.tracing .nd { opacity: .3; }
+  body.tracing .nd.lit { opacity: 1; }
+  .nd.focus { border-color: var(--flow) !important;
+    box-shadow: 0 0 0 1px var(--flow), 0 12px 32px -14px rgba(245,181,68,.55); }
+  .nd.near { border-color: color-mix(in srgb, var(--flow) 55%, var(--line)) !important; }
+
+  .hoverhint { font-size: 12.5px; color: var(--muted); font-style: italic; margin: 6px 0 0; }
+  .hoverhint code { font-style: normal; font-family: var(--font-mono); }
+
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 12.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer code { font-family: var(--font-mono); color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">System Flowchart · Circadium</p>
+  <h1>The scheduling data flow</h1>
+  <p class="lede">
+    One edit, traced through the app. The center column is the spine: <code>CalendarProvider</code> → Redux →
+    the engine (in a Web Worker) → back to the calendar surface and down to Postgres. Side boxes feed the engine;
+    the two curved arrows are feedback loops (user interaction, and the OCC <code>dataVersion</code> that closes the sync).
+  </p>
+
+  <div class="legend">
+    <span class="hint">Boxes are color-tagged by tier. Hover any box to isolate its arrows.</span>
+    <span class="lg" style="--lc:var(--c-ui)"><span class="d"></span>Context / UI</span>
+    <span class="lg" style="--lc:var(--c-redux)"><span class="d"></span>Redux state</span>
+    <span class="lg" style="--lc:var(--c-engine)"><span class="d"></span>Engine</span>
+    <span class="lg" style="--lc:var(--c-server)"><span class="d"></span>Server / sync</span>
+    <span class="lg" style="--lc:var(--c-db)"><span class="d"></span>Database</span>
+    <span class="lg" style="--lc:var(--c-ai)"><span class="d"></span>AI assistant</span>
+    <span class="lg" style="--lc:var(--c-ext)"><span class="d"></span>External feed</span>
+    <span class="lg edge" style="--lc:var(--flow)"><span class="d"></span>data flow</span>
+    <span class="lg edge" style="--lc:var(--c-ui)"><span class="d"></span>feedback loop</span>
+  </div>
+
+  <div class="board-scroll">
+    <div class="board" id="board">
+      <svg class="wires" id="wires"></svg>
+
+      <!-- center spine -->
+      <div class="nd" id="n-user"   style="--lc:var(--c-ui); grid-column:2; grid-row:1;">
+        <span class="t">User action</span><div class="n">Drag · edit · capture</div>
+        <div class="s">tile moved, field changed</div></div>
+
+      <div class="nd" id="n-ai"     style="--lc:var(--c-ai); grid-column:3; grid-row:1;">
+        <span class="t">AI assistant</span><div class="n">In-browser BYOK loop</div>
+        <div class="s"><code>runAssistantTurn</code> → working drafts</div></div>
+
+      <div class="nd" id="n-provider" style="--lc:var(--c-ui); grid-column:2; grid-row:2;">
+        <span class="t">Context</span><div class="n"><code>CalendarProvider</code></div>
+        <div class="s">owns auto-regen effects</div></div>
+
+      <div class="nd" id="n-actions"  style="--lc:var(--c-ui); grid-column:2; grid-row:3;">
+        <span class="t">Hook</span><div class="n"><code>useCalendarStateActions</code></div>
+        <div class="s"><code>updatePlannerArray / updateAll</code></div></div>
+
+      <div class="nd" id="n-source"   style="--lc:var(--c-redux); grid-column:1; grid-row:4;">
+        <span class="t">Redux · source</span><div class="n"><code>calendarSource</code></div>
+        <div class="s">planner · templates · categories · queues · deps</div></div>
+
+      <div class="nd" id="n-thunk"    style="--lc:var(--c-redux); grid-column:2; grid-row:4;">
+        <span class="t">Redux thunk</span><div class="n"><code>calendarThunks</code></div>
+        <div class="s">sets source sync, then awaits engine</div></div>
+
+      <div class="nd" id="n-settings" style="--lc:var(--c-redux); grid-column:1; grid-row:5;">
+        <span class="t">Redux · settings</span><div class="n"><code>schedulingSettings</code></div>
+        <div class="s">travel matrix derived per run</div></div>
+
+      <div class="nd" id="n-worker"   style="--lc:var(--c-engine); grid-column:2; grid-row:5;">
+        <span class="t">Web Worker</span><div class="n"><code>engineWorkerClient</code></div>
+        <div class="s">off-thread · latest-wins</div></div>
+
+      <div class="nd" id="n-feeds"    style="--lc:var(--c-ext); grid-column:1; grid-row:6;">
+        <span class="t">Out-of-band feeds</span><div class="n"><code>options.*</code></div>
+        <div class="s">external busy blocks · completions</div></div>
+
+      <div class="nd" id="n-engine"   style="--lc:var(--c-engine); grid-column:2; grid-row:6;">
+        <span class="t">Engine</span><div class="n">CalendarGenerator</div>
+        <div class="s">12-phase · flat-order leaf scheduler</div></div>
+
+      <div class="nd" id="n-output"   style="--lc:var(--c-redux); grid-column:2; grid-row:7;">
+        <span class="t">Redux · derived</span><div class="n"><code>engineOutput</code></div>
+        <div class="s">calendar · categoryEvents · travel · messages</div></div>
+
+      <!-- left render lane -->
+      <div class="nd" id="n-render"   style="--lc:var(--c-ui); grid-column:1; grid-row:8;">
+        <span class="t">Render</span><div class="n">calendar-rendering</div>
+        <div class="s"><code>…ToEventInput</code></div></div>
+
+      <div class="nd" id="n-fullcal"  style="--lc:var(--c-ui); grid-column:1; grid-row:9;">
+        <span class="t">UI surface</span><div class="n"><code>Calendar.tsx</code></div>
+        <div class="s">FullCalendar · identity-stable options</div></div>
+
+      <!-- right sync lane -->
+      <div class="nd" id="n-sync"     style="--lc:var(--c-server); grid-column:3; grid-row:8;">
+        <span class="t">Sync hook</span><div class="n"><code>useCalendarServerSync</code></div>
+        <div class="s">300ms debounce · diff · OCC</div></div>
+
+      <div class="nd" id="n-syncdata" style="--lc:var(--c-server); grid-column:3; grid-row:9;">
+        <span class="t">Server action</span><div class="n"><code>syncCalendarData</code></div>
+        <div class="s">transactional · bulk SQL · sync-handlers</div></div>
+
+      <div class="nd" id="n-db"       style="--lc:var(--c-db); grid-column:3; grid-row:10;">
+        <span class="t">Database</span><div class="n">PostgreSQL</div>
+        <div class="s">Prisma 7 · deterministic engine-row ids</div></div>
+    </div>
+  </div>
+  <p class="hoverhint">Hover a box to light only its arrows. The amber paths carry a change downstream; the curved
+    violet / blue paths are the two loops that make it a cycle. On a narrow screen, scroll the board sideways.</p>
+
+  <footer>
+    <span>Circadium data-flow flowchart · derived from <code>CLAUDE.md</code> + source</span>
+    <span><code>CalendarProvider → Redux → engine → calendar → Postgres → ↺ dataVersion</code></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const board = document.getElementById("board");
+  const svg = document.getElementById("wires");
+  const NS = "http://www.w3.org/2000/svg";
+
+  const COLORS = {
+    flow:   getCSS("--flow"),
+    ui:     getCSS("--c-ui"),
+    redux:  getCSS("--c-redux"),
+    server: getCSS("--c-server"),
+    ext:    getCSS("--c-ext"),
+    ai:     getCSS("--c-ai"),
+  };
+  function getCSS(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  // from -> to, with explicit sides so arrows route cleanly. loop = wide arc.
+  const EDGES = [
+    { f: "user", t: "provider", fs: "b", ts: "t", c: "flow", label: "dispatch" },
+    { f: "provider", t: "actions", fs: "b", ts: "t", c: "flow" },
+    { f: "actions", t: "thunk", fs: "b", ts: "t", c: "flow" },
+    { f: "ai", t: "thunk", fs: "b", ts: "r", c: "ai", label: "Save" },
+    { f: "source", t: "thunk", fs: "r", ts: "l", c: "redux", label: "inputs" },
+    { f: "thunk", t: "worker", fs: "b", ts: "t", c: "flow", label: "runEngine" },
+    { f: "settings", t: "engine", fs: "r", ts: "l", c: "redux" },
+    { f: "feeds", t: "engine", fs: "r", ts: "l", c: "ext", label: "busy + log" },
+    { f: "worker", t: "engine", fs: "b", ts: "t", c: "flow" },
+    { f: "engine", t: "output", fs: "b", ts: "t", c: "flow" },
+    { f: "output", t: "render", fs: "b", ts: "t", c: "flow", label: "render" },
+    { f: "output", t: "sync", fs: "b", ts: "t", c: "flow", label: "diff" },
+    { f: "render", t: "fullcal", fs: "b", ts: "t", c: "flow" },
+    { f: "fullcal", t: "user", fs: "l", ts: "l", c: "ui", loop: true, label: "interactions" },
+    { f: "sync", t: "syncdata", fs: "b", ts: "t", c: "server" },
+    { f: "syncdata", t: "db", fs: "b", ts: "t", c: "server" },
+    { f: "db", t: "sync", fs: "r", ts: "r", c: "server", loop: true, label: "dataVersion / stale" },
+  ];
+
+  // one arrowhead marker per color
+  function buildDefs() {
+    const defs = document.createElementNS(NS, "defs");
+    Object.entries(COLORS).forEach(([key, col]) => {
+      const m = document.createElementNS(NS, "marker");
+      m.setAttribute("id", "ah-" + key);
+      m.setAttribute("markerWidth", "9");
+      m.setAttribute("markerHeight", "9");
+      m.setAttribute("refX", "7");
+      m.setAttribute("refY", "3");
+      m.setAttribute("orient", "auto");
+      m.setAttribute("markerUnits", "userSpaceOnUse");
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", "M0,0 L7,3 L0,6 Z");
+      p.setAttribute("fill", col);
+      m.appendChild(p);
+      defs.appendChild(m);
+    });
+    svg.appendChild(defs);
+  }
+
+  function box(id) {
+    const el = document.getElementById("n-" + id);
+    const br = board.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const left = r.left - br.left, top = r.top - br.top;
+    return {
+      el, left, top, right: left + r.width, bottom: top + r.height,
+      cx: left + r.width / 2, cy: top + r.height / 2,
+    };
+  }
+  function anchor(b, side) {
+    switch (side) {
+      case "t": return { x: b.cx, y: b.top, nx: 0, ny: -1 };
+      case "b": return { x: b.cx, y: b.bottom, nx: 0, ny: 1 };
+      case "l": return { x: b.left, y: b.cy, nx: -1, ny: 0 };
+      case "r": return { x: b.right, y: b.cy, nx: 1, ny: 0 };
+    }
+  }
+  function cubicMid(p0, c1, c2, p3) {
+    const f = (a, b, c, d) => 0.125 * a + 0.375 * b + 0.375 * c + 0.125 * d;
+    return { x: f(p0.x, c1.x, c2.x, p3.x), y: f(p0.y, c1.y, c2.y, p3.y) };
+  }
+
+  function draw() {
+    // clear everything but defs
+    [...svg.querySelectorAll("path, text")].forEach((n) => n.remove());
+    svg.setAttribute("width", board.scrollWidth);
+    svg.setAttribute("height", board.scrollHeight);
+
+    EDGES.forEach((e, i) => {
+      const A = box(e.f), B = box(e.t);
+      const a = anchor(A, e.fs), b = anchor(B, e.ts);
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      const k = e.loop ? Math.max(150, dist * 0.22) : Math.max(38, dist * 0.3);
+      const c1 = { x: a.x + a.nx * k, y: a.y + a.ny * k };
+      const c2 = { x: b.x + b.nx * k, y: b.y + b.ny * k };
+      const col = COLORS[e.c];
+
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`);
+      path.setAttribute("stroke", col);
+      path.setAttribute("stroke-width", e.loop ? 2 : 2);
+      path.setAttribute("stroke-dasharray", e.loop ? "6 5" : "none");
+      path.setAttribute("opacity", e.loop ? 0.72 : 0.8);
+      path.setAttribute("marker-end", `url(#ah-${e.c})`);
+      path.setAttribute("stroke-linecap", "round");
+      path.dataset.f = e.f; path.dataset.t = e.t; path.dataset.i = i;
+      svg.appendChild(path);
+
+      if (e.label) {
+        const m = cubicMid(a, c1, c2, b);
+        const tx = document.createElementNS(NS, "text");
+        tx.setAttribute("x", m.x); tx.setAttribute("y", m.y);
+        tx.setAttribute("text-anchor", "middle");
+        tx.setAttribute("dominant-baseline", "middle");
+        tx.setAttribute("fill", col);
+        tx.textContent = e.label;
+        tx.dataset.i = i;
+        svg.appendChild(tx);
+      }
+    });
+  }
+
+  // hover isolation
+  const ids = [...new Set(EDGES.flatMap((e) => [e.f, e.t]))];
+  function clearTrace() {
+    document.body.classList.remove("tracing");
+    ids.forEach((id) => document.getElementById("n-" + id).classList.remove("lit", "focus", "near"));
+    svg.querySelectorAll("path").forEach((p) => {
+      p.style.opacity = ""; p.setAttribute("opacity", p.dataset.loop === "1" ? 0.72 : 0.8);
+      p.setAttribute("stroke-width", 2);
+    });
+    svg.querySelectorAll("text").forEach((t) => (t.style.opacity = ""));
+  }
+  function trace(id) {
+    document.body.classList.add("tracing");
+    const near = new Set([id]);
+    EDGES.forEach((e, i) => {
+      const hit = e.f === id || e.t === id;
+      const path = svg.querySelector(`path[data-i="${i}"]`);
+      const txt = svg.querySelector(`text[data-i="${i}"]`);
+      if (hit) {
+        near.add(e.f); near.add(e.t);
+        if (path) { path.setAttribute("opacity", 1); path.setAttribute("stroke-width", 3.4); }
+        if (txt) txt.style.opacity = 1;
+      } else {
+        if (path) path.setAttribute("opacity", 0.08);
+        if (txt) txt.style.opacity = 0.1;
+      }
+    });
+    near.forEach((n) => document.getElementById("n-" + n).classList.add("lit"));
+    document.getElementById("n-" + id).classList.add("focus");
+    near.forEach((n) => { if (n !== id) document.getElementById("n-" + n).classList.add("near"); });
+  }
+
+  buildDefs();
+  const render = () => requestAnimationFrame(draw);
+  render();
+  window.addEventListener("resize", render);
+  window.addEventListener("load", render);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+  if (window.ResizeObserver) new ResizeObserver(render).observe(board);
+
+  ids.forEach((id) => {
+    const el = document.getElementById("n-" + id);
+    el.addEventListener("mouseenter", () => { clearTrace(); trace(id); });
+    el.addEventListener("mouseleave", clearTrace);
+  });
+})();
+</script>

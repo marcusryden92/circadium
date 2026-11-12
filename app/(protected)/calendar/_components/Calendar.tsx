@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -18,7 +17,6 @@ import { CategoryWrapperEvent } from "@/components/events/CategoryWrapperEvent";
 
 import type { EventDropArg, EventInput } from "@fullcalendar/core/index.js";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction/index.js";
-import type { RootState } from "@/redux/store";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
@@ -136,6 +134,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
     externalSources,
     externalEvents,
     planner,
+    locations,
     updateTemplateArray,
     updatePlannerArray,
     updateAll,
@@ -151,10 +150,6 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
   useEffect(() => {
     templateRef.current = template;
   }, [template]);
-
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
 
   const calendarRef = useRef<FullCalendarComponent>(null);
   const [pendingPlan, setPendingPlan] = useState<{

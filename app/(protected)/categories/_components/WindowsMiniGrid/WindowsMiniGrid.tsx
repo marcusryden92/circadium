@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import type { CategoryTimeWindow } from "@/types/prisma";
 import { orderedWeekDays } from "@/utils/calendarUtils";
 import {
@@ -58,9 +57,7 @@ export function WindowsMiniGrid({
   onOpen,
 }: WindowsMiniGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const weekStartDay = useSelector(
-    (state: RootState) => state.schedulingSettings.weekStartDay,
-  );
+  const { weekStartDay } = useCalendarProvider();
   const dayOrder = useMemo(() => orderedWeekDays(weekStartDay), [weekStartDay]);
 
   useEffect(() => {

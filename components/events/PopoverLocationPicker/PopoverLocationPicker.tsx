@@ -2,9 +2,8 @@
 
 import { MapPin } from "lucide-react";
 import { useMemo } from "react";
-import { useSelector } from "react-redux";
 import { Caption, Combobox, Switch } from "@/components/ui";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import {
   root,
   overrideRow,
@@ -39,9 +38,7 @@ export function PopoverLocationPicker({
   inheritedLocationName,
   inheritedFromLabel,
 }: Props) {
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
+  const { locations } = useCalendarProvider();
 
   const hasOverrideControls = !!onToggleOverride;
   const isInheriting = hasOverrideControls && !isOverridden;

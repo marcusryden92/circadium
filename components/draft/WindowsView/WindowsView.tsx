@@ -1,7 +1,6 @@
 "use client";
 
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import { CategoryDot, useResolvedCategoryColor } from "@/components/ui";
 import {
   groupWindowsByCategory,
@@ -45,9 +44,7 @@ interface WindowsViewProps {
 }
 
 export function WindowsView({ diffed }: WindowsViewProps) {
-  const weekStartDay = useSelector(
-    (state: RootState) => state.schedulingSettings.weekStartDay,
-  );
+  const { weekStartDay } = useCalendarProvider();
   const groups = groupWindowsByCategory(diffed, weekStartDay);
 
   if (groups.length === 0) {

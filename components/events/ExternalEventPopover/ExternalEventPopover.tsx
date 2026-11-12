@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { CalendarClock, RefreshCw, Settings } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import type { AppDispatch, RootState } from "@/redux/store";
+import type { AppDispatch } from "@/redux/store";
 import {
   applyExternalRefresh,
   upsertExternalSource,
@@ -61,10 +61,7 @@ const ExternalEventPopover: React.FC<ExternalEventPopoverProps> = ({
 }) => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { updateAll, externalSources } = useCalendarProvider();
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
+  const { updateAll, externalSources, locations } = useCalendarProvider();
   const [refreshing, setRefreshing] = useState(false);
 
   const ext = event.extendedProps as RuntimeEventExtendedProps;

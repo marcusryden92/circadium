@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import { Loader } from "@/components/ui/Loader";
 import { overlay, overlayHidden, logo } from "./AppLoadingScreen.css";
 
@@ -10,9 +9,7 @@ import { overlay, overlayHidden, logo } from "./AppLoadingScreen.css";
 // userId) and the initial calendar snapshot has hydrated Redux, so it is the
 // single "everything is loaded" signal for the whole app shell.
 export function AppLoadingScreen() {
-  const isLoaded = useSelector(
-    (state: RootState) => state.calendarSource.isLoaded,
-  );
+  const { isLoaded } = useCalendarProvider();
 
   // If Redux was retained from a prior navigation, skip straight to gone so
   // there is no flash of the overlay on a warm remount.

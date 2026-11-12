@@ -9,7 +9,6 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
 import {
   Search,
   Target,
@@ -24,7 +23,6 @@ import { useSearch } from "../SearchContext";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { getRootParentId } from "@/utils/goalPageHandlers";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { RootState } from "@/redux/store";
 import type { Planner, Category, Location } from "@/types/prisma";
 import { Input, Kbd } from "@/components/ui";
 import { BottomSheet } from "../../BottomSheet";
@@ -92,10 +90,9 @@ export function SearchPalette() {
   const { open, setOpen } = useSearch();
   const router = useRouter();
   const isMobile = useIsMobile();
-  const { planner, categories } = useCalendarProvider();
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  ) as Location[];
+  const { planner, categories, locations: providerLocations } =
+    useCalendarProvider();
+  const locations = providerLocations as Location[];
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");

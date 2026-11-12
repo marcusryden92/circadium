@@ -44,22 +44,20 @@ export function useDashboardData(): DashboardData {
   const sessionUser = useCurrentUser();
 
   const {
+    isLoaded,
     planner,
     calendar,
     template,
     categories,
     travelEvents,
+    locations,
     inheritedLocationMap,
     queueCategoryByRootId,
     updateAll,
   } = useCalendarProvider();
 
-  const isLoaded = useSelector((state: RootState) => state.calendarSource.isLoaded);
   const plannerScores = useSelector(
     (state: RootState) => state.engineOutput.plannerScores,
-  );
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
   );
 
   const now = useTickingNow();

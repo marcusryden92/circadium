@@ -1,12 +1,11 @@
 import React, { useRef, useState, useLayoutEffect, useMemo } from "react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import { useSelector } from "react-redux";
 import { AlertTriangle, Car } from "lucide-react";
 // TODO: replace `Car` with a per-event mode icon (Car/Bike/Bus/Walk) once
 // TravelTime's transportMode is plumbed through to the calendar event's
 // extendedProps. The TravelTime record carries DRIVING/TRANSIT/BICYCLING/
 // WALKING but the engine only emits a duration today.
-import { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { formatTime } from "@/utils/calendarUtils";
 import { handleDoubleClick } from "@/utils/calendarEventHandlers";
@@ -40,9 +39,7 @@ interface TravelEventContentProps {
 }
 
 const TravelEventContent: React.FC<TravelEventContentProps> = ({ event }) => {
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
+  const { locations } = useCalendarProvider();
   const isMobile = useIsMobile();
   const elementRef = useRef<HTMLDivElement>(null);
   const [elementHeight, setElementHeight] = useState<number>(0);

@@ -1,7 +1,6 @@
 "use client";
 
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import {
   groupTemplatesByDay,
   type DiffTemplate,
@@ -45,9 +44,7 @@ export function TemplateWeekView({
   templates,
   locations,
 }: TemplateWeekViewProps) {
-  const weekStartDay = useSelector(
-    (state: RootState) => state.schedulingSettings.weekStartDay,
-  );
+  const { weekStartDay } = useCalendarProvider();
 
   if (templates.length === 0) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import { Plus } from "lucide-react";
 import {
@@ -20,7 +20,7 @@ import {
   upsertTimeWindow,
   recordHistory,
 } from "@/redux/slices/calendarSourceSlice";
-import type { AppDispatch, RootState } from "@/redux/store";
+import type { AppDispatch } from "@/redux/store";
 import {
   buildCategoryTree,
   compareCategoryNames,
@@ -51,13 +51,8 @@ import {
 
 export default function CategoriesPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { planner, categories, updateAll } = useCalendarProvider();
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
-  const isLoaded = useSelector(
-    (state: RootState) => state.calendarSource.isLoaded,
-  );
+  const { planner, categories, locations, isLoaded, updateAll } =
+    useCalendarProvider();
 
   const isMobile = useIsMobile();
 

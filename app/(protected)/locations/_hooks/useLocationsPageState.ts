@@ -45,11 +45,8 @@ export interface TravelTimeOverrides {
 //     diff path, so each is followed by markSynced to advance the sync refs.
 export function useLocationsPageState() {
   const dispatch = useDispatch();
-  const { markSynced, updateAll } = useCalendarProvider();
+  const { markSynced, updateAll, locations } = useCalendarProvider();
 
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
   const allTravelTimes = useSelector(
     (state: RootState) => state.schedulingSettings.allTravelTimes,
   );

@@ -2,10 +2,9 @@
 
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
 import { AlertTriangle, Car, Settings } from "lucide-react";
 import { EventImpl } from "@fullcalendar/core/internal";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import { Button, FieldStack, FieldValue, TypeBadge } from "@/components/ui";
 import { CalendarPopover } from "../CalendarPopover";
 import {
@@ -53,9 +52,7 @@ const TravelEventPopover: React.FC<TravelEventPopoverProps> = ({
   onClose,
 }) => {
   const router = useRouter();
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
+  const { locations } = useCalendarProvider();
 
   const locationNameMap = useMemo(() => {
     const m = new Map<string, string>();

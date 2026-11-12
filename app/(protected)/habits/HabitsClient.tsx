@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { FolderPlus, Pencil, Plus } from "lucide-react";
 import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import {
   Button,
   Caption,
@@ -38,22 +39,19 @@ import {
 // linked to it. All tracker writes are direct actions mirrored into the
 // habits slice — no engine involvement.
 export function HabitsClient() {
-  const planner = useSelector((s: RootState) => s.calendarSource.planner);
-  const isCalendarLoaded = useSelector(
-    (s: RootState) => s.calendarSource.isLoaded,
-  );
+  const {
+    planner,
+    isLoaded: isCalendarLoaded,
+    calendar: scheduledEvents,
+    weekStartDay: rawWeekStartDay,
+  } = useCalendarProvider();
   const { buckets, habits, items, isLoaded } = useSelector(
     (s: RootState) => s.habits,
   );
   const completions = useSelector(
     (s: RootState) => s.occurrenceCompletions.rows,
   );
-  const scheduledEvents = useSelector(
-    (s: RootState) => s.engineOutput.calendar,
-  );
-  const weekStartDay = normalizeWeekStartDay(
-    useSelector((s: RootState) => s.schedulingSettings.weekStartDay),
-  );
+  const weekStartDay = normalizeWeekStartDay(rawWeekStartDay);
 
   const [showNewHabit, setShowNewHabit] = useState(false);
   const [newHabitBucketId, setNewHabitBucketId] = useState<string | null>(

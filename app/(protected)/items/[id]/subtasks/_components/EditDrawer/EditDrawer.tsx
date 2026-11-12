@@ -18,8 +18,6 @@ import {
   ArrowUpFromLine,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
 import {
   Button,
   Caption,
@@ -103,12 +101,10 @@ export function EditDrawer() {
     updatePlannerArray,
     updateAll,
     weekStartDay,
+    locations,
   } = useCalendarProvider();
   const router = useRouter();
   const { focusedTask, setFocusedTask } = useDraggableContext();
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
 
   const task = useMemo(
     () => (focusedTask ? planner.find((p) => p.id === focusedTask) : undefined),

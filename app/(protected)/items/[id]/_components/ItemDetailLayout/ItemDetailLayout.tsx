@@ -84,10 +84,8 @@ export default function ItemDetailLayout({
     dependencies,
     updateDependencyArray,
     queueCategoryByRootId,
+    isLoaded: isCalendarLoaded,
   } = useCalendarProvider();
-  const isCalendarLoaded = useSelector(
-    (state: RootState) => state.calendarSource.isLoaded,
-  );
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
 

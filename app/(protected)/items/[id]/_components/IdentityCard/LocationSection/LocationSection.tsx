@@ -3,8 +3,6 @@
 import { space } from "@/lib/theme";
 import { useMemo } from "react";
 import { MapPin, RotateCcw } from "lucide-react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
 import {
   Button,
   Caption,
@@ -12,6 +10,7 @@ import {
   FieldStack,
   SegmentedControl,
 } from "@/components/ui";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useItem } from "../../ItemContext";
 import {
   placeRow,
@@ -33,9 +32,7 @@ export function LocationSection() {
     requestResetSubgoalLocations,
   } = useItem();
 
-  const locations = useSelector(
-    (state: RootState) => state.schedulingSettings.locations,
-  );
+  const { locations } = useCalendarProvider();
 
   const isGoal = item.plannerType === "goal";
 

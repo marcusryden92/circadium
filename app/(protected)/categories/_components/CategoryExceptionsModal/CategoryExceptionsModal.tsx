@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import { X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import type { RootState } from "@/redux/store";
+import { useCalendarProvider } from "@/context/CalendarProvider";
 import type { Category } from "@/types/prisma";
 import { WindowExceptionEditor } from "@/components/events/WindowExceptionEditor";
 import {
@@ -53,9 +52,7 @@ export function CategoryExceptionsModal({
   category,
   onChangeWindowExceptions,
 }: CategoryExceptionsModalProps) {
-  const weekStartDay = useSelector(
-    (state: RootState) => state.schedulingSettings.weekStartDay,
-  );
+  const { weekStartDay } = useCalendarProvider();
 
   const windows = useMemo(() => {
     const rank = new Map<number, number>(

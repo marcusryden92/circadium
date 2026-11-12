@@ -25,7 +25,6 @@ import {
 } from "@/components/ui";
 import { GoalPickerList } from "@/components/GoalPickerList";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import { useSelector } from "react-redux";
 import { listRow } from "@/lib/theme";
 import { usePlatform } from "@/hooks/usePlatform";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -35,7 +34,6 @@ import { PRIORITY_DEFAULT } from "@/utils/plannerPriority";
 import { isUnprocessed } from "@/utils/plannerStatus";
 import { historyMessages } from "@/utils/historyMessages";
 import { ageLabel } from "@/utils/timeFormatting";
-import type { RootState } from "@/redux/store";
 import type { Planner, Category } from "@/types/prisma";
 import { CategoryPicker } from "./_components/CategoryPicker";
 import { useCaptureKeyboard } from "./_hooks/useCaptureKeyboard";
@@ -97,10 +95,8 @@ export default function CapturePage() {
     updatePlannerArray,
     updateAll,
     weekStartDay,
+    isLoaded,
   } = useCalendarProvider();
-  const isLoaded = useSelector(
-    (state: RootState) => state.calendarSource.isLoaded,
-  );
   const { modKey } = usePlatform();
   const isMobile = useIsMobile();
 
