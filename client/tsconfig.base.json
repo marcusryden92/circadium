@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "ES2017",
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  }
+}

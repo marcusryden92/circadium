@@ -108,6 +108,8 @@ Key mechanics:
 
 ### 2. Dedicated .NET backend (ASP.NET Core) — full migration before mobile
 
+> **Superseded (2026-11-12):** the backend is Java/Spring Boot — see `notes/java-backend-plan.md`. This section's stack-specific choices no longer apply; the rest of this document (client analysis, calendar-kit, mobile phases, spike gate) stands.
+
 **Stack**: ASP.NET Core minimal APIs or controllers; **SignalR** (realtime), **Hangfire** or Quartz (push scheduling + background refresh jobs), **Npgsql + EF Core** (or Dapper for the hot sync path). Postgres enums map via Npgsql.
 
 **Prisma is transition scaffolding, not an end-state choice.** Schema authority follows whichever side's code still touches the DB — never two migration systems owning one database:
