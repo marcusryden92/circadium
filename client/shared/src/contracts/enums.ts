@@ -54,3 +54,12 @@ export type TransportMode =
 // Narrowed at the DB boundary from the WeekDayType enum (sunday..saturday) to
 // the integer the app code uses everywhere (0=Sunday .. 6=Saturday).
 export type WeekDayIntegers = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export type WeekDayType =
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";

@@ -2,7 +2,7 @@ import type { OccurrenceCompletion, Planner } from "@/types/prisma";
 import { enumerateRecurrencePeriods } from "@/utils/recurringPeriods";
 import { plannerHasFlexibleRecurrence } from "@/utils/planRecurrence";
 import { getTreeBottomLayer } from "@/utils/goalPageHandlers";
-import { SCHEDULING_CONFIG } from "@/utils/calendar-generation/constants";
+import { SCHEDULING_CONFIG } from "@circadium/shared/engine/constants";
 
 // Item-detail completion surface for flexibly recurring tasks/goals: the same
 // period model the engine and habit stats use, resolved against the occurrence

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { getPlannerAndCalendarForCompletedTask } from "@/utils/taskHelpers";
-import { generateCalendar } from "@/utils/calendar-generation/calendarGeneration";
+import { generateCalendar } from "@circadium/shared/engine/calendarGeneration";
 import type {
   Planner,
   SimpleEvent,

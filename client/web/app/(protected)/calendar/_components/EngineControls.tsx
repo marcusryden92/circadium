@@ -8,7 +8,7 @@ import {
   setLocationGroupingPenalties,
   setStrategyWeights,
 } from "@/redux/slices/schedulingSettingsSlice";
-import { DEFAULT_LOCATION_GROUPING_PENALTIES } from "@/utils/calendar-generation/strategies/defaultStrategy";
+import { DEFAULT_LOCATION_GROUPING_PENALTIES } from "@circadium/shared/engine/strategies/defaultStrategy";
 import { updateUserSchedulingPreferences } from "@/actions/scheduling";
 import type { AppDispatch, RootState } from "@/redux/store";
 import {

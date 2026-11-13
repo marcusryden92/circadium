@@ -10,7 +10,7 @@ import { SimpleEvent } from "@/types/prisma";
 import { EventInput } from "@fullcalendar/core/index.js";
 import { RRule, Weekday } from "rrule";
 import { format } from "date-fns";
-import { dateTimeService } from "./calendar-generation/utils/dateTimeService";
+import { dateTimeService } from "@circadium/shared/engine/utils/dateTimeService";
 import { startOfDay } from "./dateUtils";
 
 // Re-export from dateTimeService for backward compatibility

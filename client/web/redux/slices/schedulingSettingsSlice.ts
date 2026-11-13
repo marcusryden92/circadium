@@ -1,12 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { TransportMode } from "@/generated/client";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
-import type { TravelTimeEntry } from "@/utils/calendar-generation/models/SchedulingModels";
+import type { TravelTimeEntry } from "@circadium/shared/engine/models/SchedulingModels";
 import {
   DEFAULT_STRATEGY_WEIGHTS,
   DEFAULT_LOCATION_GROUPING_SCORES,
   DEFAULT_LOCATION_GROUPING_PENALTIES,
-} from "@/utils/calendar-generation/strategies/defaultStrategy";
+} from "@circadium/shared/engine/strategies/defaultStrategy";
 
 // Serializable format for Redux storage
 export type SerializedTravelTimeEntry = {

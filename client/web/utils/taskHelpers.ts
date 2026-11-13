@@ -1,6 +1,6 @@
 import { Planner } from "@/types/prisma";
 import { SimpleEvent } from "@/types/prisma";
-import { getMinuteDifference } from "./calendar-generation/utils/dateTimeService";
+import { getMinuteDifference } from "@circadium/shared/engine/utils/dateTimeService";
 import { floorMinutes } from "./calendarUtils";
 import { EventImpl } from "@fullcalendar/core/internal";
 import { assert } from "./assert/assert";

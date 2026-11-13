@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 import { floorMinutes } from "@/utils/calendarUtils";
 import { WeekDayIntegers } from "@/types/calendarTypes";
 
-import { runEngineCalculation } from "@/utils/calendar-generation/engineWorkerClient";
+import { runEngineCalculation } from "@circadium/shared/engine/engineWorkerClient";
 import { taskIsCompleted } from "@/utils/taskHelpers";
 import { captureEvent } from "@/utils/analytics";
 
@@ -28,7 +28,7 @@ import {
 } from "@/redux/slices/schedulingSettingsSlice";
 import { deriveExternalBusyEvents } from "@/utils/external-calendar/deriveExternalBusyEvents";
 import { deriveOccurrenceCompletions } from "@/utils/deriveOccurrenceCompletions";
-import type { OccurrenceCompletionInput } from "@/utils/calendar-generation/models/SchedulingModels";
+import type { OccurrenceCompletionInput } from "@circadium/shared/engine/models/SchedulingModels";
 
 const useManuallyRefreshCalendar = (
   userId: string | undefined,

@@ -1,5 +1,5 @@
 import type { OccurrenceCompletion } from "@/types/prisma";
-import type { OccurrenceCompletionInput } from "@/utils/calendar-generation/models/SchedulingModels";
+import type { OccurrenceCompletionInput } from "@circadium/shared/engine/models/SchedulingModels";
 
 // Stored OccurrenceCompletion rows -> the compact shape the engine consumes.
 // Derived fresh per engine run (like deriveExternalBusyEvents) so a just-logged

@@ -1,4 +1,4 @@
-import { generateCalendar } from "@/utils/calendar-generation/calendarGeneration";
+import { generateCalendar } from "@circadium/shared/engine/calendarGeneration";
 import { deriveExternalBusyEvents } from "@/utils/external-calendar/deriveExternalBusyEvents";
 import { serializeModeExceptions } from "@/utils/external-calendar/modeExceptions";
 import {

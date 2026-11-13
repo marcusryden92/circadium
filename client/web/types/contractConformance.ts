@@ -18,7 +18,7 @@ import type {
   TransportMode as PrismaTransportMode,
 } from "@/generated/client";
 import type * as web from "@/types/prisma";
-import type { WeekDayIntegers } from "@/types/calendarTypes";
+import type { WeekDayIntegers, WeekDayType } from "@/types/calendarTypes";
 import type { DatabaseChanges } from "@/utils/server-handlers/compareCalendarData";
 import type {
   SerializedLocation,
@@ -35,6 +35,7 @@ type _ExtKind = Expect<Equal<c.ExternalCalendarKind, PrismaExternalCalendarKind>
 type _ExtMode = Expect<Equal<c.ExternalCalendarMode, PrismaExternalCalendarMode>>;
 type _Transport = Expect<Equal<c.TransportMode, PrismaTransportMode>>;
 type _WeekDay = Expect<Equal<c.WeekDayIntegers, WeekDayIntegers>>;
+type _WeekDayType = Expect<Equal<c.WeekDayType, WeekDayType>>;
 
 // Models — each contract type conforms to the augmented Prisma payload web
 // uses. Conforms (mutual assignability), not Equal, because web wraps many of

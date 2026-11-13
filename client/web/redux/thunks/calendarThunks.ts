@@ -6,7 +6,7 @@ import {
   Queue,
   PlannerDependency,
 } from "@/types/prisma";
-import { runEngineCalculation } from "@/utils/calendar-generation/engineWorkerClient";
+import { runEngineCalculation } from "@circadium/shared/engine/engineWorkerClient";
 import { WeekDayIntegers } from "@/types/calendarTypes";
 import { AppDispatch } from "../store";
 import { RootState } from "../store";

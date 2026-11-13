@@ -21,9 +21,9 @@ import type { SerializedLocation } from "@/redux/slices/schedulingSettingsSlice"
 import type {
   EngineMessagePayload,
   EngineMessageTone,
-} from "./calendar-generation/models/EngineMessage";
-import { SchedulingFailureReason } from "./calendar-generation/constants";
-import { buildCategoryEligibilityMap } from "./calendar-generation/helpers/CalendarGenerator/buildCategoryEligibilityMap";
+} from "@circadium/shared/engine/models/EngineMessage";
+import { SchedulingFailureReason } from "@circadium/shared/engine/constants";
+import { buildCategoryEligibilityMap } from "@circadium/shared/engine/helpers/CalendarGenerator/buildCategoryEligibilityMap";
 import {
   type AllowedTimesSettings,
   parseAllowedTimes,
