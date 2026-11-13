@@ -7,5 +7,6 @@
   "search.exclude": {
     "**/.next": true,
     "**/generated": true
-  }
+  },
+  "java.compile.nullAnalysis.mode": "automatic"
 }

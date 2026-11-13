@@ -48,7 +48,7 @@ Lifeplan/
 
 | Concern | Choice | Why it's the production answer |
 |---|---|---|
-| Framework | Spring Boot 3.x, Java 21 LTS, Maven | Industry standard, longest support horizon, largest hiring pool when the company grows |
+| Framework | Spring Boot 4.1.x, Java 21 LTS, Maven | Industry standard, longest support horizon, largest hiring pool when the company grows. (Originally planned as 3.x; Initializr dropped the 3.x line and 3.5 OSS support is ending, so a new prod backend starts on Boot 4.x — decided 2026-11-13.) |
 | Realtime | Plain Spring WebSocket (`TextWebSocketHandler` + per-user session registry) | The protocol is one JSON ping; STOMP adds a broker abstraction with zero payoff at this message volume. Scale path documented (see Production baseline) |
 | Background jobs | `@Scheduled` + **ShedLock** (Postgres-backed lock table) from day one | ShedLock makes every job safe under horizontal scaling immediately — no rework when a second instance appears. Quartz only if cron persistence/misfire handling is ever needed |
 | Data access | JPA/Hibernate entities (hand-written, `ddl-auto=validate`) + JdbcTemplate for sync/bulk; **Flyway** owns migrations after Prisma cutover | ORM for the 80% CRUD, hand SQL where correctness and batching matter (the OCC transaction) |

@@ -1,0 +1,22 @@
+{
+  "name": "@circadium/shared",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@swc/jest": "^0.2.37",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.31",
+    "jest": "^29.7.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -5,6 +5,7 @@ const withVanillaExtract = createVanillaExtractPlugin();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
+  transpilePackages: ["@circadium/shared"],
   // PostHog's API paths use trailing slashes (/e/), which the default
   // trailing-slash redirect would strip before the rewrite matches.
   skipTrailingSlashRedirect: true,
