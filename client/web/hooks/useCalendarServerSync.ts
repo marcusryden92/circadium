@@ -22,28 +22,17 @@ import schedulingSettingsSlice from "@/redux/slices/schedulingSettingsSlice";
 import { hydrateSource } from "@/redux/slices/calendarSourceSlice";
 import { hydrateEngineOutput } from "@/redux/slices/engineOutputSlice";
 import { markSaved } from "@/redux/slices/syncStatusSlice";
-import { handleServerTransaction } from "@/utils/server-handlers/compareCalendarData";
+import {
+  createSyncLoop,
+  type SyncLoop,
+  type SyncSnapshot,
+} from "@circadium/shared/sync/syncLoop";
+import { syncCalendarData } from "@/actions/calendar-actions/syncCalendarData";
 import type { FreshState } from "@/actions/calendar-actions/fetchFreshState";
-
-// Backoff schedule for transport-level sync failures (request never reached
-// the server, or the response was lost). Server-side rejections don't retry.
-const RETRY_DELAYS_MS = [2_000, 5_000, 15_000];
 
 const useCalendarServerSync = (
   userId: string | undefined,
-  calendarState: {
-    planner: Planner[];
-    calendar: SimpleEvent[];
-    template: EventTemplate[];
-    categories: Category[];
-    categoryEvents: CategoryEvent[];
-    travelEvents: TravelEvent[];
-    engineMessages: EngineMessage[];
-    queues: Queue[];
-    dependencies: PlannerDependency[];
-    locations: SerializedLocation[];
-    travelTimes: SerializedTravelTime[];
-  },
+  calendarState: SyncSnapshot,
   // Hard off-switch for snapshot impersonation: Redux holds ANOTHER user's
   // data, so a diff against the admin's own refs must never reach the server.
   // Belt and braces — inspection also never calls initializeState, so
@@ -229,18 +218,59 @@ const useCalendarServerSync = (
   const latestStateRef = useRef(calendarState);
   latestStateRef.current = calendarState;
 
-  // Serialization guard. The 300ms debounce only cancels unfired timers; once
-  // a sync is in flight, a second one dispatched in parallel would read the
-  // pre-bump dataVersion, get rejected as stale, and wholesale-adopt a server
-  // snapshot that lacks the newer edit — silent data loss with no actual
-  // concurrency. All syncs funnel through runSync, which loops until quiet.
-  const syncInFlightRef = useRef(false);
-  const resyncQueuedRef = useRef(false);
-  const retryAttemptRef = useRef(0);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Live disabled flag for the loop, which is created once and would otherwise
+  // close over the first render's value.
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
 
-  const hasPendingChanges = useCallback(
-    (s: typeof calendarState) =>
+  // The host-agnostic sync loop (serialization guard, stale/error branches,
+  // transport retry) lives in @circadium/shared; this hook wires it to the
+  // refs + Redux dispatch and injects the web transport. Created once so its
+  // in-flight/retry state persists across renders. The transport is the single
+  // seam the Java migration (item 1.13) swaps.
+  const loopRef = useRef<SyncLoop | null>(null);
+  if (!loopRef.current) {
+    loopRef.current = createSyncLoop({
+      transport: (changes, clientKnownDataVersion) =>
+        syncCalendarData(changes, clientKnownDataVersion),
+      getSnapshot: () => latestStateRef.current,
+      getBaseline: () => ({
+        planner: previousPlanner.current,
+        calendar: previousCalendar.current,
+        template: previousTemplate.current,
+        categories: previousCategories.current,
+        categoryEvents: previousCategoryEvents.current,
+        travelEvents: previousTravelEvents.current,
+        engineMessages: previousEngineMessages.current,
+        queues: previousQueues.current,
+        dependencies: previousDependencies.current,
+        locations: previousLocations.current,
+        travelTimes: previousTravelTimes.current,
+      }),
+      getDataVersion: () => knownDataVersion.current,
+      isDisabled: () => disabledRef.current,
+      onSuccess: (sent, newDataVersion) => {
+        previousPlanner.current = sent.planner;
+        previousCalendar.current = sent.calendar;
+        previousTemplate.current = sent.template;
+        previousCategories.current = sent.categories;
+        previousCategoryEvents.current = sent.categoryEvents;
+        previousTravelEvents.current = sent.travelEvents;
+        previousEngineMessages.current = sent.engineMessages;
+        previousQueues.current = sent.queues;
+        previousDependencies.current = sent.dependencies;
+        previousLocations.current = sent.locations;
+        previousTravelTimes.current = sent.travelTimes;
+        knownDataVersion.current = newDataVersion;
+        dispatch(markSaved());
+      },
+      onStale: (fresh) => adoptFreshServerState(fresh),
+      onError: () => rollbackToLastConfirmedState(),
+    });
+  }
+
+  const hasLocalPendingChanges = useCallback(
+    (s: SyncSnapshot) =>
       !(
         JSON.stringify(previousPlanner.current) === JSON.stringify(s.planner) &&
         JSON.stringify(previousCalendar.current) ===
@@ -266,144 +296,11 @@ const useCalendarServerSync = (
     [],
   );
 
-  const runSync = useCallback(async () => {
-    if (disabled) return;
-    if (syncInFlightRef.current) {
-      resyncQueuedRef.current = true;
-      return;
-    }
-    syncInFlightRef.current = true;
-
-    try {
-      do {
-        resyncQueuedRef.current = false;
-        const snapshot = latestStateRef.current;
-        if (!hasPendingChanges(snapshot)) break;
-
-        try {
-          const response = await handleServerTransaction(
-            knownDataVersion.current,
-            {
-              planner: {
-                current: snapshot.planner,
-                previous: previousPlanner.current,
-              },
-              calendar: {
-                current: snapshot.calendar,
-                previous: previousCalendar.current,
-              },
-              template: {
-                current: snapshot.template,
-                previous: previousTemplate.current,
-              },
-              categories: {
-                current: snapshot.categories,
-                previous: previousCategories.current,
-              },
-              categoryEvents: {
-                current: snapshot.categoryEvents,
-                previous: previousCategoryEvents.current,
-              },
-              travelEvents: {
-                current: snapshot.travelEvents,
-                previous: previousTravelEvents.current,
-              },
-              engineMessages: {
-                current: snapshot.engineMessages,
-                previous: previousEngineMessages.current,
-              },
-              queues: {
-                current: snapshot.queues,
-                previous: previousQueues.current,
-              },
-              dependencies: {
-                current: snapshot.dependencies,
-                previous: previousDependencies.current,
-              },
-              locations: {
-                current: snapshot.locations,
-                previous: previousLocations.current,
-              },
-              travelTimes: {
-                current: snapshot.travelTimes,
-                previous: previousTravelTimes.current,
-              },
-            },
-          );
-          retryAttemptRef.current = 0;
-
-          if (response.success) {
-            // Advance refs to the snapshot that was actually sent — edits made
-            // during the request stay diffable and trigger the next loop pass.
-            previousPlanner.current = snapshot.planner;
-            previousCalendar.current = snapshot.calendar;
-            previousTemplate.current = snapshot.template;
-            previousCategories.current = snapshot.categories;
-            previousCategoryEvents.current = snapshot.categoryEvents;
-            previousTravelEvents.current = snapshot.travelEvents;
-            previousEngineMessages.current = snapshot.engineMessages;
-            previousQueues.current = snapshot.queues;
-            previousDependencies.current = snapshot.dependencies;
-            previousLocations.current = snapshot.locations;
-            previousTravelTimes.current = snapshot.travelTimes;
-            knownDataVersion.current = response.newDataVersion;
-            dispatch(markSaved());
-          } else if (response.reason === "stale") {
-            // Server rejected this sync because another writer moved the
-            // dataVersion forward. Discard the in-flight edit and adopt the
-            // server's current snapshot wholesale — partial application across
-            // a DAG-shaped dataset can't be done safely.
-            console.warn("Sync rejected as stale; adopting fresh server state");
-            adoptFreshServerState(response.freshState);
-          } else {
-            // The server received the diff and rejected it — replaying the
-            // same diff would fail the same way, so snap back to the last
-            // confirmed state rather than diverging further.
-            console.warn("Server sync response not successful:", response);
-            rollbackToLastConfirmedState();
-          }
-        } catch (error) {
-          // Transport-level failure: the request may never have reached the
-          // server. Rolling back would destroy real edits over a network blip
-          // — keep local state and retry with backoff instead. If retries run
-          // out, edits stay pending and the next state change re-triggers.
-          const attempt = retryAttemptRef.current;
-          if (attempt < RETRY_DELAYS_MS.length) {
-            retryAttemptRef.current = attempt + 1;
-            console.warn(
-              `Sync transport error; retrying (${attempt + 1}/${RETRY_DELAYS_MS.length})`,
-              error,
-            );
-            retryTimerRef.current = setTimeout(
-              () => void runSync(),
-              RETRY_DELAYS_MS[attempt],
-            );
-          } else {
-            retryAttemptRef.current = 0;
-            console.error(
-              "Sync failed after retries; local edits stay pending",
-              error,
-            );
-          }
-          return;
-        }
-      } while (resyncQueuedRef.current);
-    } finally {
-      syncInFlightRef.current = false;
-    }
-  }, [
-    disabled,
-    hasPendingChanges,
-    adoptFreshServerState,
-    rollbackToLastConfirmedState,
-    dispatch,
-  ]);
-
   useEffect(() => {
     if (disabled || !isInitialized || !userId) return;
-    if (!hasPendingChanges(latestStateRef.current)) return;
+    if (!hasLocalPendingChanges(latestStateRef.current)) return;
 
-    const timeout = setTimeout(() => void runSync(), 300);
+    const timeout = setTimeout(() => void loopRef.current?.runSync(), 300);
 
     return () => {
       clearTimeout(timeout);
@@ -423,16 +320,10 @@ const useCalendarServerSync = (
     isInitialized,
     userId,
     disabled,
-    runSync,
-    hasPendingChanges,
+    hasLocalPendingChanges,
   ]);
 
-  useEffect(
-    () => () => {
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-    },
-    [],
-  );
+  useEffect(() => () => loopRef.current?.dispose(), []);
 
   return { initializeState, markSynced };
 };

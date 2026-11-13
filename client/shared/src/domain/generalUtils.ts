@@ -37,8 +37,11 @@ function deepEqual(
   return obj1 === obj2;
 }
 
-// Your improved objectsAreEqual function - type safe version
-export function objectsAreEqual<T extends Record<string, unknown>>(
+// Type-safe deep equality. The constraint is `object` (not
+// `Record<string, unknown>`) so interface types without an implicit index
+// signature — the hand-declared @circadium/shared contracts — can be compared
+// directly, e.g. by the OCC diff.
+export function objectsAreEqual<T extends object>(
   obj1: T,
   obj2: T,
   ignoreProps: (keyof T)[] = []
