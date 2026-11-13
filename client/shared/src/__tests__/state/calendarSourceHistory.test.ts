@@ -4,14 +4,14 @@ import calendarSourceSlice, {
   shiftHistoryForUndo,
   shiftHistoryForRedo,
   setPlannerAndTemplate,
-} from "@/redux/slices/calendarSourceSlice";
+} from "../../state/slices/calendarSourceSlice";
 import type {
   Planner,
   EventTemplate,
   Category,
   Queue,
   PlannerDependency,
-} from "@/types/prisma";
+} from "../../contracts";
 
 const reducer = calendarSourceSlice.reducer;
 

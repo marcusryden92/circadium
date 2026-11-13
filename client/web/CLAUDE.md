@@ -177,8 +177,8 @@
   │   ├── seed.ts                       # Wholesale reseed (admin@lifeplan.com / "password")
   │   └── seed-helpers/                 # generateCategories, generateLocations (+ TravelTimes), generatePlanners, generatePlans, generateTemplates
   │
-  ├── redux/
-  │   ├── store.ts                      # { user, calendarSource, engineOutput, schedulingSettings, externalCalendar, occurrenceCompletions, habits }
+  ├── redux/                            # RE-EXPORT SHIMS over @circadium/shared/state (the real slices/thunks/store live in client/shared/src/state/ — plan item 0.7). Every file here is a one-liner so the ~50 @/redux/* import sites are untouched; edit the shared source, not these
+  │   ├── store.ts                      # Re-exports makeStore(deps) + RootState/AppDispatch/AppStore/StateDependencies from shared. makeStore is a FACTORY (no module singleton): StoreProvider owns the one per-mount instance and injects the web-only engine-input adapters (deriveExternalBusyEvents, deriveOccurrenceCompletions) as the thunk middleware's extraArgument. Slices: user, calendarSource, engineOutput, schedulingSettings, externalCalendar, occurrenceCompletions, habits, toasts, syncStatus
   │   ├── slices/
   │   │   ├── calendarSourceSlice.ts    # User-authored inputs: planner, template, categories, queues, dependencies, isLoaded
   │   │   ├── engineOutputSlice.ts      # Engine-derived: calendar, categoryEvents, travelEvents, engineMessages, plannerScores + lastEngineRunAt (ephemeral)
@@ -188,7 +188,7 @@
   │   │   ├── occurrenceCompletionsSlice.ts # Occurrence-completion log rows (recurring tasks/goal leaves + plan check-offs). Same out-of-band pattern; feeds the engine via deriveOccurrenceCompletions
   │   │   └── habitsSlice.ts            # Habit buckets + trackers + tracked-item links. Same out-of-band pattern; the engine never reads it
   │   └── thunks/
-  │       └── calendarThunks.ts         # updateAllCalendarStates — the engine entry point from Redux
+  │       └── calendarThunks.ts         # updateAllCalendarStates — the engine entry point from Redux. Reads the two engine-input adapters (deriveExternalBusyEvents / deriveOccurrenceCompletions) from the injected StateDependencies (thunk extraArgument), not direct imports
   │
   ├── schemas/                          # Zod schemas (auth + TaskListSchema)
   │
