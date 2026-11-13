@@ -12,7 +12,12 @@ import {
   removeTimeWindow,
   recordHistory,
 } from "@/redux/slices/calendarSourceSlice";
-import { startDayAsInt } from "./eventSerializers";
+import {
+  countWeekStructureChanges,
+  categoriesGainingWindows,
+  templateUnchanged,
+  windowUnchanged,
+} from "@circadium/shared/calendar-core/weekStructure";
 import { historyMessages } from "@/utils/historyMessages";
 import type { WorkingWindow } from "./timeWindow";
 
@@ -57,38 +62,16 @@ export function useWeekStructureState({
     setWinsWorking(initialWindows);
   }, [open, template, categories]);
 
-  const changeCount = useMemo(() => {
-    const sig = (t: EventTemplate) =>
-      JSON.stringify([
-        t.id,
-        t.title,
-        startDayAsInt(t),
-        t.startTime,
-        t.duration,
-        t.color,
-        t.locationId ?? null,
-        t.recurrenceExceptions ?? null,
-      ]);
-    const tplSet = new Set(tplsInitial.map(sig));
-    let n = 0;
-    for (const t of tplsWorking) if (!tplSet.has(sig(t))) n++;
-    for (const t of tplsInitial)
-      if (!tplsWorking.find((w) => w.id === t.id)) n++;
-    const wsig = (w: WorkingWindow) =>
-      JSON.stringify([
-        w.id,
-        w.day,
-        w.startTime,
-        w.endTime,
-        w.categoryId,
-        w.recurrenceExceptions ?? null,
-      ]);
-    const winSet = new Set(winsInitial.map(wsig));
-    for (const w of winsWorking) if (!winSet.has(wsig(w))) n++;
-    for (const w of winsInitial)
-      if (!winsWorking.find((x) => x.id === w.id)) n++;
-    return n;
-  }, [tplsInitial, tplsWorking, winsInitial, winsWorking]);
+  const changeCount = useMemo(
+    () =>
+      countWeekStructureChanges(
+        tplsInitial,
+        tplsWorking,
+        winsInitial,
+        winsWorking,
+      ),
+    [tplsInitial, tplsWorking, winsInitial, winsWorking],
+  );
 
   const saveAll = () => {
     setSaving(true);
@@ -117,16 +100,9 @@ export function useWeekStructureState({
       // timeSlots — enabling first avoids clobbering them); the updatedAt bump
       // is what lets the category diff carry the flag change.
       const now = new Date().toISOString();
-      const categoriesGainingWindows = new Set<string>();
-      for (const w of winsWorking) {
-        if (!w.categoryId) continue;
-        const before = initialMap.get(w.id);
-        if (!before || before.categoryId !== w.categoryId) {
-          categoriesGainingWindows.add(w.categoryId);
-        }
-      }
+      const gainingWindows = categoriesGainingWindows(winsWorking, winsInitial);
       for (const c of categories) {
-        if (categoriesGainingWindows.has(c.id) && !c.useTimeWindows) {
+        if (gainingWindows.has(c.id) && !c.useTimeWindows) {
           dispatch(upsertCategory({ ...c, useTimeWindows: true, updatedAt: now }));
         }
       }
@@ -143,15 +119,7 @@ export function useWeekStructureState({
         const id = isNew ? uuidv4() : w.id;
         const existing = isNew ? null : ownerLookup.get(w.id);
         const orig = initialMap.get(w.id);
-        const unchanged =
-          !isNew &&
-          orig &&
-          orig.day === w.day &&
-          orig.startTime === w.startTime &&
-          orig.endTime === w.endTime &&
-          orig.categoryId === w.categoryId &&
-          (orig.recurrenceExceptions ?? null) ===
-            (w.recurrenceExceptions ?? null);
+        const unchanged = !isNew && !!orig && windowUnchanged(orig, w);
         if (!unchanged) {
           const payload: CategoryTimeWindow = {
             id,
@@ -186,16 +154,7 @@ export function useWeekStructureState({
           return created;
         }
         const prev = initialTplMap.get(t.id);
-        const tplUnchanged =
-          prev &&
-          prev.title === t.title &&
-          startDayAsInt(prev) === startDayAsInt(t) &&
-          prev.startTime === t.startTime &&
-          prev.duration === t.duration &&
-          prev.color === t.color &&
-          (prev.locationId ?? null) === (t.locationId ?? null) &&
-          (prev.recurrenceExceptions ?? null) ===
-            (t.recurrenceExceptions ?? null);
+        const tplUnchanged = !!prev && templateUnchanged(prev, t);
         if (!tplUnchanged) dispatch(upsertTemplate(t));
         return t;
       });
