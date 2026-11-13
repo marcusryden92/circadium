@@ -1,8 +1,8 @@
-import type { Planner, Queue, PlannerDependency } from "@/types/prisma";
+import type { Planner, Queue, PlannerDependency } from "../../../contracts";
 import {
   pruneQueueMembers,
   pruneDependencies,
-} from "@/utils/precedence/prunePrecedenceInputs";
+} from "../../../domain/precedence/prunePrecedenceInputs";
 
 // Central pruning runs in the calendar thunk on every pass: members/edges
 // whose planner was deleted, retyped to plan, nested, or untriaged drop out

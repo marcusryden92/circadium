@@ -1,11 +1,11 @@
-import type { Planner, PlannerDependency, Queue } from "@/types/prisma";
+import type { Planner, PlannerDependency, Queue } from "../../../contracts";
 import {
   canLinkAsDetour,
   wouldCreateDetourCycle,
   isValidDetourTarget,
-} from "@/utils/precedence/detourLinks";
-import { prunePlannerDetours } from "@/utils/precedence/prunePrecedenceInputs";
-import { getScheduledLeafSequence } from "@/utils/goalPageHandlers";
+} from "../../../domain/precedence/detourLinks";
+import { prunePlannerDetours } from "../../../domain/precedence/prunePrecedenceInputs";
+import { getScheduledLeafSequence } from "../../../domain/goalPageHandlers";
 
 const TS = "2026-07-01T00:00:00.000Z";
 

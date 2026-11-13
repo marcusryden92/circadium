@@ -1,8 +1,8 @@
-import type { Planner } from "@/types/prisma";
+import type { Planner } from "../../../contracts";
 import {
   toggleGoalIsReady,
   setGoalIsReady,
-} from "@/utils/goal-handlers/toggleGoalIsReady";
+} from "../../../domain/goal-handlers/toggleGoalIsReady";
 
 type UpdateFn = (
   planner: Planner[] | ((prev: Planner[]) => Planner[]),

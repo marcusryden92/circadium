@@ -1,12 +1,12 @@
-import type { Planner } from "@/types/prisma";
+import type { Planner } from "../../../contracts";
 import {
   SORT_ORDER_STEP,
   appendKey,
   insertKeyAt,
   sortSiblings,
-} from "@/utils/goal-handlers/sortOrderKeys";
-import { moveToEdge, moveToMiddle } from "@/utils/goal-handlers/moveItem";
-import type { ClickedItem } from "@/lib/taskItem";
+} from "../../../domain/goal-handlers/sortOrderKeys";
+import { moveToEdge, moveToMiddle } from "../../../domain/goal-handlers/moveItem";
+import type { ClickedItem } from "../../../domain/goal-handlers/moveItem";
 
 const TS = "2026-01-01T00:00:00.000Z";
 

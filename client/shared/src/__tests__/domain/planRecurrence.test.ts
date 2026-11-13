@@ -17,7 +17,7 @@ import {
   MAX_PLAN_OCCURRENCES,
   type PlanOccurrenceException,
   type PlanRecurrenceRule,
-} from "@/utils/planRecurrence";
+} from "../../domain/planRecurrence";
 
 const PLAN_ID = "0f2a4a1c-1111-2222-3333-444455556666";
 // Local wall-clock anchor: Monday 2026-06-01 09:00 local.

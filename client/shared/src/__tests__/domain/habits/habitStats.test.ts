@@ -1,13 +1,13 @@
 import {
   computeHabitTrackerStats,
   habitGridWeeks,
-} from "@/utils/habits/habitStats";
+} from "../../../domain/habits/habitStats";
 import type {
   Habit,
   HabitItem,
   OccurrenceCompletion,
   Planner,
-} from "@/types/prisma";
+} from "../../../contracts";
 
 // Tracker statistics derive from the completion signals of the items assigned
 // to the habit. Period-based consistency (rate/streaks) uses the SAME period

@@ -1,8 +1,8 @@
-import type { Planner, PlannerDependency } from "@/types/prisma";
+import type { Planner, PlannerDependency } from "../../../contracts";
 import {
   dependencyReadyBlockers,
   readyDependents,
-} from "@/utils/precedence/readinessBlockers";
+} from "../../../domain/precedence/readinessBlockers";
 
 const TS = "2026-07-01T00:00:00.000Z";
 

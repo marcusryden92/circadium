@@ -5,7 +5,7 @@ import {
   maxAllowedBlockMinutes,
   maxConstrainedBlockMinutes,
   parseEarliestStartDate,
-} from "@/utils/allowedTimes";
+} from "../../domain/allowedTimes";
 
 // Local wall-clock anchors: 2026-01-05 is a Monday.
 const MONDAY = new Date(2026, 0, 5, 0, 0, 0, 0);

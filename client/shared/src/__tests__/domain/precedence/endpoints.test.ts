@@ -1,9 +1,9 @@
 import {
   isValidPrecedenceEndpoint,
   isValidDependencyEndpoint,
-} from "@/utils/precedence/endpoints";
-import { serializePlanRecurrence } from "@/utils/planRecurrence";
-import type { Planner } from "@/types/prisma";
+} from "../../../domain/precedence/endpoints";
+import { serializePlanRecurrence } from "../../../domain/planRecurrence";
+import type { Planner } from "../../../contracts";
 
 // A flexibly recurring item is scheduled per-occurrence, never as its bare
 // row, so it can't be a queue member or dependency endpoint — admitting one

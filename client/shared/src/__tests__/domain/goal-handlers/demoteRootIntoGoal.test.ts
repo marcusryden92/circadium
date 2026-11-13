@@ -1,8 +1,8 @@
-import type { Planner, PlannerDependency, Queue, QueueMember } from "@/types/prisma";
+import type { Planner, PlannerDependency, Queue, QueueMember } from "../../../contracts";
 import {
   buildDemoteLossManifest,
   demoteRootIntoGoal,
-} from "@/utils/goal-handlers/demoteRootIntoGoal";
+} from "../../../domain/goal-handlers/demoteRootIntoGoal";
 
 const TS = "2026-01-01T00:00:00.000Z";
 

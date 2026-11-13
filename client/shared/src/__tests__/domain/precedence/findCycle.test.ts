@@ -1,12 +1,12 @@
-import type { Queue, PlannerDependency, Planner } from "@/types/prisma";
-import { collectValidationEdges } from "@/utils/precedence/validationEdges";
+import type { Queue, PlannerDependency, Planner } from "../../../contracts";
+import { collectValidationEdges } from "../../../domain/precedence/validationEdges";
 import {
   findCycle,
   findCycleInGraph,
   wouldCreateCycleAddingDependency,
   wouldCreateCycleAddingQueueMember,
   wouldCreateCycleReorderingQueueMember,
-} from "@/utils/precedence/findCycle";
+} from "../../../domain/precedence/findCycle";
 
 // Merged-graph cycle validation: queue FULL logical order + dependency edges.
 // Legality is authoring-time — the engine never sees a cycle.

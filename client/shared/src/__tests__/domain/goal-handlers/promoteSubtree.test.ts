@@ -1,6 +1,6 @@
-import type { Planner } from "@/types/prisma";
-import { promoteSubtree } from "@/utils/goal-handlers/promoteSubtree";
-import { fallbackCalendarColor } from "@/utils/colorUtils";
+import type { Planner } from "../../../contracts";
+import { promoteSubtree } from "../../../domain/goal-handlers/promoteSubtree";
+import { fallbackCalendarColor } from "../../../domain/calendarColors";
 
 const TS = "2026-01-01T00:00:00.000Z";
 

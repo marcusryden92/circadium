@@ -15,10 +15,10 @@ import {
   splitRemainingMinutes,
   taskIsSplittable,
   type TaskSplittingSettings,
-} from "@/utils/taskSplitting";
-import { plannerIsCompleted } from "@/utils/plannerCompletion";
-import { plannerIdFromEventId } from "@/utils/planRecurrence";
-import type { Planner } from "@/types/prisma";
+} from "../../domain/taskSplitting";
+import { plannerIsCompleted } from "../../domain/plannerCompletion";
+import { plannerIdFromEventId } from "../../domain/planRecurrence";
+import type { Planner } from "../../contracts";
 
 const SETTINGS: TaskSplittingSettings = {
   minMinutes: 30,

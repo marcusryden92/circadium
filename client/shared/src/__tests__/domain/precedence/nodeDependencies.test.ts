@@ -1,9 +1,9 @@
-import type { Planner, PlannerDependency } from "@/types/prisma";
+import type { Planner, PlannerDependency } from "../../../contracts";
 import {
   wouldCreateCycleAddingNodeDependency,
   validateSubtreeOrder,
-} from "@/utils/precedence/findCycle";
-import { describeCycle } from "@/utils/precedence/describeCycle";
+} from "../../../domain/precedence/findCycle";
+import { describeCycle } from "../../../domain/precedence/describeCycle";
 
 // Node-level dependencies: cross-goal subtask edges join the legality graph
 // at leaf granularity, with each goal's internal step order as edges. The
