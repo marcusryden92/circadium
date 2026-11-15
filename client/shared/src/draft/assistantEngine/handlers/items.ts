@@ -6,7 +6,7 @@ import {
   updateDraftItems,
   type DraftItemUpdate,
   type DraftOpsResult,
-} from "@/utils/draft/draftForestOps";
+} from "../../../draft/draftForestOps";
 import { MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import {

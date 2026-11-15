@@ -621,13 +621,18 @@ export function AIDraftModal({
         return;
       }
       // Dynamic import keeps the Anthropic SDK + tool-loop out of the shell
-      // bundle until the first send.
-      const { runAssistantTurn } = await import(
-        "@/utils/draft/assistantEngine"
-      );
+      // bundle until the first send. The browser BYOK client is the web host's
+      // injected transport (the loop lives in @circadium/shared and never
+      // imports a client of its own).
+      const [{ runAssistantTurn }, { createBrowserAnthropicClient }] =
+        await Promise.all([
+          import("@/utils/draft/assistantEngine"),
+          import("@/utils/draft/assistantEngine/anthropicClient"),
+        ]);
       await runAssistantTurn({
         apiKey,
         model,
+        createClient: createBrowserAnthropicClient,
         currentForest: turnStartForest,
         currentTemplates: workingTemplatesRef.current,
         currentPrecedence: workingPrecedenceRef.current,

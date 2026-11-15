@@ -1,20 +1,17 @@
-"use client";
-
 import type Anthropic from "@anthropic-ai/sdk";
 import { parse as parsePartial, Allow } from "partial-json";
-import { pruneDraftPrecedence } from "@/utils/draft/draftPrecedence";
-import { pruneDraftHabits } from "@/utils/draft/draftHabits";
+import { pruneDraftPrecedence } from "../../draft/draftPrecedence";
+import { pruneDraftHabits } from "../../draft/draftHabits";
 import {
   type DraftTimeWindow,
   type DraftWindowsState,
-} from "@/utils/draft/draftWindows";
-import { createBrowserAnthropicClient } from "./anthropicClient";
+} from "../../draft/draftWindows";
 import {
   MAX_HISTORY_MESSAGES,
   MAX_TOKENS,
   MAX_TOOL_TURNS,
 } from "./constants";
-import { resolveAiModel } from "@/lib/aiModels";
+import { resolveAiModel } from "../../draft/assistantEngine/aiModels";
 import { getSystemBlocks } from "./systemPrompt";
 import { buildDynamicContext } from "./promptContext";
 import { withCacheBreakpoints } from "./caching";
@@ -63,6 +60,7 @@ export async function runAssistantTurn({
   apiKey,
   baseURL,
   model,
+  createClient,
   signal,
   onText,
   onForest,
@@ -77,7 +75,7 @@ export async function runAssistantTurn({
   onDone,
   onError,
 }: RunAssistantTurnArgs): Promise<void> {
-  const client = createBrowserAnthropicClient(apiKey, baseURL);
+  const client = createClient(apiKey, baseURL);
   const resolvedModel = resolveAiModel(model);
 
   const send = createSend({

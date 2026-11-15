@@ -1,9 +1,9 @@
-import type { DraftForest } from "@/utils/draft/plannerForestToJson";
-import type { DraftNode } from "@/utils/draft/plannerTreeToJson";
-import type { DraftTemplate } from "@/utils/draft/draftTemplates";
-import type { DraftPrecedenceState } from "@/utils/draft/draftPrecedence";
-import type { DraftHabitsState } from "@/utils/draft/draftHabits";
-import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
+import type { DraftForest } from "../../draft/plannerForestToJson";
+import type { DraftNode } from "../../draft/plannerTreeToJson";
+import type { DraftTemplate } from "../../draft/draftTemplates";
+import type { DraftPrecedenceState } from "../../draft/draftPrecedence";
+import type { DraftHabitsState } from "../../draft/draftHabits";
+import type { DraftSchedulingSettings } from "../../draft/draftSettings";
 import { DAY_NAMES } from "./constants";
 import type {
   DraftInboxItem,

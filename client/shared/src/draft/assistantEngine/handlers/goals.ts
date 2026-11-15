@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { assignDraftIds } from "@/utils/draft/assignDraftIds";
-import { normalizeDraftForest } from "@/utils/draft/normalizeDraftForest";
-import { mergeDraftForest } from "@/utils/draft/mergeDraftForest";
+import { assignDraftIds } from "../../../draft/assignDraftIds";
+import { normalizeDraftForest } from "../../../draft/normalizeDraftForest";
+import { mergeDraftForest } from "../../../draft/mergeDraftForest";
 import {
   filterProposal,
   prunePrecedenceAgainstForest,

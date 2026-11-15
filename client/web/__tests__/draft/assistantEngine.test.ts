@@ -104,6 +104,7 @@ function baseArgs(forest: DraftForest) {
     today: "2026-07-17",
     intent: null,
     apiKey: "sk-ant-test",
+    createClient: createBrowserAnthropicClient,
   };
 }
 

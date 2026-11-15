@@ -1,10 +1,11 @@
-import type { DraftForest } from "@/utils/draft/plannerForestToJson";
-import type { DraftTemplate } from "@/utils/draft/draftTemplates";
-import type { DraftWindowsState } from "@/utils/draft/draftWindows";
-import type { DraftPrecedenceState } from "@/utils/draft/draftPrecedence";
-import type { DraftHabitsState } from "@/utils/draft/draftHabits";
-import type { DraftRelocation } from "@/utils/draft/draftRelocations";
-import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
+import type Anthropic from "@anthropic-ai/sdk";
+import type { DraftForest } from "../../draft/plannerForestToJson";
+import type { DraftTemplate } from "../../draft/draftTemplates";
+import type { DraftWindowsState } from "../../draft/draftWindows";
+import type { DraftPrecedenceState } from "../../draft/draftPrecedence";
+import type { DraftHabitsState } from "../../draft/draftHabits";
+import type { DraftRelocation } from "../../draft/draftRelocations";
+import type { DraftSchedulingSettings } from "../../draft/draftSettings";
 
 // A capture-inbox jot the assistant may triage into the library.
 export interface DraftInboxItem {
@@ -111,11 +112,22 @@ export interface StreamDraftArgs {
   onError: (message: string) => void;
 }
 
+// The host supplies the Anthropic client (web: the browser BYOK client with
+// dangerouslyAllowBrowser; mobile later: an expo/fetch-backed one). The loop
+// only ever calls `.messages.stream`, so the host owns transport and auth.
+export type AnthropicClientFactory = (
+  apiKey: string,
+  baseURL?: string,
+) => Anthropic;
+
 export type RunAssistantTurnArgs = StreamDraftArgs & {
   // The user's own Anthropic API key, freshly read from the device vault.
   apiKey: string;
   baseURL?: string;
-  // The user's chosen assistant model (id from lib/aiModels.ts). Unset or
-  // unknown falls back to the engine default.
+  // The user's chosen assistant model (id from assistantEngine/aiModels). Unset
+  // or unknown falls back to the engine default.
   model?: string;
+  // Host-injected Anthropic client factory (the managed-mode seam rides on its
+  // baseURL argument).
+  createClient: AnthropicClientFactory;
 };

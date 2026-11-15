@@ -1,0 +1,155 @@
+import type { DraftNode } from "./plannerTreeToJson";
+import { normalizeTaskSplittingSettings } from "../domain/taskSplitting";
+import { clampPriority, PRIORITY_DEFAULT } from "../domain/plannerPriority";
+import type { PlanRecurrenceRule } from "../domain/planRecurrence";
+import { normalizeAllowedTimesSettings } from "../domain/allowedTimes";
+
+// Model-supplied repeat rule -> a valid PlanRecurrenceRule or null. Kept local
+// (rather than reusing parsePlanRecurrence, which takes a JSON string) because
+// the draft contract carries the rule as a plain object.
+export function normalizeDraftRecurrence(
+  raw: unknown,
+): PlanRecurrenceRule | null {
+  if (!raw || typeof raw !== "object") return null;
+  const rule = raw as Record<string, unknown>;
+  if (
+    rule.freq !== "daily" &&
+    rule.freq !== "weekly" &&
+    rule.freq !== "monthly"
+  ) {
+    return null;
+  }
+  const interval =
+    typeof rule.interval === "number" && rule.interval >= 1
+      ? Math.floor(rule.interval)
+      : 1;
+  const until =
+    typeof rule.until === "string" && !isNaN(new Date(rule.until).getTime())
+      ? rule.until
+      : null;
+  return { freq: rule.freq, interval, until };
+}
+
+// Partial-JSON parses of a streaming tool input can hand back nodes with
+// missing fields — most commonly `children` still undefined because the array
+// hasn't started yet. Normalize the tree at the ingestion seam so downstream
+// code (renderer, diff, save) can rely on a complete DraftNode shape.
+export function normalizeDraftTree(raw: unknown): DraftNode | null {
+  if (!raw || typeof raw !== "object") return null;
+  const node = raw as Record<string, unknown>;
+
+  const title = typeof node.title === "string" ? node.title : "";
+  const plannerType =
+    node.plannerType === "task" ||
+    node.plannerType === "plan" ||
+    node.plannerType === "goal"
+      ? node.plannerType
+      : "task";
+  const duration = typeof node.duration === "number" ? node.duration : 0;
+  const priority =
+    typeof node.priority === "number"
+      ? clampPriority(node.priority)
+      : PRIORITY_DEFAULT;
+  const id = typeof node.id === "string" ? node.id : "";
+  const deadline = typeof node.deadline === "string" ? node.deadline : null;
+  const isReady = typeof node.isReady === "boolean" ? node.isReady : null;
+  const categoryId =
+    typeof node.categoryId === "string" && node.categoryId.length > 0
+      ? node.categoryId
+      : null;
+  const color =
+    typeof node.color === "string" && node.color.length > 0 ? node.color : null;
+  const splitting = normalizeTaskSplittingSettings(node.splitting);
+  const maxMinutesPerDay =
+    typeof node.maxMinutesPerDay === "number" &&
+    Number.isFinite(node.maxMinutesPerDay) &&
+    node.maxMinutesPerDay > 0
+      ? Math.floor(node.maxMinutesPerDay)
+      : null;
+  const recurrence = normalizeDraftRecurrence(node.recurrence);
+  // Kept as the raw ISO string (like deadline) only when it parses to a real
+  // date, so a garbage value reads as "no bound" instead of a false diff.
+  const earliestStartDate =
+    typeof node.earliestStartDate === "string" &&
+    !isNaN(new Date(node.earliestStartDate).getTime())
+      ? node.earliestStartDate
+      : null;
+  const allowedTimes = normalizeAllowedTimesSettings(node.allowedTimes);
+  const starts =
+    typeof node.starts === "string" && !isNaN(new Date(node.starts).getTime())
+      ? node.starts
+      : null;
+  const locationId =
+    typeof node.locationId === "string" && node.locationId.length > 0
+      ? node.locationId
+      : null;
+  // Undefined-preserve fields: absent means "leave as is" at apply time, so a
+  // model re-emit that omits them can never wipe user data. Only an explicit
+  // value (string/null for notes, boolean for completed) carries through.
+  const notes =
+    typeof node.notes === "string"
+      ? node.notes.length > 0
+        ? node.notes
+        : null
+      : node.notes === null
+        ? null
+        : undefined;
+  const completed =
+    typeof node.completed === "boolean" ? node.completed : undefined;
+  const linkedItemId =
+    typeof node.linkedItemId === "string" && node.linkedItemId.length > 0
+      ? node.linkedItemId
+      : node.linkedItemId === null
+        ? null
+        : undefined;
+
+  const rawChildren = Array.isArray(node.children) ? node.children : [];
+  const children = rawChildren
+    .map((child) => normalizeDraftTree(child))
+    .filter((child): child is DraftNode => child !== null);
+
+  const resolvedType = children.length > 0 ? "goal" : plannerType;
+
+  return {
+    id,
+    title,
+    // Structure decides type: a node holding children is always a goal.
+    plannerType: resolvedType,
+    duration,
+    // Flexible recurrence and a deadline are mutually exclusive — each
+    // occurrence derives its deadline from its own period end. (Plans have no
+    // deadline interplay; their rule anchors on `starts`.)
+    deadline: recurrence && resolvedType !== "plan" ? null : deadline,
+    priority,
+    isReady,
+    categoryId,
+    color,
+    splitting,
+    maxMinutesPerDay,
+    recurrence,
+    earliestStartDate,
+    allowedTimes,
+    starts: resolvedType === "plan" ? starts : null,
+    locationId,
+    notes,
+    completed,
+    linkedItemId,
+    children,
+  };
+}
+
+// The same hasChildren-implies-goal rule applied to an already-built tree (the
+// ops mutate DraftNodes in place rather than re-parsing them, so a former leaf
+// that just gained children needs its type corrected). Mirrors the save-time
+// normalizePlannerType so the review pane, the model's fetched trees, and the
+// persisted rows all agree that anything with subtasks is a goal.
+export function coerceParentTypes(node: DraftNode): DraftNode {
+  if (node.children.length === 0) return node;
+  return {
+    ...node,
+    plannerType: "goal",
+    // A node that gained children can no longer be a plan; drop its anchor.
+    starts: null,
+    children: node.children.map(coerceParentTypes),
+  };
+}

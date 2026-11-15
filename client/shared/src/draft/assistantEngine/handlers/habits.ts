@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { draftHabitsStateEqual } from "@/utils/draft/draftHabits";
+import { draftHabitsStateEqual } from "../../../draft/draftHabits";
 import {
   addDraftHabitBuckets,
   addDraftHabitItems,
@@ -12,7 +12,7 @@ import {
   type DraftHabitBucketUpdate,
   type DraftHabitOpsResult,
   type DraftHabitUpdate,
-} from "@/utils/draft/draftHabitOps";
+} from "../../../draft/draftHabitOps";
 import { MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import type { TurnState } from "../turnState";

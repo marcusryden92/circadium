@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { DEFAULT_AI_MODEL } from "@/lib/aiModels";
+import { DEFAULT_AI_MODEL } from "../../draft/assistantEngine/aiModels";
 
 // Fallback when a turn doesn't carry an explicit model (the caller passes the
 // user's chosen model; this is the floor). Lineup lives in lib/aiModels.ts.

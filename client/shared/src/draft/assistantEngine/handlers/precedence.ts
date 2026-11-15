@@ -10,7 +10,7 @@ import {
   updateDraftQueues,
   type DraftPrecedenceOpsResult,
   type DraftQueueUpdate,
-} from "@/utils/draft/draftPrecedenceOps";
+} from "../../../draft/draftPrecedenceOps";
 import { MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import { currentCategoryIds, type TurnState } from "../turnState";

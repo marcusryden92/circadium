@@ -4,8 +4,8 @@ import {
   promoteDraftItem,
   triageDraftInboxItems,
   type DraftRelocationOpResult,
-} from "@/utils/draft/draftForestOps";
-import { updateDraftSettings } from "@/utils/draft/draftSettings";
+} from "../../../draft/draftForestOps";
+import { updateDraftSettings } from "../../../draft/draftSettings";
 import { MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import type { TurnState } from "../turnState";

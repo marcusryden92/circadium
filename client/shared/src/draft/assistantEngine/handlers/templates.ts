@@ -7,7 +7,7 @@ import {
   type DraftTemplateExceptionEdit,
   type DraftTemplateOpsResult,
   type DraftTemplateUpdate,
-} from "@/utils/draft/draftTemplateOps";
+} from "../../../draft/draftTemplateOps";
 import { MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import type { TurnState } from "../turnState";

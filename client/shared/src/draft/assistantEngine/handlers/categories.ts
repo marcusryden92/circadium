@@ -3,7 +3,7 @@ import {
   findWindowOverlaps,
   type DraftTimeWindow,
   type DraftWindowsState,
-} from "@/utils/draft/draftWindows";
+} from "../../../draft/draftWindows";
 import {
   addDraftCategories,
   addDraftTimeWindows,
@@ -14,7 +14,7 @@ import {
   type DraftCategoryUpdate,
   type DraftTimeWindowUpdate,
   type DraftWindowOpsResult,
-} from "@/utils/draft/draftWindowOps";
+} from "../../../draft/draftWindowOps";
 import { DAY_NAMES, MAX_OP_ITEMS } from "../constants";
 import { parseStringArray } from "../helpers";
 import {

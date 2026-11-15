@@ -1,9 +1,9 @@
-import { normalizeDraftTemplates } from "@/utils/draft/draftTemplates";
-import { normalizeDraftWindowsState } from "@/utils/draft/draftWindows";
-import { normalizeDraftPrecedenceState } from "@/utils/draft/draftPrecedence";
-import { normalizeDraftHabitsState } from "@/utils/draft/draftHabits";
-import type { DraftRelocation } from "@/utils/draft/draftRelocations";
-import { normalizeDraftSettings } from "@/utils/draft/draftSettings";
+import { normalizeDraftTemplates } from "../../draft/draftTemplates";
+import { normalizeDraftWindowsState } from "../../draft/draftWindows";
+import { normalizeDraftPrecedenceState } from "../../draft/draftPrecedence";
+import { normalizeDraftHabitsState } from "../../draft/draftHabits";
+import type { DraftRelocation } from "../../draft/draftRelocations";
+import { normalizeDraftSettings } from "../../draft/draftSettings";
 import type { SendFn } from "./turnState";
 import type { RunAssistantTurnArgs } from "./types";
 

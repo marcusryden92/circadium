@@ -1,11 +1,7 @@
-export { fallbackCalendarColor } from "@circadium/shared/domain/calendarColors";
-
-// A 6- or 3-digit hex string ("#rgb" / "#rrggbb"), the shape the calendar
-// stores and renders. Anything else (null, "black", garbage) is not usable as
-// a stored item color and should fall back.
-export function isHexColor(value: unknown): value is string {
-  return typeof value === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
-}
+export {
+  fallbackCalendarColor,
+  isHexColor,
+} from "@circadium/shared/domain/calendarColors";
 
 // Threshold against perceivedBrightness — below this the fill reads as dark
 // and wants a lighter stroke; above, the fill reads as light and wants a
