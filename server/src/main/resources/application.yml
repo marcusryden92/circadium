@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: server
+  profiles:
+    default: local
+  datasource:
+    url: ${DATABASE_JDBC_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5433/circadium_dev}
+    username: ${DATABASE_USERNAME:circadium}
+    password: ${DATABASE_PASSWORD:circadium}
+management:
+  endpoint:
+    health:
+      show-details: always
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod     
