@@ -11,7 +11,7 @@
   - **Next.js** 16.3 — App Router, server actions, `(protected)` route group. Builds run **webpack, not Turbopack** (`--webpack` in the dev/build scripts): the custom webpack config (rrule alias + `node:` stubs for the Anthropic SDK) and the Vanilla Extract plugin's experimental Turbopack support make the default bundler a later migration. `middleware.ts` is kept deliberately (deprecated in favor of `proxy.ts`, but proxy drops the edge runtime this middleware is built for), and `agentRules: false` stops `next dev` from appending its managed block to this file.
   - **React** 19, **TypeScript** 6.0.3 (strict, `moduleResolution: "bundler"`, `@/*` path alias).
   - **Prisma** 7.8 with `@prisma/adapter-pg` driver adapter (Prisma 7 requires a driver adapter at construction time — see [lib/db.ts](lib/db.ts)). Client is generated to `generated/client` (outside `/prisma/` so the VS Code Prisma extension doesn't merge its embedded `schema.prisma` copy with the source schema) and imported as `@/generated/client`.
-  - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `lifeplan_dev`).
+  - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev`).
   - **NextAuth** v5 (5.0.0-beta.32). Edge-safe config in [auth.config.ts](auth.config.ts) (OAuth providers only, used by middleware); full config with Credentials + adapter in [auth.ts](auth.ts).
   - **Vanilla Extract** for styling — `@vanilla-extract/{css,sprinkles,recipes,dynamic,next-plugin}`. Every page/component has a co-located `*.css.ts` file. There is no Tailwind in this project despite a leftover `components.json`.
   - **Redux Toolkit** for cross-component state, **React Context** for scoped providers (Store, User, Calendar, Capture, Search).
