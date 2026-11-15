@@ -1,0 +1,30 @@
+# Fly.io staging deployment for the Circadium server.
+# App is co-located (fra) with the Circadium Neon project (eu-central-1) to minimize DB round-trip latency.
+app = "circadium-server-staging"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Non-secret config. Database credentials are set separately via `fly secrets set`.
+  SPRING_PROFILES_ACTIVE = "staging"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Scale to zero when idle (cheap staging); the next request wakes the machine.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/actuator/health"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "40s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
