@@ -5,10 +5,16 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - 'client/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches:
       - main
       - develop
+    paths:
+      - 'client/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   build:
