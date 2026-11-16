@@ -27,10 +27,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health, info, metrics, prometheus
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
 
 ---
 spring:
@@ -51,8 +61,21 @@ spring:
   config:
     activate:
       on-profile: staging
+logging:
+  structured:
+    format:
+      console: ecs
+sentry:
+  environment: ${SENTRY_ENVIRONMENT:staging}
+
 ---
 spring:
   config:
     activate:
       on-profile: prod
+logging:
+  structured:
+    format:
+      console: ecs
+sentry:
+  environment: ${SENTRY_ENVIRONMENT:prod}
