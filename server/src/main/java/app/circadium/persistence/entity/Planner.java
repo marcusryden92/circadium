@@ -38,6 +38,8 @@ public class Planner {
 
     private String starts;
 
+    private String recurrence;
+
     private String recurrenceExceptions;
 
     private String splitting;
