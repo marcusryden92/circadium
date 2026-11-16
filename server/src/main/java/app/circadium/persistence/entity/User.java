@@ -15,13 +15,13 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table
+@Table(name = "users")
 @Getter
 @Setter
 public class User {
-    
-    @Id 
-    private String Id;
+
+    @Id
+    private String id;
 
     private String name;
 
