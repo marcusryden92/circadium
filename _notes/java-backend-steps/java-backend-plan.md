@@ -1,0 +1,112 @@
+# Circadium → Java backend + Expo app: production migration plan
+
+> **Structure (2026-11-16):** this master holds only the per-session hot path — locked decisions, the Production baseline, Deferred cleanups, and the step index. Each item's full task + DoD + completion note lives under [`java-backend-steps/`](java-backend-steps/). The full target layout, the per-choice stack justification, risks, and verification live in [`java-backend-reference.md`](java-backend-reference.md) — consult on demand. A session loads this master + the one step file it's on.
+
+## Context
+
+The Next.js server-action + Prisma backend can't do WebSocket multi-session sync, app-closed push, or a real mobile app — so the backend is replaced by a dedicated **Spring Boot API**, the repo becomes a monorepo (`client/{web,mobile,shared}` + `server/`), and mobile is built with Expo. Everything is hand-implemented and production-ready (no educational shortcuts).
+
+**Decisions locked in (2026-11-12):** Spring Boot (Java 21→25, Maven); **Java owns ALL auth** (NextAuth deleted); **JPA for CRUD + JdbcTemplate for the sync/bulk hot paths**; **monorepo**; **OpenAPI 3 + Swagger UI (springdoc) first-class**.
+
+Prior-plan pointers: `notes/react-native-plan.md` stays valid for the client-portability analysis + mobile phases 3–7 (its §2 backend section is superseded here); from the retired `notes/capacitor-plan.md` three designs carry over (system-browser OAuth → deep-link one-time-code handoff, the 60-cap stable-id local-notification builder, the store-shipping checklists).
+
+## Stack (locked)
+
+Spring Boot 4.1.2, Java 25 LTS, Maven; host **Fly.io** (AWS/Azure a documented later two-way-door migration). JPA/Hibernate entities (`ddl-auto=validate`) + JdbcTemplate for the sync/bulk hot paths; **Flyway** owns migrations after Prisma cutover. Auth: RS256 JWT (local JWKS, `kid` + rotation) + opaque rotated refresh tokens with reuse-detection; `BCryptPasswordEncoder` (bcryptjs back-compat); OAuth authorization-code + PKCE. springdoc OpenAPI (drift-checked against the TS contracts in CI); JUnit 5 + Testcontainers; Actuator + Micrometer + Sentry. _Full package tree + per-choice justification: [java-backend-reference.md](java-backend-reference.md)._
+
+## Production baseline (cross-cutting, applies to every phase)
+
+- **Environments**: local (Docker Postgres) → **staging** (separate Neon branch + server instance + Vercel preview env) → prod. Nothing ships to prod without passing staging. Config via environment only; secrets in the host's secret manager, never in the repo.
+- **Security**: rate limiting (Bucket4j, Postgres/Caffeine-backed) on all auth endpoints; account lockout with exponential backoff; audit log table for auth events (login, failed login, refresh reuse, password change, OAuth link); strict CORS allowlist; security headers (HSTS, nosniff, frame-deny); cookie attributes `httpOnly; Secure; SameSite`; Dependabot + `mvn dependency-check` in CI; the OWASP ASVS L1 checklist run against the auth surface before the web flip (item 1.10).
+- **Reliability**: Actuator liveness/readiness probes wired to the host; graceful shutdown (in-flight syncs complete); HikariCP pool sized against Neon's connection limits (PgBouncer-pooled URL for the app, direct URL for Flyway); Neon PITR backups verified by an actual test restore once.
+- **Scaling honesty**: v1 runs single-instance (fine for current load). The two per-instance components are built behind interfaces with a documented scale path: WS registry → Redis pub/sub fan-out; scheduled jobs → already ShedLock-safe. No other server state is in-memory.
+- **Error handling**: global `@RestControllerAdvice` → RFC 7807 `ProblemDetail` responses; Bean Validation (`@Valid`) on every request DTO; never leak stack traces.
+- **Deployment**: `server/Dockerfile` (multi-stage Maven → JRE); host must support WebSockets and zero-downtime deploys (Fly.io to start; Azure/AWS later if desired). Web stays on Vercel (Root Directory `client/web`). CI (GitHub Actions): `pnpm -r type-check && pnpm -r test` + `mvn verify` (Testcontainers) + OpenAPI-vs-contracts drift check on every PR.
+- **Schema authority rule** (never two migration systems on one DB): during coexistence Prisma owns migrations — **new tables Java needs (sessions, device_push_tokens, sent_notifications, audit_log, shedlock) are added via Prisma migrations**; Java validates with `ddl-auto=validate`. At cutover (end of Phase 2) Prisma is deleted and Flyway baselines.
+
+---
+
+## Granular work plan
+
+Each item ≈ one guided working session, with its own file under [`java-backend-steps/`](java-backend-steps/). The DoD lives in each step file; the Phase-0 gate command is `pnpm -r type-check && pnpm -r test && pnpm --filter web build`.
+
+**Progress:** Phase 0 ☑9/9 · Phase 1 ☑2/14 · Phase 2 ☐0/6 · Phases 3–7 ☐0/5 — _update the counts as boxes get ticked._
+
+**Deferred until `feature/server` merges to `main`** (lifted out of the Phase 0 completion notes so they aren't buried in finished step files):
+- **0.1** — Vercel Root Directory → `client/web`, prod deploy, manual calendar drag/resize/sync smoke
+- **0.5** — in-browser engine regen smoke
+- **0.7** — full in-browser app smoke
+- **0.8** — live two-session OCC stale-recovery provocation
+- **0.9** — live BYOK assistant-turn stream in the browser
+
+### Phase 0 — Monorepo extraction (web behavior unchanged) — ☑ 9/9
+
+- [x] **0.1** Workspace re-shape — [java-backend-steps/0.1-workspace-reshape.md](java-backend-steps/0.1-workspace-reshape.md)
+- [x] **0.2** `client/shared` skeleton — [java-backend-steps/0.2-shared-skeleton.md](java-backend-steps/0.2-shared-skeleton.md)
+- [x] **0.3** contracts/ — [java-backend-steps/0.3-contracts.md](java-backend-steps/0.3-contracts.md)
+- [x] **0.4** domain/ extraction — [java-backend-steps/0.4-domain-extraction.md](java-backend-steps/0.4-domain-extraction.md)
+- [x] **0.5** engine/ extraction — [java-backend-steps/0.5-engine-extraction.md](java-backend-steps/0.5-engine-extraction.md)
+- [x] **0.6** calendar-core/ extraction — [java-backend-steps/0.6-calendar-core-extraction.md](java-backend-steps/0.6-calendar-core-extraction.md)
+- [x] **0.7** state/ extraction — [java-backend-steps/0.7-state-extraction.md](java-backend-steps/0.7-state-extraction.md)
+- [x] **0.8** sync/ extraction — [java-backend-steps/0.8-sync-extraction.md](java-backend-steps/0.8-sync-extraction.md)
+- [x] **0.9** draft/ extraction — [java-backend-steps/0.9-draft-extraction.md](java-backend-steps/0.9-draft-extraction.md)
+
+### Phase 1 — Spring core: foundation, auth, sync, realtime — ☑ 2/14
+
+- [x] **1.1** Project scaffold — [java-backend-steps/1.1-project-scaffold.md](java-backend-steps/1.1-project-scaffold.md)
+- [x] **1.2** Local + CI infra — [java-backend-steps/1.2-local-ci-infra.md](java-backend-steps/1.2-local-ci-infra.md)
+- [ ] **1.3** JPA entity layer — [java-backend-steps/1.3-jpa-entity-layer.md](java-backend-steps/1.3-jpa-entity-layer.md)
+- [ ] **1.4** Error/observability baseline — [java-backend-steps/1.4-error-observability-baseline.md](java-backend-steps/1.4-error-observability-baseline.md)
+- [ ] **1.5** Token service — [java-backend-steps/1.5-token-service.md](java-backend-steps/1.5-token-service.md)
+- [ ] **1.6** Credentials auth — [java-backend-steps/1.6-credentials-auth.md](java-backend-steps/1.6-credentials-auth.md)
+- [ ] **1.7** Mail + account flows — [java-backend-steps/1.7-mail-account-flows.md](java-backend-steps/1.7-mail-account-flows.md)
+- [ ] **1.8** OAuth — [java-backend-steps/1.8-oauth.md](java-backend-steps/1.8-oauth.md)
+- [ ] **1.9** Web cookie model — [java-backend-steps/1.9-web-cookie-model.md](java-backend-steps/1.9-web-cookie-model.md)
+- [ ] **1.10** Web auth flip — [java-backend-steps/1.10-web-auth-flip.md](java-backend-steps/1.10-web-auth-flip.md)
+- [ ] **1.11** Bootstrap endpoint — [java-backend-steps/1.11-bootstrap-endpoint.md](java-backend-steps/1.11-bootstrap-endpoint.md)
+- [ ] **1.12** Sync endpoint — [java-backend-steps/1.12-sync-endpoint.md](java-backend-steps/1.12-sync-endpoint.md)
+- [ ] **1.13** Web sync transport switch — [java-backend-steps/1.13-web-sync-transport-switch.md](java-backend-steps/1.13-web-sync-transport-switch.md)
+- [ ] **1.14** WebSocket hub + client — [java-backend-steps/1.14-websocket-hub-client.md](java-backend-steps/1.14-websocket-hub-client.md)
+
+### Phase 2 — Full action migration + push; Prisma retired — ☐ 0/6
+
+_Still terse — these stay inline here until you start one, then split it into `java-backend-steps/` like Phase 0/1._
+
+Per group: implement Java endpoints → **parity test** (same request via server action and Java route → identical DB effect + response) → switch web → bake → delete the server actions.
+
+- [ ] **2.1 Group A**: occurrenceCompletions, viewState, scheduling settings/preferences. *(Low risk, proves the per-group loop.)*
+- [ ] **2.2 Group B**: categories, locations (Places/Routes via `HttpClient`, the transactional `TravelApiBudget` reservation, travel top-up job → `@Scheduled`+ShedLock), habits.
+- [ ] **2.3 Group C**: externalCalendars (ical4j parse with recurrence/overrides/EXDATEs; Google + Microsoft connect/callback routes move to Java; Microsoft rotating refresh tokens persisted every fetch; refresh windows per `refreshPolicy`), draftConversations.
+- [ ] **2.4 Group D**: feedback + suggestion wall, data export/import (GDPR export byte-compares with the TS export modulo timestamps), onboarding completion, admin surface, account deletion.
+- [ ] **2.5 Server push**: `device_push_tokens` + `sent_notifications` tables (Prisma migration); `POST /devices/register`; ShedLock'd scheduler scanning upcoming synced engine-output events → Expo Push API with **receipt checking + invalid-token pruning**. *DoD: a push reaches a closed test app; duplicate-send impossible by dedup-table design.* **Timestamp decision point:** this scan is the first server-side time-range query, so decide HERE (on the measured query) whether `SimpleEvent.start`/`end` migrate `TEXT` → `timestamp(3)` or keep the format-invariant ISO lexicographic-compare stopgap — this is the trigger for the domain-datetime half of the TEXT-vs-timestamp question (`Planner` scheduling datetimes `deadline`/`starts`/`earliestStartDate`/`completed*` ride the same call; the audit pair `createdAt`/`updatedAt` is separate — see Deferred cleanups). Until then the JPA mirror maps all of them `String` under `ddl-auto: validate`.
+- [ ] **2.6 Prisma cutover**: delete `prisma/`, generated client, driver adapter, conformance asserts; `flyway baseline` on the current schema — Flyway owns migrations from now; port the seed to Java. *DoD: `client/web` has zero server actions and zero Prisma; a fresh `flyway migrate` + seed stands up a working local environment.*
+
+### Phases 3–7 — Mobile (per `notes/react-native-plan.md`, with deltas) — ☐ 0/5
+
+_Same rule: split each phase into a step file when you reach it._
+
+- [ ] **3** Expo shell + **calendar-kit spike gate first** (the RN plan's 9-point spike) + auth screens (credentials vs Java; OAuth via system browser + handoff code) + five event streams read-only + local notifications tier.
+- [ ] **4** Interactions: tap sheets, drag/resize/create, the `pendingEdit` controlled overlay, scope sheets, inline regen + sync + WS adoption on device.
+- [ ] **5** Template editing (WSM-equivalent screen) + settings/view-state surfaces.
+- [ ] **6** AI assistant: BYOK on `expo-secure-store`, `expo/fetch` streaming injected into the client factory, draft UI port.
+- [ ] **7** Ship: store paths from capacitor-plan Phases 4/5 — **start Apple enrollment and the Play closed-test track on day 1 of Phase 3** (they're calendar-time long poles) — then post-v1 (worklet engine offload, offline queueing, diff-over-socket).
+
+Deltas vs the RN plan: SignalR client → the shared reconnecting-WS module; auth screens → Spring endpoints; push registration → `POST /devices/register`.
+
+---
+
+## Deferred cleanups (post-cutover unless noted)
+
+Surfaced while building the JPA entity layer (1.3); recorded so they are not lost. None block the mirror — all three are held until schema/sync authority moves to Java.
+
+- **Enum labels → UPPER_SNAKE_CASE.** Postgres labels are lowercase for `PlannerType`/`EventType`/`WeekDayType` (`task`, `sunday`, …), so the Java constants mirror that casing during coexistence — the only form that `validate`s and that matches the lowercase token flowing DB → JSON → TS contracts → engine. Lowercase enum constants violate Java convention. Normalize to uppercase once Flyway owns the schema (2.6): either a system-wide rename (DB labels + the shared TS unions + the engine's `=== "task"` comparisons — the canonical token becomes uppercase everywhere) or a Java-local shim (custom enum `JdbcType` + Jackson `@JsonValue`, wire stays lowercase). Prefer the full rename for single-representation cleanliness; it touches the engine, so it is its own deliberate task, not coexistence work.
+- **Plain-id columns → native `uuid` type.** Ids are `TEXT` today because the columns hold a mix of legacy cuid (NextAuth-era tables incl. the central `users` pk), uuid (newer tables), and composite strings. Java already standardizes *generation* on uuid (new rows mint `UUID.randomUUID()`), so cuid only survives in pre-cutover rows. Converting the plain-id tables to native `uuid` (keeping `TEXT` for the composite-id tables — CategoryEvent/TravelEvent/EngineMessage/ExternalEvent) is a re-id-the-world migration — legacy cuids are not valid uuids, so every `users.id` etc. is re-issued and every FK rewritten — for ~20 bytes/row; low ROI at per-user scale. Post-cutover, optional.
+- **De-muddle sync timestamps from audit timestamps.** `createdAt`/`updatedAt` currently ride inside the OCC content diff (`compareCalendarData`), which forces client-controlled values and the "return untouched rows by object identity" workaround. Cleaner: strip both from the diff (compare content only, as the engine-output tables already do) so the account-level `dataVersion` OCC counter is the *sole* sync token; then `updatedAt` can be DB-owned audit (trigger) and `createdAt` stays client-write-once (optimistic create + immutable recurrence anchor + restore-preserve). The physical representation change rides along: the calendar tables (`Planners`/`SimpleEvents`/`EventTemplates`/`HabitCompletions`) hold these two as `TEXT` ISO strings while the auth tables already use `timestamp(3)` — so this item also migrates those columns to `timestamp(3)`, at which point the Java mirror flips those fields `String` → `Instant`. Until then they stay `String` under `ddl-auto: validate` (the live column is `text`, and Hibernate's Instant→string format wouldn't match the `...000Z` shape the web writes and the diff compares). This changes the shared sync protocol, so sequence it with 1.12 (re-capture the golden corpus after), not 1.3.
+
+---
+
+## Working through the plan
+
+Each numbered item is one session. Prompt pattern: open the repo, reference **this master** (for the cross-cutting context) **plus the item's file in `java-backend-steps/`**, and ask for a step-by-step walkthrough of that item only. The DoD is the session's exit test — don't start the next item until it's met and (for Phase 1+) deployed to staging.
+
+_Ranked risks + the per-phase verification checklist live in [java-backend-reference.md](java-backend-reference.md)._
