@@ -39,7 +39,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    private UserRole role;
+    private UserRole role = UserRole.USER;
 
     private boolean isTwoFactorEnabled;
 
