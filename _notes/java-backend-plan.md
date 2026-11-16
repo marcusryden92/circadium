@@ -135,6 +135,16 @@ Deltas vs the RN plan: SignalR client → the shared reconnecting-WS module; aut
 
 ---
 
+## Deferred cleanups (post-cutover unless noted)
+
+Surfaced while building the JPA entity layer (1.3); recorded so they are not lost. None block the mirror — all three are held until schema/sync authority moves to Java.
+
+- **Enum labels → UPPER_SNAKE_CASE.** Postgres labels are lowercase for `PlannerType`/`EventType`/`WeekDayType` (`task`, `sunday`, …), so the Java constants mirror that casing during coexistence — the only form that `validate`s and that matches the lowercase token flowing DB → JSON → TS contracts → engine. Lowercase enum constants violate Java convention. Normalize to uppercase once Flyway owns the schema (2.6): either a system-wide rename (DB labels + the shared TS unions + the engine's `=== "task"` comparisons — the canonical token becomes uppercase everywhere) or a Java-local shim (custom enum `JdbcType` + Jackson `@JsonValue`, wire stays lowercase). Prefer the full rename for single-representation cleanliness; it touches the engine, so it is its own deliberate task, not coexistence work.
+- **Plain-id columns → native `uuid` type.** Ids are `TEXT` today because the columns hold a mix of legacy cuid (NextAuth-era tables incl. the central `users` pk), uuid (newer tables), and composite strings. Java already standardizes *generation* on uuid (new rows mint `UUID.randomUUID()`), so cuid only survives in pre-cutover rows. Converting the plain-id tables to native `uuid` (keeping `TEXT` for the composite-id tables — CategoryEvent/TravelEvent/EngineMessage/ExternalEvent) is a re-id-the-world migration — legacy cuids are not valid uuids, so every `users.id` etc. is re-issued and every FK rewritten — for ~20 bytes/row; low ROI at per-user scale. Post-cutover, optional.
+- **De-muddle sync timestamps from audit timestamps.** `createdAt`/`updatedAt` currently ride inside the OCC content diff (`compareCalendarData`), which forces client-controlled values and the "return untouched rows by object identity" workaround. Cleaner: strip both from the diff (compare content only, as the engine-output tables already do) so the account-level `dataVersion` OCC counter is the *sole* sync token; then `updatedAt` can be DB-owned audit (trigger) and `createdAt` stays client-write-once (optimistic create + immutable recurrence anchor + restore-preserve). This changes the shared sync protocol, so sequence it with 1.12 (re-capture the golden corpus after), not 1.3.
+
+---
+
 ## Working through the plan
 
 Each numbered item is one session. Prompt pattern: open the repo, reference this file + the item number, and ask for a step-by-step walkthrough of that item only. The DoD is the session's exit test — don't start the next item until it's met and (for Phase 1+) deployed to staging.
