@@ -203,7 +203,7 @@ public class AccountEmails {
         String resetLink = webBaseUrl + "/auth/reset";
         String howToSignIn = hasPassword
                 ? "Sign in with your password, or reset it if you&rsquo;ve forgotten it."
-                : "Sign in with the Google or GitHub account you used to sign up.";
+                : "Sign in with the Google account you used to sign up.";
         return new EmailMessage("existing_account", properties.supportFrom(), email,
                 "You already have a Circadium account",
                 render("You already have a Circadium account", "Account", "You already have an account",
@@ -218,7 +218,7 @@ public class AccountEmails {
                 already an account for it.
 
                 Sign in: %s
-                """ + (hasPassword ? "Forgot your password? %s%n" : "Use the Google or GitHub account you signed up with.%n")
+                """ + (hasPassword ? "Forgot your password? %s%n" : "Use the Google account you signed up with.%n")
                         + """
 
                 If this wasn't you, you can ignore this email. Nothing about your account has changed.

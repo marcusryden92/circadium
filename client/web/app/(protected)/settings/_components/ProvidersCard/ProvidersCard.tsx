@@ -28,13 +28,6 @@ export function ProvidersCard({ user }: ProvidersCardProps) {
           </div>
         </div>
       </div>
-      <div className={providerRow}>
-        <span className={providerIcon}>⌥</span>
-        <div className={providerMain}>
-          <div className={providerName}>GitHub</div>
-          <div className={providerStatus}>not connected</div>
-        </div>
-      </div>
       <span className={fieldNote}>
         Connecting additional providers is on the roadmap.
       </span>

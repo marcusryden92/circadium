@@ -77,9 +77,8 @@ export default function PrivacyPage() {
             app: your tasks, goals, plans, categories, locations, weekly
             templates, and scheduling preferences. To sign you in we store your
             account details (email address and, if you register with a password,
-            a securely hashed password). If you sign in with a third-party
-            provider such as Google or GitHub, we receive your basic profile
-            information from that provider.
+            a securely hashed password). If you sign in with Google, we receive
+            your basic profile information from Google.
           </p>
         </section>
 
@@ -214,8 +213,7 @@ export default function PrivacyPage() {
               Product analytics and session replay (PostHog, hosted in the EU).
             </li>
             <li>
-              Sign-in providers you choose to use (Google, GitHub) and Google
-              Calendar, when you connect them.
+              Google, when you sign in with it or connect Google Calendar.
             </li>
             <li>
               The AI assistant, which is optional and runs on your own API key:

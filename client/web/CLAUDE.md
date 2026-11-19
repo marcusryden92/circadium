@@ -956,8 +956,6 @@
   NEXTAUTH_SECRET=""
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
-  GITHUB_CLIENT_ID=""
-  GITHUB_CLIENT_SECRET=""
   GOOGLE_CLIENT_ID=""                 # OAuth login AND Google Calendar import (see note below)
   GOOGLE_CLIENT_SECRET=""
   GOOGLE_MAPS_API_KEY=""              # Places API (New) + Routes API (computeRouteMatrix)

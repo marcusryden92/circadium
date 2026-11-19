@@ -38,7 +38,7 @@ class AccountEmailsTest {
         assertThat(emails.existingAccount("user@example.com", true).text()).contains("/auth/reset");
         assertThat(emails.existingAccount("user@example.com", false).text())
                 .doesNotContain("/auth/reset")
-                .contains("Google or GitHub");
+                .contains("Google account");
     }
 
     @Test
