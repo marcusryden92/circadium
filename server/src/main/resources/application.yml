@@ -30,6 +30,13 @@ circadium:
     access-token-ttl: 15m
     refresh-token-ttl: 30d
     allow-ephemeral-key: false
+  mail:
+    resend-api-key: ${RESEND_API_KEY:}
+    resend-base-url: https://api.resend.com
+    web-base-url: ${WEB_BASE_URL}
+    security-from: Circadium <security@circadium.app>
+    support-from: Circadium <support@circadium.app>
+    allow-logging-fallback: false
 
 management:
   endpoints:
@@ -63,6 +70,9 @@ circadium:
   auth:
     issuer: ${AUTH_ISSUER:http://localhost:8080}
     allow-ephemeral-key: true
+  mail:
+    web-base-url: ${WEB_BASE_URL:http://localhost:3000}
+    allow-logging-fallback: true
 management:
   endpoint:
     health:

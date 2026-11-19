@@ -32,7 +32,8 @@ class SecurityConfig {
                     authorize.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
                     authorize.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll();
                     authorize.requestMatchers(HttpMethod.POST,
-                            "/auth/register", "/auth/login", "/auth/2fa", "/auth/refresh", "/auth/logout").permitAll();
+                            "/auth/register", "/auth/login", "/auth/2fa", "/auth/refresh", "/auth/logout",
+                            "/auth/verify-email", "/auth/password-reset", "/auth/password-reset/confirm").permitAll();
                     authorize.requestMatchers("/error").permitAll();
                     if (local) {
                         authorize.requestMatchers(API_DOCS).permitAll();

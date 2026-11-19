@@ -51,7 +51,8 @@ default; `staging`, `prod`). Secrets never live in the repo.
 
 `config/SecurityConfig` is a stateless bearer-token resource server: every request needs
 a valid RS256 access JWT except `/actuator/health/**`, `/actuator/info`,
-`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout}` and `/error`.
+`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email}`,
+`POST /auth/password-reset[/confirm]` and `/error`.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
 `role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off because nothing
 authenticates by cookie.
@@ -65,8 +66,19 @@ Abuse controls on the public auth endpoints, two layers:
 
 Security events go to `audit_log` through `auth/AuditLogger`, which writes in its own
 transaction (`REQUIRES_NEW`) so rows survive the failing request that produced them.
-Until real mail delivery exists, `external/mail/LoggingAccountMailer` logs verification
-tokens and 2FA codes under `local` only; tests swap in `RecordingAccountMailer`.
+Because `audit_log` has a cascading FK to `users`, never record an event for a user row
+the current transaction has locked (email change, deletion): the separate audit
+transaction would wait on that lock forever. Flows that mutate the user do their writes in
+a `TransactionTemplate` block and audit (and mail) after it commits.
+
+Mail (`external/mail`, settings under `circadium.mail`): `ResendAccountMailer` when
+`RESEND_API_KEY` is set, sending on a background pool with retries and an idempotency key;
+otherwise `LoggingAccountMailer`, which is only allowed under `local` (it logs tokens
+there) — any other profile refuses to start without a key. `WEB_BASE_URL` (the web app's
+origin, used for emailed links) is required outside `local`. Tests swap in
+`RecordingAccountMailer`. The token tables (`VerificationToken`, `PasswordResetToken`,
+`AccountDeletionToken`, `TwoFactorToken`) hold raw values because the web app reads them
+too; tokens are issued for the stored email casing, since the web looks them up exactly.
 
 Time: `timestamp(3)` columns hold UTC wall-clock. Use `persistence/DbTime` for "now"
 (millisecond-truncated) and for every `JdbcTemplate` timestamp parameter or result;

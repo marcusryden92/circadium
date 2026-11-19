@@ -4,18 +4,14 @@ import app.circadium.external.mail.AccountMailer;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.enums.UserRole;
 import app.circadium.persistence.repository.UserRepository;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.ErrorResponseException;
 
 /**
  * Email + password login, registration, and the emailed 2FA step-up, ported from the web app's
@@ -31,9 +27,6 @@ import org.springframework.web.ErrorResponseException;
 @Slf4j
 @Service
 public class CredentialsAuthService {
-
-    /** bcrypt only reads the first 72 bytes; longer passwords would silently share a hash. */
-    static final int MAX_PASSWORD_BYTES = 72;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -99,18 +92,19 @@ public class CredentialsAuthService {
 
     /**
      * Answers identically whether or not the email is taken, so registration cannot be used to discover
-     * which accounts exist; an existing owner is only recorded in the audit log.
+     * which accounts exist. The owner of a taken address gets an email saying so instead, and the duplicate
+     * path still hashes the password so both paths cost the same time.
      */
     public void register(String name, String email, String password, ClientInfo client) {
         String normalizedEmail = normalize(email);
-        if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-            throw new ErrorResponseException(HttpStatus.BAD_REQUEST, ProblemDetail.forStatusAndDetail(
-                    HttpStatus.BAD_REQUEST, "Password must be at most 72 bytes."), null);
-        }
+        PasswordPolicy.requireValidNewPassword(password);
 
         Optional<User> existing = userRepository.findFirstByEmailIgnoreCase(normalizedEmail);
         if (existing.isPresent()) {
-            auditLogger.record(AuditEvent.REGISTER_DUPLICATE, existing.get().getId(), normalizedEmail, client, null);
+            User owner = existing.get();
+            passwordEncoder.encode(password);
+            accountMailer.sendExistingAccountNotice(owner.getEmail(), owner.getPassword() != null);
+            auditLogger.record(AuditEvent.REGISTER_DUPLICATE, owner.getId(), normalizedEmail, client, null);
             return;
         }
 
@@ -184,10 +178,7 @@ public class CredentialsAuthService {
     }
 
     private boolean passwordMatches(String raw, String hash) {
-        if (raw.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-            return false;
-        }
-        return passwordEncoder.matches(raw, hash);
+        return PasswordPolicy.fitsBcrypt(raw) && passwordEncoder.matches(raw, hash);
     }
 
     static String normalize(String email) {

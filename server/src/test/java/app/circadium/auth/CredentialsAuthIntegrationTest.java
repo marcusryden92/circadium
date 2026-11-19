@@ -261,6 +261,7 @@ class CredentialsAuthIntegrationTest {
 
         assertThat(userRepository.findAll()).filteredOn(u -> email.equalsIgnoreCase(u.getEmail())).hasSize(1);
         assertThat(mailer.count(Kind.VERIFICATION, email)).isZero();
+        assertThat(mailer.latest(Kind.EXISTING_ACCOUNT, email)).contains("true");
         assertThat(events(email)).containsExactly("REGISTER_DUPLICATE");
     }
 

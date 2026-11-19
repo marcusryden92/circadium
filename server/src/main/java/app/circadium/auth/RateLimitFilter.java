@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Per-IP token buckets on the unauthenticated auth endpoints. This complements {@link LoginThrottle}: the
+ * Per-IP token buckets on the auth and emailed-link endpoints. This complements {@link LoginThrottle}: the
  * throttle stops guessing against one account from many IPs, this stops one IP from spraying many accounts.
  *
  * <p>Runs right after the correlation-id filter and before Spring Security, so a flood is refused before any
@@ -38,6 +38,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     enum Policy {
         LOGIN(10, Duration.ofMinutes(1)),
         REGISTER(5, Duration.ofHours(1)),
+        PASSWORD_RESET(5, Duration.ofHours(1)),
+        ACCOUNT_LINK(10, Duration.ofMinutes(1)),
         TOKEN(60, Duration.ofMinutes(1));
 
         final long capacity;
@@ -53,6 +55,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/auth/login", Policy.LOGIN,
             "/auth/2fa", Policy.LOGIN,
             "/auth/register", Policy.REGISTER,
+            "/auth/password-reset", Policy.PASSWORD_RESET,
+            "/auth/password-reset/confirm", Policy.ACCOUNT_LINK,
+            "/auth/verify-email", Policy.ACCOUNT_LINK,
+            "/account/deletion", Policy.ACCOUNT_LINK,
+            "/account/deletion/confirm", Policy.ACCOUNT_LINK,
             "/auth/refresh", Policy.TOKEN,
             "/auth/logout", Policy.TOKEN);
 

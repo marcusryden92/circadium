@@ -11,6 +11,13 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
 
     Optional<VerificationToken> findFirstByEmail(String email);
 
+    Optional<VerificationToken> findByToken(String token);
+
+    /** Returns 1 only to the caller that actually removed the row, which makes it a single-use claim. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from VerificationToken t where t.token = :token")
+    int deleteByToken(@Param("token") String token);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from VerificationToken t where t.email = :email")
     int deleteAllByEmail(@Param("email") String email);
