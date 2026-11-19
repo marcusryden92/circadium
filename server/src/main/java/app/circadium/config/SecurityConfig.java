@@ -11,8 +11,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Stateless bearer-token API. CSRF is off because no endpoint authenticates via cookies yet; the
- * cookie transport in plan item 1.9 must revisit that for the endpoints it moves onto cookies.
+ * Stateless bearer-token API. CSRF is off because every endpoint authenticates by bearer token, which
+ * browsers never attach automatically.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
@@ -31,7 +31,8 @@ class SecurityConfig {
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
                     authorize.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll();
-                    authorize.requestMatchers(HttpMethod.POST, "/auth/refresh", "/auth/logout").permitAll();
+                    authorize.requestMatchers(HttpMethod.POST,
+                            "/auth/register", "/auth/login", "/auth/2fa", "/auth/refresh", "/auth/logout").permitAll();
                     authorize.requestMatchers("/error").permitAll();
                     if (local) {
                         authorize.requestMatchers(API_DOCS).permitAll();

@@ -1,5 +1,6 @@
 package app.circadium.auth;
 
+import app.circadium.persistence.DbTime;
 import app.circadium.persistence.entity.Session;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.repository.SessionRepository;
@@ -10,7 +11,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -49,6 +49,7 @@ public class TokenService {
     private final AuthProperties properties;
     private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final AuditLogger auditLogger;
     private final Clock clock;
 
     /** Starts a new session family; called by the login flows once a user is authenticated. */
@@ -66,7 +67,7 @@ public class TokenService {
      * <p>{@code noRollbackFor} keeps the family revocation committed even though the method then throws.
      */
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
-    public IssuedTokens refresh(String rawRefreshToken) {
+    public IssuedTokens refresh(String rawRefreshToken, ClientInfo client) {
         Session current = sessionRepository.findByTokenHashForUpdate(hashRefreshToken(rawRefreshToken))
                 .orElseThrow(InvalidRefreshTokenException::new);
         Instant now = now();
@@ -75,6 +76,8 @@ public class TokenService {
             int revoked = sessionRepository.deleteAllByFamilyId(current.getFamilyId());
             log.warn("Refresh token reuse detected; revoked session family {} ({} sessions) for user {}",
                     current.getFamilyId(), revoked, current.getUserId());
+            auditLogger.record(AuditEvent.REFRESH_TOKEN_REUSE, current.getUserId(), null, client,
+                    "family=" + current.getFamilyId() + " revoked=" + revoked);
             throw new InvalidRefreshTokenException();
         }
         if (!current.getExpiresAt().isAfter(now)) {
@@ -94,9 +97,11 @@ public class TokenService {
      * tokens already issued stay valid until they expire (at most one access-token lifetime).
      */
     @Transactional
-    public void logout(String rawRefreshToken) {
-        sessionRepository.findByTokenHash(hashRefreshToken(rawRefreshToken))
-                .ifPresent(session -> sessionRepository.deleteAllByFamilyId(session.getFamilyId()));
+    public void logout(String rawRefreshToken, ClientInfo client) {
+        sessionRepository.findByTokenHash(hashRefreshToken(rawRefreshToken)).ifPresent(session -> {
+            sessionRepository.deleteAllByFamilyId(session.getFamilyId());
+            auditLogger.record(AuditEvent.LOGOUT, session.getUserId(), null, client, "family=" + session.getFamilyId());
+        });
     }
 
     /** Signs out every device; for password changes and account-level security events. */
@@ -152,9 +157,8 @@ public class TokenService {
         return new NewSession(session, rawToken);
     }
 
-    /** Postgres {@code timestamp(3)} keeps milliseconds; truncating here keeps stored and returned values equal. */
     private Instant now() {
-        return clock.instant().truncatedTo(ChronoUnit.MILLIS);
+        return DbTime.now(clock);
     }
 
     private record NewSession(Session session, String rawToken) {}

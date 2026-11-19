@@ -1,0 +1,14 @@
+package app.circadium.auth;
+
+public enum AuditEvent {
+    REGISTER,
+    REGISTER_DUPLICATE,
+    LOGIN_SUCCESS,
+    LOGIN_FAILURE,
+    LOGIN_BLOCKED,
+    LOGIN_UNVERIFIED,
+    ACCOUNT_LOCKED,
+    TWO_FACTOR_CHALLENGE,
+    REFRESH_TOKEN_REUSE,
+    LOGOUT
+}

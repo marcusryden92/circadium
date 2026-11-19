@@ -51,10 +51,26 @@ default; `staging`, `prod`). Secrets never live in the repo.
 
 `config/SecurityConfig` is a stateless bearer-token resource server: every request needs
 a valid RS256 access JWT except `/actuator/health/**`, `/actuator/info`,
-`GET /.well-known/jwks.json`, `POST /auth/refresh`, `POST /auth/logout` and `/error`.
+`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout}` and `/error`.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
-`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off (no cookie auth yet; 1.9
-revisits it).
+`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off because nothing
+authenticates by cookie.
+
+Abuse controls on the public auth endpoints, two layers:
+
+- `auth/RateLimitFilter` — per-IP Bucket4j buckets held in memory (Caffeine), running
+  before Spring Security. Correct only while the server is a single instance.
+- `auth/LoginThrottle` — per-email lockout in `auth_lockouts` (5th failure locks 1 min,
+  doubling to a 1 h cap, forgotten after 24 h), keyed whether or not the account exists.
+
+Security events go to `audit_log` through `auth/AuditLogger`, which writes in its own
+transaction (`REQUIRES_NEW`) so rows survive the failing request that produced them.
+Until real mail delivery exists, `external/mail/LoggingAccountMailer` logs verification
+tokens and 2FA codes under `local` only; tests swap in `RecordingAccountMailer`.
+
+Time: `timestamp(3)` columns hold UTC wall-clock. Use `persistence/DbTime` for "now"
+(millisecond-truncated) and for every `JdbcTemplate` timestamp parameter or result;
+Hibernate entities handle it automatically.
 
 Token settings live under `circadium.auth` (`auth/AuthProperties`):
 

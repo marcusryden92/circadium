@@ -2,11 +2,14 @@ package app.circadium.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import app.circadium.TestcontainersConfiguration;
+import app.circadium.persistence.entity.AuditLog;
 import app.circadium.persistence.entity.Session;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.enums.UserRole;
+import app.circadium.persistence.repository.AuditLogRepository;
 import app.circadium.persistence.repository.SessionRepository;
 import app.circadium.persistence.repository.UserRepository;
 import java.time.Duration;
@@ -41,6 +44,9 @@ class TokenServiceIntegrationTest {
     @Autowired
     AuthProperties properties;
 
+    @Autowired
+    AuditLogRepository auditLogRepository;
+
     @Test
     void startSessionIssuesVerifiableAccessTokenAndStoresOnlyTheHash() {
         User user = newUser(UserRole.ADMIN);
@@ -67,7 +73,7 @@ class TokenServiceIntegrationTest {
         User user = newUser(UserRole.USER);
         IssuedTokens first = tokenService.startSession(user, null);
 
-        IssuedTokens second = tokenService.refresh(first.refreshToken());
+        IssuedTokens second = tokenService.refresh(first.refreshToken(), ClientInfo.UNKNOWN);
 
         assertThat(second.refreshToken()).isNotEqualTo(first.refreshToken());
         Session old = findSession(first);
@@ -83,16 +89,19 @@ class TokenServiceIntegrationTest {
         User user = newUser(UserRole.USER);
         IssuedTokens first = tokenService.startSession(user, "phone");
         IssuedTokens otherDevice = tokenService.startSession(user, "laptop");
-        IssuedTokens second = tokenService.refresh(first.refreshToken());
+        IssuedTokens second = tokenService.refresh(first.refreshToken(), ClientInfo.UNKNOWN);
         String familyId = findSession(second).getFamilyId();
 
-        assertThatThrownBy(() -> tokenService.refresh(first.refreshToken()))
+        assertThatThrownBy(() -> tokenService.refresh(first.refreshToken(), ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
 
         assertThat(sessionRepository.countByFamilyId(familyId)).isZero();
-        assertThatThrownBy(() -> tokenService.refresh(second.refreshToken()))
+        assertThat(auditLogRepository.findAllByUserIdOrderByCreatedAtAsc(user.getId()))
+                .extracting(AuditLog::getEvent, AuditLog::getDetail)
+                .containsExactly(tuple("REFRESH_TOKEN_REUSE", "family=" + familyId + " revoked=2"));
+        assertThatThrownBy(() -> tokenService.refresh(second.refreshToken(), ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
-        assertThat(tokenService.refresh(otherDevice.refreshToken()).refreshToken()).isNotBlank();
+        assertThat(tokenService.refresh(otherDevice.refreshToken(), ClientInfo.UNKNOWN).refreshToken()).isNotBlank();
     }
 
     @Test
@@ -102,27 +111,31 @@ class TokenServiceIntegrationTest {
         session.setExpiresAt(Instant.now().minusSeconds(60));
         sessionRepository.saveAndFlush(session);
 
-        assertThatThrownBy(() -> tokenService.refresh(tokens.refreshToken()))
+        assertThatThrownBy(() -> tokenService.refresh(tokens.refreshToken(), ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
     }
 
     @Test
     void unknownRefreshTokenIsRejected() {
-        assertThatThrownBy(() -> tokenService.refresh("never-issued"))
+        assertThatThrownBy(() -> tokenService.refresh("never-issued", ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
     }
 
     @Test
     void logoutRevokesTheFamily() {
-        IssuedTokens tokens = tokenService.startSession(newUser(UserRole.USER), null);
+        User user = newUser(UserRole.USER);
+        IssuedTokens tokens = tokenService.startSession(user, null);
         String familyId = findSession(tokens).getFamilyId();
 
-        tokenService.logout(tokens.refreshToken());
+        tokenService.logout(tokens.refreshToken(), new ClientInfo("10.0.0.9", "JUnit"));
 
         assertThat(sessionRepository.countByFamilyId(familyId)).isZero();
-        assertThatThrownBy(() -> tokenService.refresh(tokens.refreshToken()))
+        assertThat(auditLogRepository.findAllByUserIdOrderByCreatedAtAsc(user.getId()))
+                .extracting(AuditLog::getEvent, AuditLog::getIpAddress)
+                .containsExactly(tuple("LOGOUT", "10.0.0.9"));
+        assertThatThrownBy(() -> tokenService.refresh(tokens.refreshToken(), ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
-        tokenService.logout(tokens.refreshToken());
+        tokenService.logout(tokens.refreshToken(), ClientInfo.UNKNOWN);
     }
 
     private Session findSession(IssuedTokens tokens) {

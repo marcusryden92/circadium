@@ -56,6 +56,7 @@ model User {
   suggestions                 Suggestion[]
   suggestionVotes             SuggestionVote[]
   sessions                    Session[]
+  auditLogs                   AuditLog[]
 
   @@map("users")
 }
@@ -133,6 +134,32 @@ model Session {
   @@index([userId])
   @@index([familyId])
   @@map("sessions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  event     String
+  email     String?
+  ipAddress String?
+  userAgent String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model AuthLockout {
+  key            String    @id
+  failedAttempts Int       @default(0)
+  lastFailedAt   DateTime
+  lockedUntil    DateTime?
+
+  @@map("auth_lockouts")
 }
 
 model AccountDeletionToken {
