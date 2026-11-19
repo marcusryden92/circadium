@@ -73,6 +73,8 @@ spring:
   config:
     activate:
       on-profile: staging
+server:
+  forward-headers-strategy: native
 logging:
   structured:
     format:
@@ -85,6 +87,8 @@ spring:
   config:
     activate:
       on-profile: prod
+server:
+  forward-headers-strategy: native
 logging:
   structured:
     format:

@@ -133,7 +133,8 @@ class AuthEndpointsIntegrationTest {
         mockMvc.perform(refreshRequest(first.refreshToken()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.requestId").isNotEmpty());
         mockMvc.perform(refreshRequest(rotated)).andExpect(status().isUnauthorized());
     }
 
