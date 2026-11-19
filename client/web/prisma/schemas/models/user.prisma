@@ -55,6 +55,7 @@ model User {
   feedbackReports             FeedbackReport[]
   suggestions                 Suggestion[]
   suggestionVotes             SuggestionVote[]
+  sessions                    Session[]
 
   @@map("users")
 }
@@ -114,6 +115,22 @@ model TwoFactorConfirmation {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+  deviceName String?
+  replacedBy String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 model AccountDeletionToken {
