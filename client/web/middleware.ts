@@ -3,6 +3,10 @@ import NextAuth from "next-auth";
 
 import authConfig from "@/auth.config";
 import {
+  STAGING_GATE_CHALLENGE,
+  isAllowedThroughStagingGate,
+} from "@/lib/stagingGate";
+import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
   authRoutes,
@@ -12,6 +16,18 @@ import {
 const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
+  if (
+    !isAllowedThroughStagingGate(
+      req.headers.get("authorization"),
+      process.env.STAGING_PASSWORD,
+    )
+  ) {
+    return new NextResponse("Authentication required.", {
+      status: 401,
+      headers: { "WWW-Authenticate": STAGING_GATE_CHALLENGE },
+    });
+  }
+
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
 
