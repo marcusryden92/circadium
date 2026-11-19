@@ -23,6 +23,14 @@ spring:
   flyway:
     enabled: false
 
+circadium:
+  auth:
+    issuer: ${AUTH_ISSUER}
+    audience: circadium-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    allow-ephemeral-key: false
+
 management:
   endpoints:
     web:
@@ -51,6 +59,10 @@ spring:
     url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5433/circadium_dev}
     username: ${DATABASE_USERNAME:circadium}
     password: ${DATABASE_PASSWORD:circadium}
+circadium:
+  auth:
+    issuer: ${AUTH_ISSUER:http://localhost:8080}
+    allow-ephemeral-key: true
 management:
   endpoint:
     health:

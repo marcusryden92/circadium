@@ -42,6 +42,7 @@ class SessionRepositoryTest {
         Session session = new Session();
         session.setId(UUID.randomUUID().toString());
         session.setUserId(user.getId());
+        session.setFamilyId(UUID.randomUUID().toString());
         session.setTokenHash("abc123hash");
         session.setExpiresAt(Instant.now().plus(30, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS));
         session.setLastUsedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));

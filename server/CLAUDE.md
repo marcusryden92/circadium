@@ -17,7 +17,7 @@ proceeds one numbered item per session; read the plan's item before starting it.
   `spring-boot-starter-*-test` starters instead of one `spring-boot-starter-test`.
 - Data: JPA/Hibernate for CRUD, JdbcTemplate for the sync/bulk hot paths. Flyway is on
   the classpath but inactive during coexistence (`spring.flyway.enabled=false`,
-  `jpa.hibernate.ddl-auto=none`) — Prisma owns migrations until the Phase 2 cutover.
+  `jpa.hibernate.ddl-auto=validate`) — Prisma owns migrations until the Phase 2 cutover.
 - API docs: springdoc-openapi 3.x (`/v3/api-docs`, `/swagger-ui.html`). Its version is
   pinned explicitly in the POM because the Spring Boot BOM does not manage it.
 
@@ -49,12 +49,27 @@ default; `staging`, `prod`). Secrets never live in the repo.
 
 ## Security (current state)
 
-There is no custom `SecurityConfig` yet. The default Spring Security chain is active:
-startup prints a generated dev password, `/actuator/health` is reachable, and every other
-path answers `401`. The real auth chain (and the explicit `permitAll` for health, plus
-prod gating of Swagger UI) lands with the auth items (plan 1.5-1.10) — Boot's security
-auto-config backs off the moment a custom chain appears, so health must be permitted
-explicitly there.
+`config/SecurityConfig` is a stateless bearer-token resource server: every request needs
+a valid RS256 access JWT except `/actuator/health/**`, `/actuator/info`,
+`GET /.well-known/jwks.json`, `POST /auth/refresh`, `POST /auth/logout` and `/error`.
+Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
+`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off (no cookie auth yet; 1.9
+revisits it).
+
+Token settings live under `circadium.auth` (`auth/AuthProperties`):
+
+- `AUTH_ISSUER` — required outside `local` (defaults to `http://localhost:8080` there).
+- Signing keys: `CIRCADIUM_AUTH_SIGNINGKEYS_<n>_KID` + `CIRCADIUM_AUTH_SIGNINGKEYS_<n>_PRIVATEKEY`
+  (PKCS#8 PEM). Index 0 signs; all verify and are published in the JWKS. Rotate by
+  inserting the new key at index 0 and dropping the old one after an access-token lifetime.
+- With no keys configured, `local` generates an ephemeral key (tokens die on restart);
+  every other profile refuses to start.
+
+Refresh tokens are opaque, stored only as SHA-256 hashes in `sessions`, rotated on every
+use, and grouped by `familyId`; replaying a rotated token deletes the whole family.
+Rotated rows must be kept until expiry or reuse becomes undetectable. In tests, use
+`SecurityMockMvcRequestPostProcessors.jwt()` for endpoints that only need an authenticated
+caller, and real tokens from `TokenService` when the token itself is under test.
 
 ## Package layout
 

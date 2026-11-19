@@ -120,6 +120,7 @@ model TwoFactorConfirmation {
 model Session {
   id         String   @id @default(uuid())
   userId     String
+  familyId   String
   tokenHash  String   @unique
   expiresAt  DateTime
   lastUsedAt DateTime @default(now())
@@ -130,6 +131,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([familyId])
   @@map("sessions")
 }
 

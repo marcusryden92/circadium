@@ -548,6 +548,7 @@ CREATE TABLE "TwoFactorConfirmation" (
 CREATE TABLE "sessions" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "familyId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "lastUsedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -722,6 +723,9 @@ CREATE UNIQUE INDEX "sessions_tokenHash_key" ON "sessions"("tokenHash");
 
 -- CreateIndex
 CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
+
+-- CreateIndex
+CREATE INDEX "sessions_familyId_idx" ON "sessions"("familyId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AccountDeletionToken_userId_key" ON "AccountDeletionToken"("userId");

@@ -1,8 +1,7 @@
 package app.circadium.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -30,8 +29,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-        "spring.security.user.name=test",
-        "spring.security.user.password=test",
         "sentry.dsn=http://publickey@localhost:9/1"
 })
 @AutoConfigureMockMvc
@@ -52,7 +49,7 @@ class ErrorHandlingIntegrationTest {
     @Test
     void unhandledExceptionProducesProblemDetailCorrelationIdAndSentryEvent() throws Exception {
         MvcResult result = mockMvc.perform(get("/internal/diagnostics/boom")
-                        .with(httpBasic("test", "test")))
+                        .with(jwt()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(header().exists("X-Request-Id"))
@@ -68,8 +65,7 @@ class ErrorHandlingIntegrationTest {
     @Test
     void validationFailureProducesProblemDetailWithFieldErrorsAndNoSentryEvent() throws Exception {
         mockMvc.perform(post("/internal/diagnostics/validate")
-                        .with(httpBasic("test", "test"))
-                        .with(csrf())
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest())
