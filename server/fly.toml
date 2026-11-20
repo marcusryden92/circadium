@@ -13,10 +13,13 @@ primary_region = "fra"
 [http_service]
   internal_port = 8080
   force_https = true
-  # Scale to zero when idle (cheap staging); the next request wakes the machine.
-  auto_stop_machines = "stop"
+  # Always on. A shared CPU runs at a 6.25% baseline once its burst balance is spent, and the
+  # balance only accrues while the machine runs, so a JVM cold start after scale-to-zero takes
+  # minutes and Fly's proxy gives up on the waking request long before that. Staying up also
+  # keeps the in-memory Google sign-in session alive between the start and the callback.
+  auto_stop_machines = "off"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [[http_service.checks]]
     method = "GET"
