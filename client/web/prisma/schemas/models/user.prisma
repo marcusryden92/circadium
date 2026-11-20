@@ -57,6 +57,7 @@ model User {
   suggestionVotes             SuggestionVote[]
   sessions                    Session[]
   auditLogs                   AuditLog[]
+  oauthHandoffCodes           OAuthHandoffCode[]
 
   @@map("users")
 }
@@ -160,6 +161,23 @@ model AuthLockout {
   lockedUntil    DateTime?
 
   @@map("auth_lockouts")
+}
+
+// Owned by the Java server. A finished Google sign-in is handed to the client
+// that started it through a one-time code; only its SHA-256 is stored, and
+// redeeming it requires the verifier whose S256 hash is `challenge`.
+model OAuthHandoffCode {
+  codeHash  String   @id
+  userId    String
+  challenge String
+  client    String
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("oauth_handoff_codes")
 }
 
 model AccountDeletionToken {

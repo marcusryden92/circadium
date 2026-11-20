@@ -40,7 +40,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         REGISTER(5, Duration.ofHours(1)),
         PASSWORD_RESET(5, Duration.ofHours(1)),
         ACCOUNT_LINK(10, Duration.ofMinutes(1)),
-        TOKEN(60, Duration.ofMinutes(1));
+        TOKEN(60, Duration.ofMinutes(1)),
+        OAUTH(20, Duration.ofMinutes(1));
 
         final long capacity;
         final Duration period;
@@ -51,17 +52,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    private static final Map<String, Policy> POLICIES = Map.of(
-            "/auth/login", Policy.LOGIN,
-            "/auth/2fa", Policy.LOGIN,
-            "/auth/register", Policy.REGISTER,
-            "/auth/password-reset", Policy.PASSWORD_RESET,
-            "/auth/password-reset/confirm", Policy.ACCOUNT_LINK,
-            "/auth/verify-email", Policy.ACCOUNT_LINK,
-            "/account/deletion", Policy.ACCOUNT_LINK,
-            "/account/deletion/confirm", Policy.ACCOUNT_LINK,
-            "/auth/refresh", Policy.TOKEN,
-            "/auth/logout", Policy.TOKEN);
+    /**
+     * Keyed by method and path. The Google sign-in start and callback are browser navigations (GET); each start
+     * creates a session and each callback calls Google's token endpoint, so both are bounded too.
+     */
+    private static final Map<String, Policy> POLICIES = Map.ofEntries(
+            Map.entry("POST /auth/login", Policy.LOGIN),
+            Map.entry("POST /auth/2fa", Policy.LOGIN),
+            Map.entry("POST /auth/handoff", Policy.LOGIN),
+            Map.entry("POST /auth/register", Policy.REGISTER),
+            Map.entry("POST /auth/password-reset", Policy.PASSWORD_RESET),
+            Map.entry("POST /auth/password-reset/confirm", Policy.ACCOUNT_LINK),
+            Map.entry("POST /auth/verify-email", Policy.ACCOUNT_LINK),
+            Map.entry("POST /account/deletion", Policy.ACCOUNT_LINK),
+            Map.entry("POST /account/deletion/confirm", Policy.ACCOUNT_LINK),
+            Map.entry("POST /auth/refresh", Policy.TOKEN),
+            Map.entry("POST /auth/logout", Policy.TOKEN),
+            Map.entry("GET /oauth2/authorization/google", Policy.OAUTH),
+            Map.entry("GET /login/oauth2/code/google", Policy.OAUTH));
 
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofHours(2))
@@ -70,13 +78,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equals(request.getMethod()) || !POLICIES.containsKey(request.getRequestURI());
+        return !POLICIES.containsKey(policyKey(request));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        Policy policy = POLICIES.get(request.getRequestURI());
+        Policy policy = POLICIES.get(policyKey(request));
         Bucket bucket = buckets.get(policy.name() + "|" + request.getRemoteAddr(), key -> newBucket(policy));
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
         if (probe.isConsumed()) {
@@ -87,6 +95,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 Duration.ofNanos(probe.getNanosToWaitForRefill()));
         log.warn("Rate limit {} hit by {}", policy, request.getRemoteAddr());
         reject(request, response, retryAfterSeconds);
+    }
+
+    private static String policyKey(HttpServletRequest request) {
+        return request.getMethod() + " " + request.getRequestURI();
     }
 
     private static Bucket newBucket(Policy policy) {

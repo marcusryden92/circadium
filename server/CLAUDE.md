@@ -49,13 +49,29 @@ default; `staging`, `prod`). Secrets never live in the repo.
 
 ## Security (current state)
 
-`config/SecurityConfig` is a stateless bearer-token resource server: every request needs
-a valid RS256 access JWT except `/actuator/health/**`, `/actuator/info`,
-`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email}`,
+`config/SecurityConfig` has two filter chains. The API chain is a stateless bearer-token
+resource server: every request needs a valid RS256 access JWT except `/actuator/health/**`,
+`/actuator/info`, `GET /.well-known/jwks.json`,
+`POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
 `POST /auth/password-reset[/confirm]` and `/error`.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
 `role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off because nothing
 authenticates by cookie.
+
+The OAuth chain (ordered first) matches only `/oauth2/authorization/**` and
+`/login/oauth2/code/**`: Google sign-in (`auth/oauth`), run by Spring Security's OAuth 2.0
+client with PKCE forced on. It is the only place a session exists (cookie `circadium_oauth`,
+10 minutes), holding state/PKCE/nonce plus the caller's `client` + `challenge` for the round
+trip to Google; `OAuthLoginHandler` ends it on the callback and redirects to the configured
+web or mobile completion URL with `?code=` (a 60-second one-time handoff code, stored hashed
+in `oauth_handoff_codes`) or `?error=`. `POST /auth/handoff` trades the code plus the client's
+verifier for normal tokens. Google's own tokens are never stored. Accounts match on the
+NextAuth-era `accounts` row (provider + subject); an email that already has an account is
+refused, never auto-linked. Settings live under `circadium.oauth`: `GOOGLE_CLIENT_ID` /
+`GOOGLE_CLIENT_SECRET` are required outside `local` (startup fails otherwise; `local` without
+them disables Google sign-in), and the callback URI Google must have registered is
+`${AUTH_ISSUER}/login/oauth2/code/google`. The in-memory session is single-instance only, like
+the rate limiter.
 
 Abuse controls on the public auth endpoints, two layers:
 

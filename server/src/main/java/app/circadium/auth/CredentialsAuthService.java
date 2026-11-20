@@ -181,7 +181,7 @@ public class CredentialsAuthService {
         return PasswordPolicy.fitsBcrypt(raw) && passwordEncoder.matches(raw, hash);
     }
 
-    static String normalize(String email) {
+    public static String normalize(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 }

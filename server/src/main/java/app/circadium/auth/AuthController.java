@@ -68,7 +68,7 @@ public class AuthController {
             String refreshToken,
             Instant refreshTokenExpiresAt) {
 
-        static TokenResponse from(IssuedTokens tokens) {
+        public static TokenResponse from(IssuedTokens tokens) {
             return new TokenResponse("Bearer", tokens.accessToken(), tokens.accessTokenExpiresAt(),
                     tokens.refreshToken(), tokens.refreshTokenExpiresAt());
         }

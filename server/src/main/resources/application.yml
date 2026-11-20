@@ -23,6 +23,18 @@ spring:
   flyway:
     enabled: false
 
+# The only session is Google sign-in's round trip (see SecurityConfig). Lax, not Strict: Google's redirect back is
+# a cross-site navigation, and the browser must still send this cookie on it.
+server:
+  servlet:
+    session:
+      timeout: 10m
+      cookie:
+        name: circadium_oauth
+        http-only: true
+        secure: true
+        same-site: lax
+
 circadium:
   auth:
     issuer: ${AUTH_ISSUER}
@@ -37,6 +49,13 @@ circadium:
     security-from: Circadium <security@circadium.app>
     support-from: Circadium <support@circadium.app>
     allow-logging-fallback: false
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-base-url: ${circadium.auth.issuer}
+    web-completion-url: ${circadium.mail.web-base-url}/auth/oauth/complete
+    mobile-completion-url: circadium://auth/oauth/complete
 
 management:
   endpoints:
@@ -66,6 +85,11 @@ spring:
     url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5433/circadium_dev}
     username: ${DATABASE_USERNAME:circadium}
     password: ${DATABASE_PASSWORD:circadium}
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
 circadium:
   auth:
     issuer: ${AUTH_ISSUER:http://localhost:8080}
