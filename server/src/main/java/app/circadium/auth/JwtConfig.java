@@ -13,7 +13,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, AuthCookieProperties.class})
 class JwtConfig {
 
     @Bean

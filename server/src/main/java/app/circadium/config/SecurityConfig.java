@@ -1,5 +1,9 @@
 package app.circadium.config;
 
+import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
+
+import app.circadium.auth.AuthCookies;
+import app.circadium.auth.CookieBearerTokenResolver;
 import app.circadium.auth.oauth.OAuthLoginHandler;
 import app.circadium.auth.oauth.OAuthStartFilter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,16 +24,40 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
  * Two filter chains. The OAuth chain handles only Google sign-in's start and callback; everything else is the
- * stateless bearer-token API. CSRF is off on both: the API authenticates by bearer token, which browsers never
- * attach automatically, and the OAuth endpoints are GET navigations whose callback is protected by {@code state}.
+ * stateless token API, which takes the access token from the {@code Authorization} header (mobile) or the access
+ * cookie (web).
+ *
+ * <p>Spring's CSRF tokens are off on both. A bearer header is never attached by a browser on its own. Requests
+ * authenticated by cookie are covered by SameSite plus {@link CorsConfig}, which refuses any request from an origin
+ * other than the web app's before it reaches this chain. The OAuth endpoints are GET navigations whose callback is
+ * protected by {@code state}.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
 
     private static final String[] API_DOCS = {"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"};
+
+    /** Endpoints anyone may call. The token resolver never reads the access cookie on these. */
+    static final RequestMatcher PUBLIC_ENDPOINTS = new OrRequestMatcher(
+            pathPattern("/actuator/health"),
+            pathPattern("/actuator/health/**"),
+            pathPattern("/actuator/info"),
+            pathPattern("/error"),
+            pathPattern(HttpMethod.GET, "/.well-known/jwks.json"),
+            pathPattern(HttpMethod.POST, "/auth/register"),
+            pathPattern(HttpMethod.POST, "/auth/login"),
+            pathPattern(HttpMethod.POST, "/auth/2fa"),
+            pathPattern(HttpMethod.POST, "/auth/refresh"),
+            pathPattern(HttpMethod.POST, "/auth/logout"),
+            pathPattern(HttpMethod.POST, "/auth/verify-email"),
+            pathPattern(HttpMethod.POST, "/auth/password-reset"),
+            pathPattern(HttpMethod.POST, "/auth/password-reset/confirm"),
+            pathPattern(HttpMethod.POST, "/auth/handoff"));
 
     /**
      * Google sign-in, the only part of the API with server-side state: Spring keeps {@code state}, the PKCE
@@ -64,7 +92,8 @@ class SecurityConfig {
 
     @Bean
     @Order(2)
-    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, Environment environment) throws Exception {
+    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, Environment environment, AuthCookies authCookies)
+            throws Exception {
         boolean local = environment.matchesProfiles("local");
         http
                 .csrf(csrf -> csrf.disable())
@@ -73,13 +102,7 @@ class SecurityConfig {
                 .logout(logout -> logout.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> {
-                    authorize.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
-                    authorize.requestMatchers(HttpMethod.GET, "/.well-known/jwks.json").permitAll();
-                    authorize.requestMatchers(HttpMethod.POST,
-                            "/auth/register", "/auth/login", "/auth/2fa", "/auth/refresh", "/auth/logout",
-                            "/auth/verify-email", "/auth/password-reset", "/auth/password-reset/confirm",
-                            "/auth/handoff").permitAll();
-                    authorize.requestMatchers("/error").permitAll();
+                    authorize.requestMatchers(PUBLIC_ENDPOINTS).permitAll();
                     if (local) {
                         authorize.requestMatchers(API_DOCS).permitAll();
                     } else {
@@ -88,6 +111,7 @@ class SecurityConfig {
                     authorize.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer
+                        .bearerTokenResolver(new CookieBearerTokenResolver(authCookies, PUBLIC_ENDPOINTS))
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
     }

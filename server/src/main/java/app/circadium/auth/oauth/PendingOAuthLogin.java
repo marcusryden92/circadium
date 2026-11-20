@@ -1,11 +1,12 @@
 package app.circadium.auth.oauth;
 
+import app.circadium.auth.ClientType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.Serializable;
 
 /** Who started the sign-in in progress; kept in the session between the start and Google's callback. */
-record PendingOAuthLogin(OAuthClient client, String challenge) implements Serializable {
+record PendingOAuthLogin(ClientType client, String challenge) implements Serializable {
 
     static final String SESSION_ATTRIBUTE = PendingOAuthLogin.class.getName();
 

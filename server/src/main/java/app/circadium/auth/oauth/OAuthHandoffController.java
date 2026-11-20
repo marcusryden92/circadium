@@ -4,6 +4,7 @@ import app.circadium.auth.AccountFlowException;
 import app.circadium.auth.AuditEvent;
 import app.circadium.auth.AuditLogger;
 import app.circadium.auth.AuthController.TokenResponse;
+import app.circadium.auth.AuthCookies;
 import app.circadium.auth.ClientInfo;
 import app.circadium.auth.CredentialsAuthService;
 import app.circadium.auth.IssuedTokens;
@@ -16,7 +17,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,10 +31,12 @@ public class OAuthHandoffController {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final AuditLogger auditLogger;
+    private final AuthCookies authCookies;
 
     /**
      * Trades the one-time code from a finished Google sign-in, plus the verifier only the client that started the
-     * sign-in holds, for the same tokens {@code /auth/login} returns.
+     * sign-in holds, for the same tokens {@code /auth/login} returns. The code remembers which app started the
+     * sign-in, so a web sign-in always ends in cookies.
      */
     @PostMapping("/auth/handoff")
     public ResponseEntity<TokenResponse> handoff(@Valid @RequestBody HandoffRequest request,
@@ -52,7 +54,7 @@ public class OAuthHandoffController {
         String email = user.getEmail() == null ? null : CredentialsAuthService.normalize(user.getEmail());
         auditLogger.record(AuditEvent.LOGIN_SUCCESS, user.getId(), email, client,
                 "oauth " + redeemed.client().parameter());
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(TokenResponse.from(tokens));
+        return authCookies.deliver(tokens, redeemed.client()).asResponse();
     }
 
     private static AccountFlowException invalidCode() {

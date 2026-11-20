@@ -1,6 +1,7 @@
 package app.circadium.auth;
 
 import app.circadium.auth.AuthController.TokenResponse;
+import app.circadium.auth.AuthCookies.Delivery;
 import app.circadium.auth.CredentialsAuthService.LoginOutcome;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CredentialsController {
 
     private final CredentialsAuthService credentialsAuthService;
+    private final AuthCookies authCookies;
 
     @PostMapping("/auth/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request,
@@ -36,7 +38,7 @@ public class CredentialsController {
             HttpServletRequest httpRequest) {
         LoginOutcome outcome = credentialsAuthService.login(request.email(), request.password(),
                 ClientInfo.from(httpRequest));
-        return respond(outcome);
+        return respond(outcome, request.client());
     }
 
     @PostMapping("/auth/2fa")
@@ -44,17 +46,21 @@ public class CredentialsController {
             HttpServletRequest httpRequest) {
         LoginOutcome outcome = credentialsAuthService.verifyTwoFactor(request.email(), request.password(),
                 request.code(), ClientInfo.from(httpRequest));
-        return respond(outcome);
+        return respond(outcome, request.client());
     }
 
-    private static ResponseEntity<LoginResponse> respond(LoginOutcome outcome) {
-        LoginResponse body = switch (outcome) {
-            case LoginOutcome.Authenticated authenticated ->
-                    new LoginResponse("AUTHENTICATED", TokenResponse.from(authenticated.tokens()));
-            case LoginOutcome.TwoFactorRequired ignored -> new LoginResponse("TWO_FACTOR_REQUIRED", null);
-            case LoginOutcome.EmailVerificationSent ignored -> new LoginResponse("EMAIL_VERIFICATION_SENT", null);
+    private ResponseEntity<LoginResponse> respond(LoginOutcome outcome, ClientType client) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok().cacheControl(CacheControl.noStore());
+        return switch (outcome) {
+            case LoginOutcome.Authenticated authenticated -> {
+                Delivery delivery = authCookies.deliver(authenticated.tokens(), client);
+                yield response.headers(delivery.headers()).body(new LoginResponse("AUTHENTICATED", delivery.body()));
+            }
+            case LoginOutcome.TwoFactorRequired ignored ->
+                    response.body(new LoginResponse("TWO_FACTOR_REQUIRED", null));
+            case LoginOutcome.EmailVerificationSent ignored ->
+                    response.body(new LoginResponse("EMAIL_VERIFICATION_SENT", null));
         };
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
     }
 
     /** New passwords: 8+ characters; the 72-byte bcrypt ceiling is enforced in the service. */
@@ -63,15 +69,31 @@ public class CredentialsController {
             @NotBlank @Email @Size(max = 254) String email,
             @NotBlank @Size(min = 8, max = 72) String password) {}
 
-    /** No minimum length: accounts created by the web app may have 6-character passwords. */
+    /**
+     * No minimum length: accounts created by the web app may have 6-character passwords. {@code client} defaults to
+     * mobile, which receives the tokens in the body; the web app sends {@code web} and receives cookies.
+     */
     public record LoginRequest(
             @NotBlank @Size(max = 254) String email,
-            @NotBlank @Size(max = 256) String password) {}
+            @NotBlank @Size(max = 256) String password,
+            ClientType client) {
 
+        public LoginRequest {
+            client = client == null ? ClientType.MOBILE : client;
+        }
+    }
+
+    /** {@code client} as in {@link LoginRequest}. */
     public record TwoFactorRequest(
             @NotBlank @Size(max = 254) String email,
             @NotBlank @Size(max = 256) String password,
-            @NotBlank @Pattern(regexp = "\\d{6}") String code) {}
+            @NotBlank @Pattern(regexp = "\\d{6}") String code,
+            ClientType client) {
+
+        public TwoFactorRequest {
+            client = client == null ? ClientType.MOBILE : client;
+        }
+    }
 
     public record RegisterResponse(String status) {}
 

@@ -1,5 +1,6 @@
 package app.circadium.auth.oauth;
 
+import app.circadium.auth.ClientType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -35,7 +36,7 @@ public record OAuthProperties(
      * Completion URLs come only from configuration, never from the request, so the sign-in flow cannot be used
      * to send someone (and a handoff code) to an arbitrary site.
      */
-    String completionUrl(OAuthClient client) {
+    String completionUrl(ClientType client) {
         return switch (client) {
             case WEB -> webCompletionUrl;
             case MOBILE -> mobileCompletionUrl;

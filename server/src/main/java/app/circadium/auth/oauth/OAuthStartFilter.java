@@ -1,5 +1,6 @@
 package app.circadium.auth.oauth;
 
+import app.circadium.auth.ClientType;
 import app.circadium.web.CorrelationIdFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -58,7 +59,7 @@ public final class OAuthStartFilter extends OncePerRequestFilter {
             reject(response, HttpStatus.NOT_FOUND, "unknown_provider", "This sign-in provider is not available.");
             return;
         }
-        Optional<OAuthClient> client = OAuthClient.fromParameter(request.getParameter("client"));
+        Optional<ClientType> client = ClientType.fromParameter(request.getParameter("client"));
         String challenge = request.getParameter("challenge");
         if (client.isEmpty() || challenge == null || !CHALLENGE.matcher(challenge).matches()) {
             reject(response, HttpStatus.BAD_REQUEST, "invalid_request",

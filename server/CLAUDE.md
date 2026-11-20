@@ -49,14 +49,37 @@ default; `staging`, `prod`). Secrets never live in the repo.
 
 ## Security (current state)
 
-`config/SecurityConfig` has two filter chains. The API chain is a stateless bearer-token
-resource server: every request needs a valid RS256 access JWT except `/actuator/health/**`,
-`/actuator/info`, `GET /.well-known/jwks.json`,
-`POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
-`POST /auth/password-reset[/confirm]` and `/error`.
+`config/SecurityConfig` has two filter chains. The API chain is a stateless token
+resource server: every request needs a valid RS256 access JWT except the endpoints in
+`SecurityConfig.PUBLIC_ENDPOINTS` (`/actuator/health/**`, `/actuator/info`,
+`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
+`POST /auth/password-reset[/confirm]`, `/error`). New public endpoints go in that one list.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
-`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. CSRF is off because nothing
-authenticates by cookie.
+`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`.
+
+Two clients, two token transports (`auth/ClientType`):
+
+- **Mobile** sends `Authorization: Bearer` and gets tokens in JSON bodies; refresh/logout
+  take the refresh token in the body.
+- **Web** gets tokens as HttpOnly cookies from `auth/AuthCookies` and never sees them in a
+  body (only the expiry times). Login/2FA opt in with `"client":"web"` (default `mobile`); a
+  handoff code remembers which client started the Google sign-in; refresh/logout with no
+  body read the refresh cookie. Access cookie: `Domain=${AUTH_COOKIE_DOMAIN}`, `Path=/`,
+  SameSite=Lax, so the web server receives it too. Refresh cookie: host-only, `Path=/auth`,
+  SameSite=Strict. Names and domain are `circadium.auth.cookies` (`AuthCookieProperties`);
+  `AUTH_COOKIE_DOMAIN` is required outside `local` (blank there: host-only, not Secure).
+  Staging uses its own cookie names because prod's access cookie also reaches staging's
+  subdomains.
+- `auth/CookieBearerTokenResolver` takes the header first, then the access cookie, but never
+  the cookie on a public endpoint (Spring 401s an invalid token even where none is required,
+  so a stale cookie would break login and refresh).
+
+CSRF: Spring's CSRF tokens are off. `config/CorsConfig` is a servlet filter (after the
+correlation id, before the rate limiter and Spring Security) that allows credentialed calls
+from `circadium.cors.allowed-origins` (default `WEB_BASE_URL`) and refuses, with 403, any
+request carrying another `Origin`, so cross-site and sibling-subdomain pages cannot use a
+browser's cookies. GET endpoints must stay free of side effects: browsers send no `Origin`
+on plain GETs.
 
 The OAuth chain (ordered first) matches only `/oauth2/authorization/**` and
 `/login/oauth2/code/**`: Google sign-in (`auth/oauth`), run by Spring Security's OAuth 2.0

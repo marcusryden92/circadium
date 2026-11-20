@@ -3,6 +3,7 @@ package app.circadium.auth.oauth;
 import app.circadium.auth.AuditEvent;
 import app.circadium.auth.AuditLogger;
 import app.circadium.auth.ClientInfo;
+import app.circadium.auth.ClientType;
 import app.circadium.auth.oauth.OAuthAccountService.ProviderIdentity;
 import app.circadium.auth.oauth.OAuthAccountService.SignInResult;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,7 +55,7 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
                 || !(authentication instanceof OAuth2AuthenticationToken token)
                 || !(token.getPrincipal() instanceof OidcUser user)) {
             log.error("Google sign-in succeeded without a pending sign-in or an OpenID Connect user");
-            redirect(response, OAuthClient.WEB, "error", OAUTH_FAILED);
+            redirect(response, ClientType.WEB, "error", OAUTH_FAILED);
             return;
         }
         ProviderIdentity identity = new ProviderIdentity(token.getAuthorizedClientRegistrationId(),
@@ -80,7 +81,7 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException exception) throws IOException {
         PendingOAuthLogin pending = PendingOAuthLogin.take(request);
-        OAuthClient client = pending == null ? OAuthClient.WEB : pending.client();
+        ClientType client = pending == null ? ClientType.WEB : pending.client();
         String reason = exception instanceof OAuth2AuthenticationException oauth
                 ? oauth.getError().getErrorCode()
                 : "authentication_failed";
@@ -93,7 +94,7 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
      * {@code no-referrer} applies to the redirected request, so the completion page is not told this callback's URL,
      * which carries Google's authorization code. {@code no-store} keeps the redirect out of caches.
      */
-    private void redirect(HttpServletResponse response, OAuthClient client, String parameter, String value)
+    private void redirect(HttpServletResponse response, ClientType client, String parameter, String value)
             throws IOException {
         String location = UriComponentsBuilder.fromUriString(properties.completionUrl(client))
                 .queryParam(parameter, value)

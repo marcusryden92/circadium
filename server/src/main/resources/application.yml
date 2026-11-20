@@ -42,6 +42,12 @@ circadium:
     access-token-ttl: 15m
     refresh-token-ttl: 30d
     allow-ephemeral-key: false
+    # AUTH_COOKIE_DOMAIN is the parent domain of the web and API hosts (see AuthCookieProperties).
+    cookies:
+      access-name: circadium_access
+      refresh-name: circadium_refresh
+      domain: ${AUTH_COOKIE_DOMAIN}
+      secure: true
   mail:
     resend-api-key: ${RESEND_API_KEY:}
     resend-base-url: https://api.resend.com
@@ -56,6 +62,8 @@ circadium:
     redirect-base-url: ${circadium.auth.issuer}
     web-completion-url: ${circadium.mail.web-base-url}/auth/oauth/complete
     mobile-completion-url: circadium://auth/oauth/complete
+  cors:
+    allowed-origins: ${circadium.mail.web-base-url}
 
 management:
   endpoints:
@@ -94,6 +102,9 @@ circadium:
   auth:
     issuer: ${AUTH_ISSUER:http://localhost:8080}
     allow-ephemeral-key: true
+    cookies:
+      domain: ""
+      secure: false
   mail:
     web-base-url: ${WEB_BASE_URL:http://localhost:3000}
     allow-logging-fallback: true
@@ -109,6 +120,13 @@ spring:
       on-profile: staging
 server:
   forward-headers-strategy: native
+circadium:
+  auth:
+    # Prod's access cookie is scoped to circadium.app, so browsers also send it to the hosts under
+    # staging.circadium.app. Distinct names keep each environment reading only its own tokens.
+    cookies:
+      access-name: circadium_staging_access
+      refresh-name: circadium_staging_refresh
 logging:
   structured:
     format:

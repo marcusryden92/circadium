@@ -1,5 +1,6 @@
 package app.circadium.auth.oauth;
 
+import app.circadium.auth.ClientType;
 import app.circadium.persistence.DbTime;
 import app.circadium.persistence.entity.OAuthHandoffCode;
 import app.circadium.persistence.repository.OAuthHandoffCodeRepository;
@@ -38,7 +39,7 @@ public class OAuthHandoffCodes {
     private final Clock clock;
 
     public sealed interface Redemption {
-        record Redeemed(String userId, OAuthClient client) implements Redemption {}
+        record Redeemed(String userId, ClientType client) implements Redemption {}
 
         /** @param reason for the audit log only; the client is told nothing more than "invalid code" */
         record Rejected(String reason) implements Redemption {}
@@ -46,7 +47,7 @@ public class OAuthHandoffCodes {
 
     /** Also sweeps expired codes, which keeps the table at a handful of rows without a scheduled job. */
     @Transactional
-    public String issue(String userId, OAuthClient client, String challenge) {
+    public String issue(String userId, ClientType client, String challenge) {
         Instant now = DbTime.now(clock);
         repository.deleteAllExpiredBefore(now);
 
@@ -85,7 +86,7 @@ public class OAuthHandoffCodes {
         if (!verifierMatches) {
             return new Redemption.Rejected(BAD_VERIFIER);
         }
-        return new Redemption.Redeemed(row.getUserId(), OAuthClient.fromParameter(row.getClient()).orElseThrow());
+        return new Redemption.Redeemed(row.getUserId(), ClientType.fromParameter(row.getClient()).orElseThrow());
     }
 
     /** PKCE's S256 transform (RFC 7636): base64url of the SHA-256 of the verifier, without padding. */

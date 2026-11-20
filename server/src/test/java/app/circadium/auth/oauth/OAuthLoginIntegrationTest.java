@@ -19,6 +19,7 @@ import app.circadium.persistence.repository.AuditLogRepository;
 import app.circadium.persistence.repository.OAuthHandoffCodeRepository;
 import app.circadium.persistence.repository.UserRepository;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.servlet.http.Cookie;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -41,6 +42,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -73,6 +75,8 @@ class OAuthLoginIntegrationTest {
     private static final String REDIRECT_URI = "http://localhost" + CALLBACK;
     private static final String WEB_COMPLETION = "http://localhost:3000/auth/oauth/complete";
     private static final String MOBILE_COMPLETION = "circadium://auth/oauth/complete";
+    private static final String ACCESS_COOKIE = "circadium_access";
+    private static final String REFRESH_COOKIE = "circadium_refresh";
 
     @Autowired
     MockMvc mockMvc;
@@ -179,9 +183,9 @@ class OAuthLoginIntegrationTest {
                 .isEqualTo(started.param("code_challenge"));
 
         String code = queryParams(location).get("code");
-        String accessToken = redeem(app, code);
+        String accessToken = redeemWeb(app, code);
         User user = userRepository.findFirstByEmailIgnoreCase(email).orElseThrow();
-        mockMvc.perform(get("/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+        mockMvc.perform(get("/auth/me").cookie(new Cookie(ACCESS_COOKIE, accessToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(user.getId()));
 
@@ -218,7 +222,7 @@ class OAuthLoginIntegrationTest {
         App app = App.create();
         String changedEmail = "renamed-" + email;
         String location = finish(app, start(app, "web"), new Identity(subject, changedEmail, true, "Same Person"));
-        String accessToken = redeem(app, queryParams(location).get("code"));
+        String accessToken = redeemWeb(app, queryParams(location).get("code"));
 
         mockMvc.perform(get("/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(jsonPath("$.userId").value(existing.getId()));
@@ -262,7 +266,7 @@ class OAuthLoginIntegrationTest {
         String location = finish(app, start(app, "mobile"), new Identity(uniqueSubject(), email, true, "Phone User"));
 
         assertThat(location).startsWith(MOBILE_COMPLETION + "?code=");
-        redeem(app, queryParams(location).get("code"));
+        redeemMobile(app, queryParams(location).get("code"));
         assertThat(auditLogRepository.findAllByEmailOrderByCreatedAtAsc(email))
                 .extracting(AuditLog::getEvent, AuditLog::getDetail)
                 .contains(tuple("LOGIN_SUCCESS", "oauth mobile"));
@@ -385,12 +389,28 @@ class OAuthLoginIntegrationTest {
                 .andReturn();
     }
 
-    private String redeem(App app, String code) throws Exception {
-        String body = handoff(app, code, app.verifier())
+    /** A web sign-in ends in the token cookies with no token in the body; returns the access token. */
+    private String redeemWeb(App app, String code) throws Exception {
+        MockHttpServletResponse response = redeemed(app, code);
+        Map<String, Object> body = JsonPath.read(response.getContentAsString(), "$");
+        assertThat(body).containsKeys("accessTokenExpiresAt", "refreshTokenExpiresAt")
+                .doesNotContainKeys("accessToken", "refreshToken");
+        assertThat(response.getCookie(REFRESH_COOKIE)).isNotNull();
+        return response.getCookie(ACCESS_COOKIE).getValue();
+    }
+
+    /** A mobile sign-in gets its tokens in the body and no cookies; returns the access token. */
+    private String redeemMobile(App app, String code) throws Exception {
+        MockHttpServletResponse response = redeemed(app, code);
+        assertThat(response.getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
+        return JsonPath.read(response.getContentAsString(), "$.accessToken");
+    }
+
+    private MockHttpServletResponse redeemed(App app, String code) throws Exception {
+        return handoff(app, code, app.verifier())
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-                .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(body, "$.accessToken");
+                .andReturn().getResponse();
     }
 
     private ResultActions handoff(App app, String code, String verifier) throws Exception {
