@@ -17,6 +17,8 @@ export type AccessTokenClaims = {
   sessionId: string;
   /** Seconds since the epoch, as the JWT carries it. */
   issuedAt: number;
+  /** Seconds since the epoch. */
+  expiresAt: number;
 };
 
 // Vercel and Fly clocks are NTP-synced; this only absorbs sub-second drift
@@ -75,14 +77,21 @@ export async function verifyAccessToken(
     throw error;
   }
 
-  const { sub, iat, role, sid } = payload;
+  const { sub, iat, exp, role, sid } = payload;
   if (
     typeof sub !== "string" ||
     typeof iat !== "number" ||
+    typeof exp !== "number" ||
     typeof role !== "string" ||
     typeof sid !== "string"
   ) {
     return null;
   }
-  return { userId: sub, role, sessionId: sid, issuedAt: iat };
+  return {
+    userId: sub,
+    role,
+    sessionId: sid,
+    issuedAt: iat,
+    expiresAt: exp,
+  };
 }

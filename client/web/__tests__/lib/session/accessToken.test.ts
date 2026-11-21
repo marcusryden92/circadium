@@ -58,13 +58,14 @@ async function sign(options: TokenOptions = {}): Promise<string> {
 describe("verifyAccessToken", () => {
   it("returns the claims of a valid token", async () => {
     const issuedAt = Math.floor(Date.now() / 1000) - 60;
-    const token = await sign({ issuedAt });
+    const token = await sign({ issuedAt, expiresIn: issuedAt + 900 });
 
     await expect(verifyAccessToken(token, keys)).resolves.toEqual({
       userId: "user-1",
       role: "USER",
       sessionId: "family-1",
       issuedAt,
+      expiresAt: issuedAt + 900,
     });
   });
 

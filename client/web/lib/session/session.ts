@@ -17,7 +17,14 @@ export type SessionUser = {
   isOAuth: boolean;
 };
 
-export type Session = { user: SessionUser };
+export type Session = {
+  user: SessionUser;
+  /**
+   * ISO instant. The browser cannot read the HttpOnly cookie, so this is how a
+   * freshly loaded page learns when to refresh it.
+   */
+  accessTokenExpiresAt: string;
+};
 
 /**
  * True when the token predates the account's last password change. JWT `iat`
@@ -75,5 +82,6 @@ export const getSession = cache(async (): Promise<Session | null> => {
       isTwoFactorEnabled: user.isTwoFactorEnabled,
       isOAuth: user.accounts.length > 0,
     },
+    accessTokenExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
   };
 });

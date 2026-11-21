@@ -50,6 +50,7 @@ beforeEach(() => {
     role: "USER",
     sessionId: "family-1",
     issuedAt: ISSUED_AT,
+    expiresAt: ISSUED_AT + 900,
   });
   findUserMock.mockResolvedValue(userRow());
 });
@@ -86,6 +87,7 @@ describe("getSession", () => {
         isTwoFactorEnabled: true,
         isOAuth: false,
       },
+      accessTokenExpiresAt: new Date((ISSUED_AT + 900) * 1000).toISOString(),
     });
     expect(verifyMock).toHaveBeenCalledWith("token");
     expect(findUserMock.mock.calls[0][0].where).toEqual({ id: "user-1" });
