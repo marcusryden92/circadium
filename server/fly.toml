@@ -1,0 +1,39 @@
+# Fly.io staging deployment for the Circadium server.
+# App is co-located (fra) with the Circadium Neon project (eu-central-1) to minimize DB round-trip latency.
+app = "circadium-server-staging"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # The new version boots next to the old one and takes over only once its health check passes. A release
+  # that fails at startup (e.g. the schema check, run before the web's build has applied a new Prisma
+  # migration) then leaves the old version serving instead of taking staging down.
+  strategy = "bluegreen"
+
+[env]
+  # Non-secret config. Database credentials are set separately via `fly secrets set`.
+  SPRING_PROFILES_ACTIVE = "staging"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Always on. A shared CPU runs at a 6.25% baseline once its burst balance is spent, and the
+  # balance only accrues while the machine runs, so a JVM cold start after scale-to-zero takes
+  # minutes and Fly's proxy gives up on the waking request long before that. Staying up also
+  # keeps the in-memory Google sign-in session alive between the start and the callback.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/actuator/health"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "40s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

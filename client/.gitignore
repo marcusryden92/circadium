@@ -1,0 +1,4 @@
+# pnpm workspace dependencies (unanchored: covers every package under client/)
+node_modules/
+.pnp
+.pnp.js

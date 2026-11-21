@@ -1,0 +1,204 @@
+model User {
+  id                          String                       @id @default(cuid())
+  name                        String?
+  email                       String?                      @unique
+  emailVerified               DateTime?                    @map("email_verified")
+  image                       String?
+  password                    String?
+  // Stamped on every password change (reset flow + settings). The jwt
+  // callback compares it against the token's iat and invalidates sessions
+  // issued before the change.
+  passwordChangedAt           DateTime?                    @map("password_changed_at")
+  role                        UserRole                     @default(USER)
+  isTwoFactorEnabled          Boolean                      @default(false)
+  // Monotonic counter bumped inside every successful sync transaction.
+  // Used as the OCC token: client sends its known version, server compares
+  // and either commits + increments or rejects the entire sync as stale.
+  dataVersion                 Int                          @default(0)
+  // Null until the user finishes (or skips) first-run onboarding; the dashboard
+  // redirect predicate is "onboardedAt === null".
+  onboardedAt                 DateTime?                    @map("onboarded_at")
+  // Null until the user decides (onboarding AI gate or settings). The API key
+  // itself never reaches the server in BYOK mode — it lives encrypted on the
+  // user's device. MANAGED is reserved for a future app-key paid mode.
+  aiMode                      AiMode?                      @map("ai_mode")
+  // Which assistant model BYOK requests use. Plain string (model id), null =
+  // the engine default. String not enum so the lineup in lib/aiModels.ts can
+  // change without a migration. See lib/aiModels.ts for the allowed set.
+  aiModel                     String?                      @map("ai_model")
+  EventTemplate               EventTemplate[]
+  Planner                     Planner[]
+  SimpleEvent                 SimpleEvent[]
+  twoFactorConfirmation       TwoFactorConfirmation?
+  accountDeletionToken        AccountDeletionToken?
+  accounts                    Account[]
+  locations                   Location[]
+  categories                  Category[]
+  categoryTimeWindows         CategoryTimeWindow[]
+  categoryEvents              CategoryEvent[]
+  travelEvents                TravelEvent[]
+  engineMessages              EngineMessage[]
+  draftConversations          DraftConversation[]
+  verificationTokens          VerificationToken[]
+  queues                      Queue[]
+  queueMembers                QueueMember[]
+  plannerDependencies         PlannerDependency[]
+  viewState                   UserViewState?
+  externalCalendarSources     ExternalCalendarSource[]
+  externalEvents              ExternalEvent[]
+  googleCalendarConnection    GoogleCalendarConnection?
+  microsoftCalendarConnection MicrosoftCalendarConnection?
+  occurrenceCompletions       OccurrenceCompletion[]
+  habitBuckets                HabitBucket[]
+  habits                      Habit[]
+  habitItems                  HabitItem[]
+  feedbackReports             FeedbackReport[]
+  suggestions                 Suggestion[]
+  suggestionVotes             SuggestionVote[]
+  sessions                    Session[]
+  auditLogs                   AuditLog[]
+  oauthHandoffCodes           OAuthHandoffCode[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model VerificationToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+  // Set for email-change verification only: the token's email is the NEW
+  // address, which no user row has yet, so the consumer resolves the user by
+  // id. Null for registration verification (user found by the token email).
+  userId  String?
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, token])
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorConfirmation {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Owned by the Java server: one refresh token in a rotation chain. Every row of
+// a family carries the sign-in's expiresAt and whether it passed the emailed
+// two-factor code; the web reads only whether a family still exists.
+model Session {
+  id                String   @id @default(uuid())
+  userId            String
+  familyId          String
+  tokenHash         String   @unique
+  expiresAt         DateTime
+  lastUsedAt        DateTime @default(now())
+  deviceName        String?
+  replacedBy        String?
+  createdAt         DateTime @default(now())
+  twoFactorVerified Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  event     String
+  email     String?
+  ipAddress String?
+  userAgent String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model AuthLockout {
+  key            String    @id
+  failedAttempts Int       @default(0)
+  lastFailedAt   DateTime
+  lockedUntil    DateTime?
+
+  @@map("auth_lockouts")
+}
+
+// Owned by the Java server. A finished Google sign-in is handed to the client
+// that started it through a one-time code; only its SHA-256 is stored, and
+// redeeming it requires the verifier whose S256 hash is `challenge`.
+model OAuthHandoffCode {
+  codeHash  String   @id
+  userId    String
+  challenge String
+  client    String
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("oauth_handoff_codes")
+}
+
+model AccountDeletionToken {
+  id      String   @id @default(cuid())
+  userId  String   @unique
+  token   String   @unique
+  expires DateTime
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum AiMode {
+  BYOK
+  MANAGED
+  OFF
+}

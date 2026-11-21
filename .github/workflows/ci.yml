@@ -1,61 +1,50 @@
-name: CI
+name: Client CI
 
+# Type-check and test the pnpm workspace. Vercel's Git integration builds and deploys the web app, so CI
+# does not: a production build also needs the deployment's env, which only Vercel has.
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop, 'feature/**']
+    paths:
+      - 'client/**'
+      - '.github/workflows/ci.yml'
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
+    paths:
+      - 'client/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: client
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # The version comes from the packageManager field in client/package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: client/package.json
+
+      # Vercel builds on Node 24.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Lint code
-        run: pnpm lint
-
-      - name: Type Check
+      - name: Type-check
         run: pnpm type-check
 
-      - name: Run tests
-        if: false
+      - name: Test
         run: pnpm test
-
-      - name: Build app
-        run: pnpm build
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-version: latest
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-project-name: your-vercel-project-name
-          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}

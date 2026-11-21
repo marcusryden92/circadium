@@ -1,0 +1,166 @@
+spring:
+  application:
+    name: server
+  profiles:
+    default: local
+  datasource:
+    url: ${DATABASE_JDBC_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        globally_quoted_identifiers: true
+        jdbc:
+          time_zone: UTC
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+  flyway:
+    enabled: false
+
+# The only session is Google sign-in's round trip (see SecurityConfig). Lax, not Strict: Google's redirect back is
+# a cross-site navigation, and the browser must still send this cookie on it.
+server:
+  servlet:
+    session:
+      timeout: 10m
+      cookie:
+        name: circadium_oauth
+        http-only: true
+        secure: true
+        same-site: lax
+
+circadium:
+  auth:
+    issuer: ${AUTH_ISSUER}
+    audience: circadium-api
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    allow-ephemeral-key: false
+    # AUTH_COOKIE_DOMAIN is the parent domain of the web and API hosts. The name prefixes make the browser
+    # enforce Secure (and, for __Host-, host-only on Path=/); see AuthCookieProperties.
+    cookies:
+      access-name: __Secure-circadium_access
+      refresh-name: __Host-circadium_refresh
+      domain: ${AUTH_COOKIE_DOMAIN}
+      secure: true
+  mail:
+    resend-api-key: ${RESEND_API_KEY:}
+    resend-base-url: https://api.resend.com
+    web-base-url: ${WEB_BASE_URL}
+    security-from: Circadium <security@circadium.app>
+    support-from: Circadium <support@circadium.app>
+    allow-logging-fallback: false
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-base-url: ${circadium.auth.issuer}
+    web-completion-url: ${circadium.mail.web-base-url}/auth/oauth/complete
+    mobile-completion-url: circadium://auth/oauth/complete
+  cors:
+    allowed-origins: ${circadium.mail.web-base-url}
+  # New passwords are looked up in Have I Been Pwned's range API (k-anonymity: only 5 hex characters of the
+  # password's SHA-1 leave the server). Unreachable means the password is accepted (see PwnedPasswordsClient).
+  passwords:
+    pwned:
+      enabled: true
+      base-url: https://api.pwnedpasswords.com
+  # Erases a deleted account's PostHog person (see PosthogProperties). Optional: both blank turns it off.
+  analytics:
+    posthog:
+      personal-api-key: ${POSTHOG_PERSONAL_API_KEY:}
+      project-id: ${POSTHOG_PROJECT_ID:}
+      api-host: https://eu.posthog.com
+
+# Metrics stay inside the process: nothing scrapes them, and over HTTP every signed-in user could read them.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5433/circadium_dev}
+    username: ${DATABASE_USERNAME:circadium}
+    password: ${DATABASE_PASSWORD:circadium}
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+circadium:
+  auth:
+    issuer: ${AUTH_ISSUER:http://localhost:8080}
+    allow-ephemeral-key: true
+    # Plain-HTTP localhost cannot hold Secure cookies, so the names go without the prefixes.
+    cookies:
+      access-name: circadium_access
+      refresh-name: circadium_refresh
+      domain: ""
+      secure: false
+  mail:
+    web-base-url: ${WEB_BASE_URL:http://localhost:3000}
+    allow-logging-fallback: true
+management:
+  endpoint:
+    health:
+      show-details: always
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+server:
+  forward-headers-strategy: native
+circadium:
+  auth:
+    # Prod's access cookie is scoped to circadium.app, so browsers also send it to the hosts under
+    # staging.circadium.app. Distinct names keep each environment reading only its own tokens.
+    cookies:
+      access-name: __Secure-circadium_staging_access
+      refresh-name: __Host-circadium_staging_refresh
+logging:
+  structured:
+    format:
+      console: ecs
+sentry:
+  environment: ${SENTRY_ENVIRONMENT:staging}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+server:
+  forward-headers-strategy: native
+logging:
+  structured:
+    format:
+      console: ecs
+sentry:
+  environment: ${SENTRY_ENVIRONMENT:prod}

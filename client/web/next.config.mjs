@@ -1,0 +1,89 @@
+import { createVanillaExtractPlugin } from "@vanilla-extract/next-plugin";
+
+const withVanillaExtract = createVanillaExtractPlugin();
+
+// No other site may frame a page (a framed settings page could be clicked
+// through without the user seeing it), and the page may not load plugins,
+// rebase its relative URLs, or post forms elsewhere. Scripts are not
+// restricted yet: that needs per-request nonces for Next's inline scripts.
+const CONTENT_SECURITY_POLICY =
+  "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+  // For browsers that predate frame-ancestors.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+];
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  agentRules: false,
+  poweredByHeader: false,
+  // jose ships only ES modules; next/jest transforms node_modules packages
+  // only when they are listed here, so Jest could not load it otherwise.
+  transpilePackages: ["@circadium/shared", "jose"],
+  // PostHog's API paths use trailing slashes (/e/), which the default
+  // trailing-slash redirect would strip before the rewrite matches.
+  skipTrailingSlashRedirect: true,
+  async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        // The emailed links (?token=) and the Google sign-in return (?code=)
+        // carry credentials in the URL; no request from these pages may pass
+        // it on in a Referer header. Listed after the site-wide rule, which
+        // it overrides.
+        source: "/auth/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/relay-cq/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/relay-cq/array/:path*",
+        destination: "https://eu-assets.i.posthog.com/array/:path*",
+      },
+      {
+        source: "/relay-cq/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
+      },
+    ];
+  },
+  experimental: {
+    optimizePackageImports: ["@/components/ui", "@/lib/theme"],
+  },
+  webpack: (config, { isServer, webpack }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      rrule: "rrule/dist/es5/rrule.js",
+    };
+    if (!isServer) {
+      // The Anthropic SDK's credential-chain module lazily imports node:fs /
+      // node:path to read `ant auth` profiles from disk. The BYOK browser
+      // client always passes an explicit apiKey, so that path never runs —
+      // but webpack can't parse node: scheme imports in client bundles.
+      // Strip the scheme, then stub the bare built-ins to empty modules.
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+          resource.request = resource.request.replace(/^node:/, "");
+        }),
+      );
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+      };
+    }
+    return config;
+  },
+};
+
+export default withVanillaExtract(nextConfig);

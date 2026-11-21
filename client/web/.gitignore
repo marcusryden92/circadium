@@ -1,0 +1,15 @@
+# next.js
+.next/
+out/
+
+# production build
+build/
+
+# testing
+coverage/
+
+# swc
+.swc/
+
+# prisma generated client
+/generated

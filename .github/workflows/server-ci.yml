@@ -1,0 +1,90 @@
+name: Server CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and verify
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp verify
+
+  # Staging runs what feature/server holds, as the staging web on Vercel does, once the build is green.
+  deploy-staging:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/server'
+    runs-on: ubuntu-latest
+    # A newer push waits for the running rollout instead of cancelling it halfway.
+    concurrency:
+      group: fly-staging
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+
+      - name: Deploy to circadium-server-staging
+        run: flyctl deploy --remote-only
+        env:
+          # A deploy token scoped to the staging app only.
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_STAGING }}
+
+  # Prod runs what main holds, as the prod web on Vercel does.
+  deploy-prod:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: fly-prod
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+
+      - name: Deploy to circadium-server
+        run: flyctl deploy --remote-only -c fly.prod.toml
+        env:
+          # A deploy token scoped to the prod app only.
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_PROD }}
