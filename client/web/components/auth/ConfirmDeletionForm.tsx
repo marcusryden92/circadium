@@ -1,43 +1,59 @@
 "use client";
 
 import { space } from "@/lib/theme";
-import { useState } from "react";
+import Link from "next/link";
+import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui";
-import { confirmAccountDeletion } from "@/actions/deleteAccount";
-import { useServerAction } from "@/hooks/useServerAction";
+import { ApiError } from "@/lib/api/client";
+import { confirmAccountDeletion } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
+import { hardNavigate } from "@/lib/session/navigation";
+import { forgetSession } from "@/lib/session/refresh";
+import { loginUrlFor, useSession } from "@/lib/session/SessionProvider";
+import { signOut } from "@/lib/session/signOut";
 import { AuthCard } from "./AuthCard";
-import { alertError, alertSuccess } from "./AuthForm.css";
+import { alertError, alertSuccess, forgotLink } from "./AuthForm.css";
+
+const SIGN_IN_FIRST =
+  "Sign in with the account you want to delete, then come back to this link.";
 
 export function ConfirmDeletionForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { status: sessionStatus } = useSession();
-  const { run, isPending } = useServerAction(confirmAccountDeletion);
-  const [message, setMessage] = useState<
-    { tone: "error" | "success"; text: string } | null
-  >(null);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string>();
   const [done, setDone] = useState(false);
 
-  const handleConfirm = async () => {
-    if (!token) {
-      setMessage({ tone: "error", text: "Missing token." });
-      return;
-    }
-    setMessage(null);
-    const result = await run(token);
-    if (!result) return;
-    if (result.error) {
-      setMessage({ tone: "error", text: result.error });
-      return;
-    }
-    setDone(true);
-    // Session is now bound to a user row that no longer exists — end it and
-    // send them home.
-    await signOut({ callbackUrl: "/" });
+  const handleConfirm = () => {
+    if (!token) return;
+    setError(undefined);
+    startTransition(async () => {
+      try {
+        await confirmAccountDeletion(token);
+      } catch (err) {
+        setError(
+          err instanceof ApiError && err.status === 401
+            ? SIGN_IN_FIRST
+            : describeApiError(err),
+        );
+        return;
+      }
+      setDone(true);
+      try {
+        // Java has already ended the sessions with the account; this clears
+        // the cookies and tells the other tabs.
+        await signOut({ redirectTo: "/" });
+      } catch {
+        // The cookies are dead weight now: the access token names a user that
+        // no longer exists and the refresh token's session row is gone.
+        forgetSession();
+        hardNavigate("/");
+      }
+    });
   };
 
   return (
@@ -57,16 +73,27 @@ export function ConfirmDeletionForm() {
       {!token && (
         <div className={alertError} role="alert">
           <AlertTriangle size={14} strokeWidth={2.2} />
-          <span>Missing confirmation token.</span>
+          <span>
+            This link is missing its token. Open the link from the email again.
+          </span>
         </div>
       )}
 
       {token && sessionStatus === "unauthenticated" && (
-        <div className={alertError} role="alert">
-          <AlertTriangle size={14} strokeWidth={2.2} />
-          <span>
-            Sign in with the account you want to delete, then reopen this link.
-          </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: space["2"] }}>
+          <div className={alertError} role="alert">
+            <AlertTriangle size={14} strokeWidth={2.2} />
+            <span>{SIGN_IN_FIRST}</span>
+          </div>
+          <Link
+            href={loginUrlFor({
+              pathname: "/auth/confirm-deletion",
+              search: `?token=${encodeURIComponent(token)}`,
+            })}
+            className={forgotLink}
+          >
+            Sign in
+          </Link>
         </div>
       )}
 
@@ -77,10 +104,10 @@ export function ConfirmDeletionForm() {
             category, location, template, and calendar event tied to it. There
             is no undo.
           </p>
-          {message && message.tone === "error" && (
+          {error && (
             <div className={alertError} role="alert">
               <AlertTriangle size={14} strokeWidth={2.2} />
-              <span>{message.text}</span>
+              <span>{error}</span>
             </div>
           )}
           <Button

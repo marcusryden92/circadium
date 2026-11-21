@@ -1,6 +1,32 @@
 import * as z from "zod";
 import { UserRole } from "@/generated/client";
 
+// The same limits the Java API enforces, checked here first so a mistake is
+// shown next to its field instead of as a rejected request.
+const MAX_EMAIL_LENGTH = 254;
+const MAX_NAME_LENGTH = 100;
+// bcrypt reads only the first 72 bytes, so longer passwords would silently
+// share a hash. Bytes, not characters: accents and emoji take several.
+const MAX_PASSWORD_BYTES = 72;
+
+/** For setting a password. Signing in accepts the older 6-character ones. */
+const newPassword = z
+  .string()
+  .min(8, { message: "At least 8 characters." })
+  .refine(
+    (value) => new TextEncoder().encode(value).length <= MAX_PASSWORD_BYTES,
+    {
+      message:
+        "Too long: at most 72 characters, fewer with accents or emoji.",
+    },
+  );
+
+const email = z
+  .string()
+  .trim()
+  .email({ message: "Email invalid." })
+  .max(MAX_EMAIL_LENGTH, { message: "Email too long." });
+
 export const SettingsSchema = z
   .object({
     name: z.optional(z.string()),
@@ -8,8 +34,8 @@ export const SettingsSchema = z
     role: z.enum([UserRole.ADMIN, UserRole.USER]),
     email: z.optional(z.string().email()),
     password: z.optional(z.string().min(6)),
-    newPassword: z.optional(z.string().min(6)),
-    confirmNewPassword: z.optional(z.string().min(6)),
+    newPassword: z.optional(newPassword),
+    confirmNewPassword: z.optional(z.string()),
   })
   .refine(
     (data) => {
@@ -37,45 +63,48 @@ export const SettingsSchema = z
   });
 
 export const LoginSchema = z.object({
-  email: z.string().email({ message: "Email invalid." }),
-  password: z.string().min(1, {
-    message: "Password required.",
-  }),
+  email,
+  password: z
+    .string()
+    .min(1, { message: "Password required." })
+    .max(256, { message: "Password too long." }),
   code: z.optional(z.string()),
 });
 
+/** The emailed sign-in code. */
+export const TwoFactorCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, { message: "Enter the 6-digit code from the email." });
+
 export const ResetSchema = z.object({
-  email: z.string().email({ message: "Email is required." }),
+  email,
 });
 
 export const NewPasswordSchema = z
   .object({
-    password: z.string().min(6, {
-      message: "Minimum 6 characters required",
-    }),
-    confirmPassword: z.string().min(6, {
-      message: "Minimum 6 characters required",
-    }),
+    password: newPassword,
+    confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
-    message: "Passwords do not match",
+    message: "Passwords do not match.",
   });
 
 export const RegisterSchema = z
   .object({
-    email: z.string().email({ message: "Email invalid." }),
-    password: z.string().min(6, {
-      message: "Minimum 6 characters required.",
-    }),
-    passwordConfirmation: z.string().min(6, {
-      message: "Password confirmation must be at least 6 characters.",
-    }),
-    name: z.string().min(1, { message: "Name is required." }),
+    email,
+    password: newPassword,
+    passwordConfirmation: z.string(),
+    name: z
+      .string()
+      .trim()
+      .min(1, { message: "Name is required." })
+      .max(MAX_NAME_LENGTH, { message: "At most 100 characters." }),
   })
   .refine((data) => data.password === data.passwordConfirmation, {
-    message: "Passwords don't match!",
-    path: ["passwordConfirmation"], // Show error under password confirmation field
+    message: "Passwords do not match.",
+    path: ["passwordConfirmation"],
   });
 
 export const FeedbackMessageSchema = z.object({

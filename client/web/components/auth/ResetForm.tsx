@@ -8,7 +8,8 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { ResetSchema } from "@/schemas";
 import { Button } from "@/components/ui";
-import { reset } from "@/actions/reset";
+import { requestPasswordReset } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { AuthCard } from "./AuthCard";
 import {
   form as formStyle,
@@ -21,15 +22,10 @@ import {
   submit,
 } from "./AuthForm.css";
 
-interface ResetResponse {
-  error?: string;
-  success?: string;
-}
-
 export function ResetForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [error, setError] = useState<string>();
+  const [success, setSuccess] = useState<string>();
 
   const form = useForm<z.infer<typeof ResetSchema>>({
     resolver: zodResolver(ResetSchema),
@@ -37,13 +33,18 @@ export function ResetForm() {
   });
 
   const onSubmit = (values: z.infer<typeof ResetSchema>) => {
-    setError("");
-    setSuccess("");
-    startTransition(() => {
-      reset(values).then((data: ResetResponse) => {
-        setError(data?.error);
-        setSuccess(data?.success);
-      });
+    setError(undefined);
+    setSuccess(undefined);
+    startTransition(async () => {
+      try {
+        await requestPasswordReset(values.email);
+        // Java answers the same for unknown addresses, so neither can this.
+        setSuccess(
+          `If ${values.email} signs in with a password, we sent it a reset link. The link works for an hour.`,
+        );
+      } catch (err) {
+        setError(describeApiError(err));
+      }
     });
   };
 

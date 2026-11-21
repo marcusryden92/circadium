@@ -8,9 +8,17 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
-import { LoginSchema } from "@/schemas";
+import { LoginSchema, TwoFactorCodeSchema } from "@/schemas";
 import { Button } from "@/components/ui";
-import { login } from "@/actions/login";
+import { ApiError } from "@/lib/api/client";
+import {
+  signInWithPassword,
+  verifyTwoFactorCode,
+  type SignInOutcome,
+} from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
+import { safeCallbackUrl } from "@/lib/session/callbackUrl";
+import { hardNavigate } from "@/lib/session/navigation";
 import { AuthCard } from "./AuthCard";
 import {
   form as formStyle,
@@ -21,72 +29,106 @@ import {
   fieldError,
   forgotRow,
   forgotLink,
+  linkButton,
   alertError,
   alertSuccess,
   submit,
 } from "./AuthForm.css";
 
+type LoginValues = z.infer<typeof LoginSchema>;
+type Step = "password" | "code";
+
+const CODE_SENT = "We emailed you a 6-digit code. It expires in 5 minutes.";
+
 export const LoginForm = () => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
-  const urlError =
-    searchParams.get("error") === "OAuthAccountNotLinked"
-      ? "Email already in use with different provider"
-      : "";
 
-  const [showTwoFactor, setShowTwoFactor] = useState(false);
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [step, setStep] = useState<Step>("password");
+  const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
   const [isPending, startTransition] = useTransition();
+  // Stays set while the browser loads the next page, so the form cannot be
+  // sent twice (each send would start another session).
+  const [leaving, setLeaving] = useState(false);
 
-  const form = useForm<z.infer<typeof LoginSchema>>({
+  const form = useForm<LoginValues>({
     resolver: zodResolver(LoginSchema),
     defaultValues: { email: "", password: "", code: "" },
   });
 
-  const onSubmit = (values: z.infer<typeof LoginSchema>) => {
-    setError("");
-    setSuccess("");
-    startTransition(() => {
-      login(values, callbackUrl)
-        .then((data) => {
-          if (data?.error) {
-            form.reset();
-            setError(data.error);
-          }
-          if (data?.success) {
-            form.reset();
-            setSuccess(data.success);
-          }
-          if (data?.twoFactor) {
-            setShowTwoFactor(true);
-          }
-        })
-        .catch((err: unknown) => {
-          // A successful signIn redirects by throwing NEXT_REDIRECT; the
-          // router still navigates, so it must not surface as an error.
-          if (
-            (err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")
-          ) {
-            return;
-          }
-          setError("An unexpected error occurred.");
-        });
+  const follow = (outcome: SignInOutcome) => {
+    if (outcome === "signed-in") {
+      setLeaving(true);
+      // A full page load: the server renders the new session, and nothing
+      // held in memory from before the sign-in carries over.
+      hardNavigate(safeCallbackUrl(callbackUrl, window.location.origin));
+    } else if (outcome === "two-factor-required") {
+      setStep("code");
+      form.setValue("code", "");
+      setNotice(CODE_SENT);
+    } else {
+      setStep("password");
+      form.resetField("password");
+      setNotice("Confirm your email first: we sent you a new link.");
+    }
+  };
+
+  const describe = (err: unknown, currentStep: Step) => {
+    if (err instanceof ApiError && err.status === 401) {
+      return currentStep === "code"
+        ? "That code is wrong or has expired."
+        : "Invalid email or password.";
+    }
+    return describeApiError(err);
+  };
+
+  const send = (values: LoginValues, currentStep: Step) => {
+    setError(undefined);
+    setNotice(undefined);
+    startTransition(async () => {
+      try {
+        const credentials = { email: values.email, password: values.password };
+        const outcome =
+          currentStep === "code"
+            ? await verifyTwoFactorCode({ ...credentials, code: values.code ?? "" })
+            : await signInWithPassword(credentials);
+        follow(outcome);
+      } catch (err) {
+        setError(describe(err, currentStep));
+        // The 2FA step sends the password again, so on that screen (a wrong
+        // code, or a failed resend) the password must survive.
+        form.resetField(step === "code" ? "code" : "password");
+      }
     });
   };
 
+  const onSubmit = (values: LoginValues) => {
+    if (step === "code") {
+      const code = TwoFactorCodeSchema.safeParse(values.code ?? "");
+      if (!code.success) {
+        form.setError("code", { message: code.error.issues[0]?.message });
+        return;
+      }
+      send({ ...values, code: code.data }, "code");
+      return;
+    }
+    send(values, "password");
+  };
+
+  // Signing in again is what emails a fresh code.
+  const resendCode = () => send(form.getValues(), "password");
+
   const errors = form.formState.errors;
-  const displayError = error || urlError;
+  const busy = isPending || leaving;
 
   return (
     <AuthCard
-      title={showTwoFactor ? "two-factor" : "welcome back"}
-      subtitle={
-        showTwoFactor ? "code from your authenticator app" : undefined
-      }
-      showSocial={!showTwoFactor}
+      title={step === "code" ? "two-factor" : "welcome back"}
+      subtitle={step === "code" ? "enter the code we emailed you" : undefined}
+      showSocial={step === "password"}
       altAction={
-        showTwoFactor
+        step === "code"
           ? undefined
           : {
               prompt: "New here?",
@@ -96,7 +138,7 @@ export const LoginForm = () => {
       }
     >
       <form className={formStyle} onSubmit={form.handleSubmit(onSubmit)}>
-        {showTwoFactor ? (
+        {step === "code" ? (
           <div className={field}>
             <label htmlFor="code" className={label}>
               Code
@@ -109,12 +151,22 @@ export const LoginForm = () => {
               maxLength={6}
               placeholder="______"
               className={codeInput}
-              disabled={isPending}
+              disabled={busy}
               {...form.register("code")}
             />
             {errors.code && (
               <span className={fieldError}>{errors.code.message}</span>
             )}
+            <div className={forgotRow}>
+              <button
+                type="button"
+                className={linkButton}
+                onClick={resendCode}
+                disabled={busy}
+              >
+                Send a new code
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -127,7 +179,7 @@ export const LoginForm = () => {
                 type="email"
                 placeholder="you@email.com"
                 className={input}
-                disabled={isPending}
+                disabled={busy}
                 autoComplete="email"
                 {...form.register("email")}
               />
@@ -145,7 +197,7 @@ export const LoginForm = () => {
                 type="password"
                 placeholder="••••••••"
                 className={input}
-                disabled={isPending}
+                disabled={busy}
                 autoComplete="current-password"
                 {...form.register("password")}
               />
@@ -161,16 +213,16 @@ export const LoginForm = () => {
           </>
         )}
 
-        {displayError && (
+        {error && (
           <div className={alertError} role="alert">
             <AlertTriangle size={14} strokeWidth={2.2} />
-            <span>{displayError}</span>
+            <span>{error}</span>
           </div>
         )}
-        {success && (
+        {notice && (
           <div className={alertSuccess} role="status">
             <CheckCircle2 size={14} strokeWidth={2.2} />
-            <span>{success}</span>
+            <span>{notice}</span>
           </div>
         )}
 
@@ -178,10 +230,10 @@ export const LoginForm = () => {
           type="submit"
           variant="solid"
           size="lg"
-          disabled={isPending}
+          disabled={busy}
           className={submit}
         >
-          {showTwoFactor ? "Verify" : "Sign in"}
+          {step === "code" ? "Verify" : "Sign in"}
         </Button>
       </form>
     </AuthCard>

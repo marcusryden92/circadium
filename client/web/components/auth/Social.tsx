@@ -1,20 +1,33 @@
 "use client";
 
 import { space } from "@/lib/theme";
+import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { AlertTriangle } from "lucide-react";
+
 import { Button } from "@/components/ui";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+import { startGoogleSignIn } from "@/lib/session/googleSignIn";
+import { alertError } from "./AuthForm.css";
 
 export const Social = () => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
+  // Stays set once the browser is leaving for Google.
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string>();
 
-  const onClick = (provider: "google") => {
-    signIn(provider, {
-      callbackUrl: callbackUrl || DEFAULT_LOGIN_REDIRECT,
-    });
+  const onClick = async () => {
+    setError(undefined);
+    setStarting(true);
+    try {
+      await startGoogleSignIn(callbackUrl);
+    } catch {
+      setStarting(false);
+      setError(
+        "Google sign-in could not start in this browser. Sign in with your email instead.",
+      );
+    }
   };
 
   return (
@@ -22,12 +35,19 @@ export const Social = () => {
       <Button
         variant="glass"
         size="md"
-        onClick={() => onClick("google")}
+        onClick={onClick}
+        disabled={starting}
         style={{ justifyContent: "flex-start", width: "100%" }}
       >
         <FcGoogle size={16} />
         Continue with Google
       </Button>
+      {error && (
+        <div className={alertError} role="alert">
+          <AlertTriangle size={14} strokeWidth={2.2} />
+          <span>{error}</span>
+        </div>
+      )}
     </div>
   );
 };

@@ -9,7 +9,8 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { NewPasswordSchema } from "@/schemas";
 import { Button } from "@/components/ui";
-import { newPassword } from "@/actions/newPassword";
+import { resetPassword } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { AuthCard } from "./AuthCard";
 import {
   form as formStyle,
@@ -22,18 +23,13 @@ import {
   submit,
 } from "./AuthForm.css";
 
-interface NewPasswordResponse {
-  error?: string;
-  success?: string;
-}
-
 export function NewPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [error, setError] = useState<string>();
+  const [success, setSuccess] = useState<string>();
 
   const form = useForm<z.infer<typeof NewPasswordSchema>>({
     resolver: zodResolver(NewPasswordSchema),
@@ -41,13 +37,22 @@ export function NewPasswordForm() {
   });
 
   const onSubmit = (values: z.infer<typeof NewPasswordSchema>) => {
-    setError("");
-    setSuccess("");
-    startTransition(() => {
-      newPassword(values, token).then((data: NewPasswordResponse) => {
-        setError(data?.error);
-        setSuccess(data?.success);
-      });
+    setError(undefined);
+    setSuccess(undefined);
+    if (!token) {
+      setError("This link is missing its token. Open the link from the email again.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await resetPassword({ token, password: values.password });
+        form.reset();
+        setSuccess(
+          "Password updated, and every device was signed out. Sign in with the new password.",
+        );
+      } catch (err) {
+        setError(describeApiError(err));
+      }
     });
   };
 
@@ -58,7 +63,7 @@ export function NewPasswordForm() {
       title="set new password"
       subtitle="choose something memorable"
       altAction={{
-        prompt: "Remembered it?",
+        prompt: success ? "Ready?" : "Remembered it?",
         label: "Back to sign in",
         href: "/auth/login",
       }}
@@ -71,9 +76,9 @@ export function NewPasswordForm() {
           <input
             id="password"
             type="password"
-            placeholder="at least 6 chars"
+            placeholder="at least 8 characters"
             className={input}
-            disabled={isPending}
+            disabled={isPending || !!success}
             autoComplete="new-password"
             {...form.register("password")}
           />
@@ -91,7 +96,7 @@ export function NewPasswordForm() {
             type="password"
             placeholder="retype"
             className={input}
-            disabled={isPending}
+            disabled={isPending || !!success}
             autoComplete="new-password"
             {...form.register("confirmPassword")}
           />
@@ -117,7 +122,7 @@ export function NewPasswordForm() {
           type="submit"
           variant="solid"
           size="lg"
-          disabled={isPending}
+          disabled={isPending || !!success}
           className={submit}
         >
           Update password

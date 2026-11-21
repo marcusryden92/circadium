@@ -65,6 +65,21 @@ export const forgotLink = style({
   },
 });
 
+/** `forgotLink` on a <button>, for actions that are not navigation. */
+export const linkButton = style([
+  forgotLink,
+  {
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    fontFamily: vars.font.ui,
+    selectors: {
+      "&:disabled": { cursor: "default", opacity: 0.6 },
+    },
+  },
+]);
+
 const alertBase = style({
   fontFamily: vars.font.ui,
   fontSize: 12,

@@ -117,28 +117,6 @@ ${
 </html>
 `;
 
-export const sendTwoFactorTokenEmail = async (email: string, token: string) => {
-  const html = renderEmail({
-    preheader: "Your Circadium two-factor code",
-    eyebrow: "Security",
-    heading: "Your two-factor code",
-    bodyHtml: `
-<p style="margin:0 0 16px;">Use the code below to finish signing in. It expires in 5 minutes.</p>
-<div style="margin:12px 0 4px;padding:18px 20px;background:${palette.paper};border:1px solid ${palette.cardStroke};border-radius:12px;text-align:center;">
-<span style="font-family:${fontDisplay};font-size:30px;font-weight:600;letter-spacing:0.32em;color:${palette.ink};">${token}</span>
-</div>
-<p style="margin:20px 0 0;font-size:13px;color:${palette.muted};">If you didn&rsquo;t try to sign in, you can ignore this email.</p>
-`,
-  });
-
-  await resend.emails.send({
-    from: "security@circadium.app",
-    to: email,
-    subject: "Your Circadium two-factor code",
-    html,
-  });
-};
-
 export const sendVerificationEmail = async (email: string, token: string) => {
   const confirmationLink = `${domain}/auth/new-verification?token=${token}`;
   const html = renderEmail({
@@ -156,31 +134,6 @@ export const sendVerificationEmail = async (email: string, token: string) => {
     from: "support@circadium.app",
     to: email,
     subject: "Confirm your email",
-    html,
-  });
-};
-
-export const sendAccountDeletionEmail = async (
-  email: string,
-  token: string,
-) => {
-  const confirmationLink = `${domain}/auth/confirm-deletion?token=${token}`;
-  const html = renderEmail({
-    preheader: "Confirm permanent Circadium account deletion",
-    eyebrow: "Account deletion",
-    heading: "Confirm account deletion",
-    bodyHtml: `
-<p style="margin:0 0 12px;">You asked to permanently delete your Circadium account. This will erase every planner, category, location, template, and calendar event tied to it. There is no undo.</p>
-<p style="margin:0 0 12px;">If you want to proceed, confirm below within <strong>30 minutes</strong>.</p>
-<p style="margin:0;font-size:13px;color:${palette.muted};">If you didn&rsquo;t request this, ignore this email — your account will stay untouched.</p>
-`,
-    cta: { label: "Confirm deletion", href: confirmationLink },
-  });
-
-  await resend.emails.send({
-    from: "security@circadium.app",
-    to: email,
-    subject: "Confirm account deletion",
     html,
   });
 };
@@ -226,27 +179,6 @@ export const sendFeedbackEmail = async ({
     to: "support@circadium.app",
     replyTo: userEmail,
     subject: `Support: ${message.slice(0, 60)}${message.length > 60 ? "…" : ""}`,
-    html,
-  });
-};
-
-export const sendPasswordResetEmail = async (email: string, token: string) => {
-  const resetLink = `${domain}/auth/new-password?token=${token}`;
-  const html = renderEmail({
-    preheader: "Reset your Circadium password",
-    eyebrow: "Security",
-    heading: "Reset your password",
-    bodyHtml: `
-<p style="margin:0 0 12px;">Click below to choose a new password for your Circadium account.</p>
-<p style="margin:0;font-size:13px;color:${palette.muted};">If you didn&rsquo;t request a reset, you can ignore this email or contact support.</p>
-`,
-    cta: { label: "Reset password", href: resetLink },
-  });
-
-  await resend.emails.send({
-    from: "support@circadium.app",
-    to: email,
-    subject: "Reset your password",
     html,
   });
 };

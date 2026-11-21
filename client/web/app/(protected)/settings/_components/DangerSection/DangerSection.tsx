@@ -3,10 +3,26 @@
 import { space } from "@/lib/theme";
 import { useState } from "react";
 import { Button, ConfirmModal, Field, Input } from "@/components/ui";
-import { requestAccountDeletion } from "@/actions/deleteAccount";
+import { requestAccountDeletion } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { useServerAction } from "@/hooks/useServerAction";
 import { StatusLine } from "../StatusLine";
 import { card, cardTitle, dangerNote, footerRow } from "../../page.css";
+
+/** Step one of two: Java emails a link, and only that link deletes. */
+async function sendDeletionEmail(values: {
+  confirmEmail: string;
+  password?: string;
+}): Promise<{ success?: string; error?: string }> {
+  try {
+    await requestAccountDeletion(values);
+    return {
+      success: `Confirmation email sent to ${values.confirmEmail.trim().toLowerCase()}.`,
+    };
+  } catch (error) {
+    return { error: describeApiError(error) };
+  }
+}
 
 interface DangerSectionProps {
   user: {
@@ -20,7 +36,7 @@ export function DangerSection({ user }: DangerSectionProps) {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const { run, status, isPending, setError, setSuccess, clear } =
-    useServerAction(requestAccountDeletion);
+    useServerAction(sendDeletionEmail);
 
   const email = (user.email ?? "").trim().toLowerCase();
   const requirePassword = !user.isOAuth;

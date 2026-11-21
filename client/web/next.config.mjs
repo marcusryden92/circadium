@@ -11,6 +11,17 @@ const nextConfig = {
   // PostHog's API paths use trailing slashes (/e/), which the default
   // trailing-slash redirect would strip before the rewrite matches.
   skipTrailingSlashRedirect: true,
+  async headers() {
+    return [
+      {
+        // The emailed links (?token=) and the Google sign-in return (?code=)
+        // carry credentials in the URL; no request from these pages may pass
+        // it on in a Referer header.
+        source: "/auth/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

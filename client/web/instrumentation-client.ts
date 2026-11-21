@@ -11,6 +11,11 @@ if (key) {
     // required. Identified users still merge across visits via identify().
     persistence: "memory",
     respect_dnt: true,
+    // Pageviews record the URL, and the auth pages carry credentials in it:
+    // `token` in the emailed links, `code` on the Google sign-in return.
+    // Ad-click ids (gclid, fbclid, ...) are masked along with them.
+    mask_personal_data_properties: true,
+    custom_personal_data_properties: ["token", "code"],
     session_recording: {
       maskAllInputs: true,
     },

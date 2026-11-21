@@ -62,13 +62,13 @@
   │   │   ├── queues/                   # Queue (pipe) management — rail + member list + add-member modal
   │   │   ├── onboarding/               # First-run 6-step overlay (Welcome/Roles/Locations/Week/BrainDump/AI); _lib builders, _steps, _components
   │   │   └── settings/
-  │   ├── auth/                         # login/register/reset/new-password/new-verification/error
+  │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete/error — client pages that call the Java API
   │   ├── api/                          # auth/ + admin/ + integrations/{google,microsoft}/ (calendar OAuth connect + callback)
   │   ├── privacy/                      # Public GDPR privacy-policy page (outside the (protected) group; in publicRoutes)
   │   └── test-shell/, test-tokens/, logo-test/  # Dev scaffolding
   │
   ├── actions/                          # Server actions (preferred backend surface)
-  │   ├── login.ts, register.ts, reset.ts, newPassword.ts, newVerificationAction.ts, settings.ts, deleteAccount.ts
+  │   ├── settings.ts                   # Profile/email/2FA/password changes (still on Prisma); sign-in, registration, reset, verification and deletion are Java endpoints (lib/api/auth.ts)
   │   ├── onboarding.ts                 # completeOnboarding() — stamps User.onboardedAt
   │   ├── scheduling.ts                 # UserSchedulingPreferences + TaskPreferences
   │   ├── categories.ts                 # Category CRUD + planner-category assignment
@@ -91,7 +91,7 @@
   │       └── sync-handlers/            # One handler per table (planner, calendar, extendedProps, template, category, timeWindow, categoryEvent, travelEvent, engineMessage, queue, queueMember, dependency, location, travelTime)
   │
   ├── components/
-  │   ├── auth/                         # AuthCard, login/register/reset forms, Social, LoginButton
+  │   ├── auth/                         # AuthCard, the auth forms (post to Java via lib/api/auth), Social (starts Google sign-in with a PKCE verifier), OAuthComplete (redeems the handoff code), LoginButton
   │   ├── calendar/                     # WeekStructureModal + editors (Template, Window, Event tile)
   │   ├── draft/                        # Global AI assistant UI — chat (+ DB-backed history popover) + tabbed Goals/Week/Categories/Queues/Habits diff view; mounted in the AppShell assistant slot, opened anywhere via mod+I / sidebar / item-detail entry points. One folder per component: AIDraftModal, AssistantGate (BYOK key-entry panel shown when AI isn't ready), ChatPane, ChatHistoryPopover, GlobalAssistant, JsonTreeView, TemplateWeekView, WindowsView, PrecedenceView, HabitsView. The draft-domain logic (ops/diff/apply/contracts + the in-browser engine) lives in utils/draft/, the state hook in hooks/useAIDraftState
   │   ├── draggable/                    # DragBox, DraggableItem, TaskDivider, DraggableContext
@@ -139,10 +139,12 @@
   │
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
+  │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401), auth.ts (account endpoints), errorMessage.ts (describeApiError)
+  │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), googleSignIn (PKCE start + pending read)
   │   ├── auth.ts                       # Helpers around NextAuth session
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
   │   ├── google-maps-api.ts            # Places autocomplete + Routes API travel matrix
-  │   ├── mail.ts, tokens.ts            # Auth flows
+  │   ├── mail.ts, tokens.ts            # Email-change verification + support mail (the sign-in, reset and deletion mails come from Java)
   │   ├── taskItem.ts
   │   └── theme/                        # The whole design system
   │       ├── tokens.css.ts             # createThemeContract: paper/bezel/ink/glass/interactive/shadow/accent/status

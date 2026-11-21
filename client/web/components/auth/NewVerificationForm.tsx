@@ -1,38 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
-import { newVerification } from "@/actions/newVerificationAction";
+import { verifyEmail } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { Loader } from "@/components/ui";
 import { AuthCard } from "./AuthCard";
 import { alertError, alertSuccess } from "./AuthForm.css";
 
 export function NewVerificationForm() {
-  const [error, setError] = useState<string | undefined>();
-  const [success, setSuccess] = useState<string | undefined>();
+  const [error, setError] = useState<string>();
+  const [success, setSuccess] = useState<string>();
+  // The token works once. React runs effects twice in development, and a
+  // second request would turn a success into "already used".
+  const sent = useRef(false);
 
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const onSubmit = useCallback(() => {
+  useEffect(() => {
+    if (sent.current) return;
+    sent.current = true;
     if (!token) {
-      setError("Missing token");
+      setError("This link is missing its token. Open the link from the email again.");
       return;
     }
-
-    newVerification(token)
-      .then((data) => {
-        setSuccess(data.success);
-        setError(data.error);
-      })
-      .catch(() => setError("Something went wrong!"));
+    verifyEmail(token)
+      .then(() => setSuccess("Your email address is confirmed."))
+      .catch((err: unknown) => setError(describeApiError(err)));
   }, [token]);
-
-  useEffect(() => {
-    onSubmit();
-  }, [onSubmit]);
 
   const isPending = !success && !error;
 
