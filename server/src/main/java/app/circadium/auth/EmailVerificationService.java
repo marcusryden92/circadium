@@ -59,9 +59,7 @@ public class EmailVerificationService {
                 if (verificationTokenRepository.deleteByToken(rawToken) != 1) {
                     throw AccountFlowException.invalidLink();
                 }
-                user.setEmail(token.getEmail());
-                user.setEmailVerified(now);
-                userRepository.saveAndFlush(user);
+                userRepository.updateVerifiedEmail(user.getId(), token.getEmail(), now);
             });
         } catch (DataIntegrityViolationException concurrentClaim) {
             throw emailInUse();

@@ -161,12 +161,13 @@ public class AccountEmails {
                 "Your Circadium password was changed",
                 render("Your Circadium password was changed", "Security", "Your password was changed",
                         PARAGRAPH.formatted("The password for your Circadium account was just changed, and every "
-                                + "device was signed out.")
+                                + "device signed in with the old password was signed out.")
                                 + FINE_PRINT.formatted("If this wasn&rsquo;t you, reset your password right away and "
                                         + "contact support@circadium.app."),
                         "Reset password", resetLink),
                 """
-                The password for your Circadium account was just changed, and every device was signed out.
+                The password for your Circadium account was just changed, and every device signed in with the
+                old password was signed out.
 
                 If this wasn't you, reset your password right away and contact support@circadium.app:
 

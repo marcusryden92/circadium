@@ -42,8 +42,6 @@ type Step = "password" | "code";
 
 const CODE_SENT = "We emailed you a 6-digit code. It expires in 5 minutes.";
 const RESUMING = "Signing you back in...";
-const PASSWORD_CHANGED =
-  "Your password was changed and every device was signed out. Sign in with the new password.";
 
 export const LoginForm = () => {
   const searchParams = useSearchParams();
@@ -52,11 +50,7 @@ export const LoginForm = () => {
 
   const [step, setStep] = useState<Step>("password");
   const [error, setError] = useState<string>();
-  const [notice, setNotice] = useState<string | undefined>(() =>
-    searchParams.get("reason") === "password-changed"
-      ? PASSWORD_CHANGED
-      : undefined,
-  );
+  const [notice, setNotice] = useState<string>();
   const [isPending, startTransition] = useTransition();
   // Stays set while the browser loads the next page, so the form cannot be
   // sent twice (each send would start another session).

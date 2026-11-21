@@ -128,6 +128,10 @@ The token tables (`VerificationToken`, `PasswordResetToken`,
 `AccountDeletionToken`, `TwoFactorToken`) hold raw values because the web app reads them
 too; tokens are issued for the stored email casing, since the web looks them up exactly.
 
+Existing users: change their columns with the targeted updates in `UserRepository`
+(`updatePassword`, `updateVerifiedEmail`), never by saving a `User` loaded earlier. Saving
+rewrites every column, `dataVersion` included, and the web's sync bumps that concurrently.
+
 Time: `timestamp(3)` columns hold UTC wall-clock. Use `persistence/DbTime` for "now"
 (millisecond-truncated) and for every `JdbcTemplate` timestamp parameter or result;
 Hibernate entities handle it automatically.
@@ -143,7 +147,12 @@ Token settings live under `circadium.auth` (`auth/AuthProperties`):
 
 Refresh tokens are opaque, stored only as SHA-256 hashes in `sessions`, rotated on every
 use, and grouped by `familyId`; replaying a rotated token deletes the whole family.
-Rotated rows must be kept until expiry or reuse becomes undetectable. In tests, use
+Rotated rows must be kept until expiry or reuse becomes undetectable. A refresh locks the
+user row before its session row (`UserRepository.findByRefreshTokenHashForShare`), so anything
+that ends a user's sessions must update the user row first, in the same transaction, as the
+password change (`POST /account/password`) and the reset do; otherwise a refresh in flight
+survives it. The password change ends every session, the caller's included, and hands the
+caller a new one in the response (cookies for web, body for mobile). In tests, use
 `SecurityMockMvcRequestPostProcessors.jwt()` for endpoints that only need an authenticated
 caller, and real tokens from `TokenService` when the token itself is under test.
 

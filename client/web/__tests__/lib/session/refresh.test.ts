@@ -328,6 +328,77 @@ describe("other tabs", () => {
   });
 });
 
+describe("replacing the session", () => {
+  function newSessionAfter(delayMs: number, expiresAt: number) {
+    return () =>
+      new Promise<{ accessTokenExpiresAt: string }>((resolve) =>
+        setTimeout(
+          () => resolve({ accessTokenExpiresAt: new Date(expiresAt).toISOString() }),
+          delayMs,
+        ),
+      );
+  }
+
+  it("publishes the new expiry and schedules the next refresh from it", async () => {
+    fetchMock.mockResolvedValue(refreshed(NOW + 60 * MINUTE));
+    stop = refresh.startSessionKeeper({
+      userId: "user-1",
+      accessTokenExpiresAt: NOW + 15 * MINUTE,
+    });
+
+    const replaced = refresh.replaceSession(newSessionAfter(0, NOW + 40 * MINUTE));
+    await jest.advanceTimersByTimeAsync(0);
+    await replaced;
+
+    expect(shared()).toEqual({ userId: "user-1", accessTokenExpiresAt: NOW + 40 * MINUTE });
+    await jest.advanceTimersByTimeAsync(38 * MINUTE - 1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds back refreshes in every tab until the new cookies are in", async () => {
+    let otherTab!: typeof RefreshModule;
+    await jest.isolateModulesAsync(async () => {
+      otherTab = await import("@/lib/session/refresh");
+    });
+    fetchMock.mockResolvedValue(status(401));
+    // Both tabs are due for a refresh, which would present the refresh token
+    // the change is about to revoke.
+    stop = refresh.startSessionKeeper({ userId: "user-1", accessTokenExpiresAt: NOW + MINUTE });
+    const stopOther = otherTab.startSessionKeeper({
+      userId: "user-1",
+      accessTokenExpiresAt: NOW + MINUTE,
+    });
+
+    try {
+      const replaced = refresh.replaceSession(newSessionAfter(300, NOW + 40 * MINUTE));
+      await jest.advanceTimersByTimeAsync(1000);
+      await replaced;
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(shared()).toEqual({ userId: "user-1", accessTokenExpiresAt: NOW + 40 * MINUTE });
+      await expect(otherTab.ensureFreshSession()).resolves.toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      stopOther();
+    }
+  });
+
+  it("changes nothing when the request fails", async () => {
+    stop = refresh.startSessionKeeper({
+      userId: "user-1",
+      accessTokenExpiresAt: NOW + 15 * MINUTE,
+    });
+
+    await expect(
+      refresh.replaceSession(() => Promise.reject(new Error("Incorrect password."))),
+    ).rejects.toThrow("Incorrect password.");
+
+    expect(shared()).toEqual({ userId: "user-1", accessTokenExpiresAt: NOW + 15 * MINUTE });
+  });
+});
+
 describe("hasRememberedSession", () => {
   it("is false in a browser that never held a session", () => {
     expect(refresh.hasRememberedSession()).toBe(false);

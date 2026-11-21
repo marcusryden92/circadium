@@ -64,11 +64,20 @@ public class TokenService {
      * Rotates a refresh token. Presenting a token that was already rotated means two parties hold the
      * same chain (one of them stolen), so the whole family is revoked and both must log in again.
      *
+     * <p>The user row is locked before the session row, in the same order as a password change or reset
+     * (update the user, then delete the sessions). Locking only the session would let a refresh that started
+     * first insert its new session after the change's delete began, out of that delete's sight, so the new
+     * token would outlive the change. With the user locked first, the refresh either finishes before the
+     * change starts, and its new session is deleted with the rest, or waits and then finds its token gone.
+     *
      * <p>{@code noRollbackFor} keeps the family revocation committed even though the method then throws.
      */
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public IssuedTokens refresh(String rawRefreshToken, ClientInfo client) {
-        Session current = sessionRepository.findByTokenHashForUpdate(hashRefreshToken(rawRefreshToken))
+        String tokenHash = hashRefreshToken(rawRefreshToken);
+        User user = userRepository.findByRefreshTokenHashForShare(tokenHash)
+                .orElseThrow(InvalidRefreshTokenException::new);
+        Session current = sessionRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(InvalidRefreshTokenException::new);
         Instant now = now();
 
@@ -83,8 +92,6 @@ public class TokenService {
         if (!current.getExpiresAt().isAfter(now)) {
             throw new InvalidRefreshTokenException();
         }
-        User user = userRepository.findById(current.getUserId())
-                .orElseThrow(InvalidRefreshTokenException::new);
 
         NewSession next = createSession(user.getId(), current.getFamilyId(), current.getDeviceName(), now);
         current.setReplacedBy(next.session().getId());
@@ -104,7 +111,10 @@ public class TokenService {
         });
     }
 
-    /** Signs out every device; for password changes and account-level security events. */
+    /**
+     * Signs out every device; for password changes and account-level security events. Call it after updating
+     * the user row in the same transaction (see {@link #refresh}).
+     */
     @Transactional
     public void revokeAllSessions(String userId) {
         sessionRepository.deleteAllByUserId(userId);

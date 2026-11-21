@@ -62,7 +62,7 @@ public class PasswordResetService {
     /**
      * Sets the new password, signs out every device, and lifts any lockout: following the emailed link
      * proves control of the address, and a reset is usually done because someone else may hold a session.
-     * {@code passwordChangedAt} also ends the web app's NextAuth sessions.
+     * The web app also refuses access tokens issued before {@code passwordChangedAt}.
      */
     public void resetPassword(String rawToken, String newPassword, ClientInfo client) {
         PasswordPolicy.requireValidNewPassword(newPassword);
@@ -81,9 +81,7 @@ public class PasswordResetService {
                 throw AccountFlowException.invalidLink();
             }
             passwordResetTokenRepository.deleteAllByEmail(token.getEmail());
-            user.setPassword(hash);
-            user.setPasswordChangedAt(now);
-            userRepository.saveAndFlush(user);
+            userRepository.updatePassword(user.getId(), hash, now);
             tokenService.revokeAllSessions(user.getId());
         });
 

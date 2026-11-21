@@ -1,5 +1,6 @@
 package app.circadium.auth;
 
+import app.circadium.auth.AuthController.TokenResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The emailed-link flows. The {@code /auth/*} endpoints are public (the link is the credential); the
+ * Account flows. The emailed-link endpoints under {@code /auth/*} are public (the link is the credential); the
  * {@code /account/*} endpoints require the caller's access token.
  */
 @RestController
@@ -25,7 +26,9 @@ public class AccountController {
 
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
+    private final PasswordChangeService passwordChangeService;
     private final AccountDeletionService accountDeletionService;
+    private final AuthCookies authCookies;
 
     @PostMapping("/auth/verify-email")
     public ResponseEntity<StatusResponse> verifyEmail(@Valid @RequestBody TokenRequest request,
@@ -46,6 +49,15 @@ public class AccountController {
             HttpServletRequest httpRequest) {
         passwordResetService.resetPassword(request.token(), request.password(), ClientInfo.from(httpRequest));
         return respond(HttpStatus.OK, "PASSWORD_UPDATED");
+    }
+
+    /** Signs out every session and answers with a new one for the caller, delivered like a login's. */
+    @PostMapping("/account/password")
+    public ResponseEntity<TokenResponse> changePassword(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody PasswordChangeRequest request, HttpServletRequest httpRequest) {
+        IssuedTokens tokens = passwordChangeService.changePassword(jwt.getSubject(), request.currentPassword(),
+                request.newPassword(), ClientInfo.from(httpRequest));
+        return authCookies.deliver(tokens, request.client()).asResponse();
     }
 
     @PostMapping("/account/deletion")
@@ -75,6 +87,20 @@ public class AccountController {
     public record NewPasswordRequest(
             @NotBlank @Size(max = 128) String token,
             @NotBlank @Size(min = 8, max = 72) String password) {}
+
+    /**
+     * The current password has no minimum, like login's: older accounts may have 6-character ones. The new one
+     * follows registration's rule. {@code client} as in login: the web app sends {@code web} and gets cookies.
+     */
+    public record PasswordChangeRequest(
+            @NotBlank @Size(max = 256) String currentPassword,
+            @NotBlank @Size(min = 8, max = 72) String newPassword,
+            ClientType client) {
+
+        public PasswordChangeRequest {
+            client = client == null ? ClientType.MOBILE : client;
+        }
+    }
 
     /** {@code password} is required for accounts that have one; OAuth-only accounts confirm by email alone. */
     public record DeletionRequest(

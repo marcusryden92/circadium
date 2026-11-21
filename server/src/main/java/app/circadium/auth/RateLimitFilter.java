@@ -64,6 +64,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             Map.entry("POST /auth/password-reset", Policy.PASSWORD_RESET),
             Map.entry("POST /auth/password-reset/confirm", Policy.ACCOUNT_LINK),
             Map.entry("POST /auth/verify-email", Policy.ACCOUNT_LINK),
+            Map.entry("POST /account/password", Policy.ACCOUNT_LINK),
             Map.entry("POST /account/deletion", Policy.ACCOUNT_LINK),
             Map.entry("POST /account/deletion/confirm", Policy.ACCOUNT_LINK),
             Map.entry("POST /auth/refresh", Policy.TOKEN),

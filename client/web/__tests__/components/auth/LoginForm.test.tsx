@@ -147,14 +147,6 @@ describe("LoginForm, for a visitor who may already be signed in", () => {
     expect(refreshMock).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
   });
-
-  it("explains the sign-out after a password change", () => {
-    renderAt("reason=password-changed&callbackUrl=%2Fsettings");
-
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Your password was changed and every device was signed out.",
-    );
-  });
 });
 
 describe("LoginForm", () => {

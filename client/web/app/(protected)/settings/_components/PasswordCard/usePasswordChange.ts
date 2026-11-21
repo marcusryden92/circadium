@@ -1,24 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { settings } from "@/actions/settings";
+import { PasswordChangeSchema } from "@/schemas";
+import { changePassword } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { useServerAction } from "@/hooks/useServerAction";
-import { hardNavigate } from "@/lib/session/navigation";
-import { forgetSession } from "@/lib/session/refresh";
-import type { UserRole } from "@/generated/client";
 
-export function usePasswordChange(userRole: UserRole) {
+const CHANGED = "Password changed. Other browsers and devices were signed out.";
+
+async function submitPasswordChange(values: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ success?: string; error?: string }> {
+  try {
+    await changePassword(values);
+    return { success: CHANGED };
+  } catch (error) {
+    return { error: describeApiError(error) };
+  }
+}
+
+export function usePasswordChange() {
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const { run, status, isPending, setSuccess, setError, clear } =
-    useServerAction(settings);
+    useServerAction(submitPasswordChange);
 
   const filled =
     password.length > 0 &&
     newPassword.length > 0 &&
     confirmNewPassword.length > 0;
-  const matches = newPassword === confirmNewPassword;
 
   const reset = () => {
     setPassword("");
@@ -28,26 +40,27 @@ export function usePasswordChange(userRole: UserRole) {
 
   const submit = async () => {
     clear();
-    if (!matches) {
-      setError("New passwords don't match.");
+    const parsed = PasswordChangeSchema.safeParse({
+      currentPassword: password,
+      newPassword,
+      confirmNewPassword,
+    });
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      setError(
+        issue?.path[0] === "newPassword"
+          ? `New password: ${issue.message}`
+          : (issue?.message ?? "Check the passwords and try again."),
+      );
       return;
     }
     const result = await run({
-      password,
-      newPassword,
-      confirmNewPassword,
-      role: userRole,
+      currentPassword: parsed.data.currentPassword,
+      newPassword: parsed.data.newPassword,
     });
     if (!result) return;
     if (result.error) {
       setError(result.error);
-    } else if (result.signedOut) {
-      // The change ended this session too. Forgetting it here also sends the
-      // other open tabs to the login page.
-      forgetSession();
-      hardNavigate(
-        `/auth/login?reason=password-changed&callbackUrl=${encodeURIComponent("/settings")}`,
-      );
     } else if (result.success) {
       setSuccess(result.success);
       reset();

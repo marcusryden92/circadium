@@ -68,7 +68,7 @@
   │   └── test-shell/, test-tokens/, logo-test/  # Dev scaffolding
   │
   ├── actions/                          # Server actions (preferred backend surface)
-  │   ├── settings.ts                   # Profile/email/2FA/password changes (still on Prisma; a password change also deletes the user's Java `sessions` rows, signing out every device); sign-in, registration, reset, verification and deletion are Java endpoints (lib/api/auth.ts)
+  │   ├── settings.ts                   # Profile/email/2FA changes (still on Prisma); sign-in, registration, reset, verification, deletion and the password change are Java endpoints (lib/api/auth.ts)
   │   ├── onboarding.ts                 # completeOnboarding() — stamps User.onboardedAt
   │   ├── scheduling.ts                 # UserSchedulingPreferences + TaskPreferences
   │   ├── categories.ts                 # Category CRUD + planner-category assignment
@@ -141,7 +141,7 @@
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
   │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401), auth.ts (account endpoints), errorMessage.ts (describeApiError)
-  │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), googleSignIn (PKCE start + pending read)
+  │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), googleSignIn (PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
   │   ├── google-maps-api.ts            # Places autocomplete + Routes API travel matrix

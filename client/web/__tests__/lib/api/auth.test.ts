@@ -2,7 +2,9 @@
  * @jest-environment node
  */
 import { apiRequest } from "@/lib/api/client";
+import { ensureFreshSession, replaceSession } from "@/lib/session/refresh";
 import {
+  changePassword,
   confirmAccountDeletion,
   redeemGoogleSignIn,
   register,
@@ -19,11 +21,20 @@ jest.mock("../../../lib/api/client", () => {
   return { ...actual, apiRequest: jest.fn() };
 });
 
+jest.mock("../../../lib/session/refresh", () => ({
+  ensureFreshSession: jest.fn(),
+  replaceSession: jest.fn(),
+}));
+
 const apiRequestMock = apiRequest as jest.MockedFunction<typeof apiRequest>;
+const ensureFreshMock = ensureFreshSession as jest.MockedFunction<typeof ensureFreshSession>;
+const replaceSessionMock = replaceSession as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
   apiRequestMock.mockResolvedValue(undefined);
+  ensureFreshMock.mockResolvedValue(true);
+  replaceSessionMock.mockImplementation((request: () => Promise<unknown>) => request());
 });
 
 describe("signing in", () => {
@@ -86,6 +97,27 @@ describe("the account flows", () => {
       ["/auth/verify-email", { body: { token: "t2" } }],
       ["/auth/handoff", { body: { code: "c".repeat(43), verifier: "v".repeat(43) } }],
     ]);
+  });
+
+  it("change the password inside replaceSession, with the cookie made fresh beforehand", async () => {
+    const order: string[] = [];
+    ensureFreshMock.mockImplementation(async () => {
+      order.push("fresh");
+      return true;
+    });
+    replaceSessionMock.mockImplementation(async (request: () => Promise<unknown>) => {
+      order.push("lock");
+      return request();
+    });
+    apiRequestMock.mockResolvedValue({ accessTokenExpiresAt: "2026-11-21T15:00:00Z" });
+
+    await changePassword({ currentPassword: "old-password", newPassword: "new-password" });
+
+    expect(order).toEqual(["fresh", "lock"]);
+    // Not `authenticated`: its refresh would wait on the lock replaceSession holds.
+    expect(apiRequestMock).toHaveBeenCalledWith("/account/password", {
+      body: { currentPassword: "old-password", newPassword: "new-password", client: "web" },
+    });
   });
 
   it("send the deletion steps as the signed-in user", async () => {

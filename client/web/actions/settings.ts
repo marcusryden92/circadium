@@ -1,8 +1,6 @@
 "use server";
 
 import * as z from "zod";
-import bcrypt from "bcryptjs";
-import { headers } from "next/headers";
 
 import { SettingsSchema } from "@/schemas";
 import { db } from "@/lib/db";
@@ -37,8 +35,6 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
 
   if (user.isOAuth) {
     data.email = undefined;
-    data.password = undefined;
-    data.newPassword = undefined;
     data.isTwoFactorEnabled = undefined;
   }
 
@@ -66,11 +62,10 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
 
   // Explicit whitelist — never spread client input into the update. The User
   // row also carries role, emailVerified, and the OCC dataVersion counter;
-  // none of those are settable from here.
+  // none of those are settable from here. The password is changed through the
+  // Java API, which also ends the other sessions.
   const update: {
     name?: string;
-    password?: string;
-    passwordChangedAt?: Date;
     isTwoFactorEnabled?: boolean;
   } = {};
 
@@ -81,53 +76,13 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
     update.isTwoFactorEnabled = data.isTwoFactorEnabled;
   }
 
-  if (data.password && data.newPassword && dbUser.password) {
-    const passwordsMatch = await bcrypt.compare(data.password, dbUser.password);
-
-    if (!passwordsMatch) {
-      return { error: "Incorrect password!" };
-    }
-
-    update.password = await bcrypt.hash(data.newPassword, 10);
-    update.passwordChangedAt = new Date();
+  if (Object.keys(update).length > 0) {
+    await db.user.update({
+      where: { id: dbUser.id },
+      data: update,
+    });
   }
-
-  if (Object.keys(update).length === 0) {
-    return { success: "Settings updated!" };
-  }
-
-  const userUpdate = db.user.update({
-    where: { id: dbUser.id },
-    data: update,
-  });
-
-  if (!update.password) {
-    await userUpdate;
-    return { success: "Settings updated!" };
-  }
-
-  // A new password must lock out whoever knew the old one. Deleting the
-  // sessions rows ends every refresh token; the access tokens still alive are
-  // refused by getSession, which rejects tokens issued before
-  // passwordChangedAt.
-  const request = await headers();
-  await db.$transaction([
-    userUpdate,
-    db.session.deleteMany({ where: { userId: dbUser.id } }),
-    db.auditLog.create({
-      data: {
-        userId: dbUser.id,
-        event: "PASSWORD_CHANGED",
-        // The audit log keys emails the way Java's lockout does.
-        email: dbUser.email?.trim().toLowerCase() ?? null,
-        ipAddress:
-          request.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
-        userAgent: request.get("user-agent"),
-      },
-    }),
-  ]);
-
-  return { success: "Password changed.", signedOut: true };
+  return { success: "Settings updated!" };
 };
 
 // The mode is the only server-known part of the AI setup: the API key itself

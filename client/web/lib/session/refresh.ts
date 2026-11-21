@@ -129,6 +129,30 @@ export function refreshSession(
   return inFlight;
 }
 
+/**
+ * Runs a request after which Java answers with new session cookies (a
+ * password change revokes every refresh token and issues this browser a new
+ * one), then publishes the new expiry to every tab. It holds the refresh lock
+ * meanwhile: a refresh started in another tab would present the token the
+ * request revokes, get a 401, and sign the whole browser out.
+ *
+ * `request` must not refresh itself: the lock is held, so it would wait on
+ * itself.
+ */
+export async function replaceSession<T extends { accessTokenExpiresAt: string }>(
+  request: () => Promise<T>,
+): Promise<T> {
+  return withRefreshLock(async () => {
+    const result = await request();
+    const expiresAt = Date.parse(result.accessTokenExpiresAt);
+    if (!Number.isNaN(expiresAt)) {
+      adopt(expiresAt);
+      writeShared();
+    }
+    return result;
+  });
+}
+
 async function refreshUnderLock(force: boolean): Promise<RefreshOutcome> {
   if (!force && userId !== null) {
     const shared = readShared();

@@ -27,38 +27,25 @@ const email = z
   .email({ message: "Email invalid." })
   .max(MAX_EMAIL_LENGTH, { message: "Email too long." });
 
-export const SettingsSchema = z
+export const SettingsSchema = z.object({
+  name: z.optional(z.string()),
+  isTwoFactorEnabled: z.optional(z.boolean()),
+  role: z.enum([UserRole.ADMIN, UserRole.USER]),
+  email: z.optional(z.string().email()),
+});
+
+/** The current password may be one of the older 6-character ones. */
+export const PasswordChangeSchema = z
   .object({
-    name: z.optional(z.string()),
-    isTwoFactorEnabled: z.optional(z.boolean()),
-    role: z.enum([UserRole.ADMIN, UserRole.USER]),
-    email: z.optional(z.string().email()),
-    password: z.optional(z.string().min(6)),
-    newPassword: z.optional(newPassword),
-    confirmNewPassword: z.optional(z.string()),
+    currentPassword: z
+      .string()
+      .min(1, { message: "Enter your current password." })
+      .max(256, { message: "Current password too long." }),
+    newPassword,
+    confirmNewPassword: z.string(),
   })
-  .refine(
-    (data) => {
-      if (data.password && !data.newPassword) {
-        return false;
-      }
-
-      return true;
-    },
-    { message: "New password is required!", path: ["newPassword"] }
-  )
-  .refine(
-    (data) => {
-      if (data.newPassword && !data.password) {
-        return false;
-      }
-
-      return true;
-    },
-    { message: "Password is required!", path: ["password"] }
-  )
   .refine((data) => data.newPassword === data.confirmNewPassword, {
-    message: "Passwords do not match!",
+    message: "New passwords don't match.",
     path: ["confirmNewPassword"],
   });
 

@@ -1,18 +1,13 @@
 "use client";
 
 import { Button, Field, Input } from "@/components/ui";
-import type { UserRole } from "@/generated/client";
 import { StatusLine } from "../StatusLine";
 import { card, cardTitle, fieldGrid, footerRow } from "../../page.css";
 import { usePasswordChange } from "./usePasswordChange";
 
-interface PasswordCardProps {
-  userRole: UserRole;
-}
-
-export function PasswordCard({ userRole }: PasswordCardProps) {
+export function PasswordCard() {
   const { values, setters, status, isPending, filled, submit } =
-    usePasswordChange(userRole);
+    usePasswordChange();
 
   return (
     <div className={card}>
@@ -34,7 +29,7 @@ export function PasswordCard({ userRole }: PasswordCardProps) {
             onChange={(e) => setters.setNewPassword(e.target.value)}
             autoComplete="new-password"
             disabled={isPending}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
           />
         </Field>
         <Field label="Confirm new">

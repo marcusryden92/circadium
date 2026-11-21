@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { ensureFreshSession, replaceSession } from "@/lib/session/refresh";
 
 // The Java account endpoints the auth pages call. Sign-ins send
 // `client: "web"`: without it Java treats the caller as the mobile app and
@@ -71,6 +72,26 @@ export async function resetPassword(input: {
 
 export async function verifyEmail(token: string): Promise<void> {
   await apiRequest("/auth/verify-email", { body: { token } });
+}
+
+/**
+ * Signs out every other browser and device. This browser stays signed in:
+ * Java answers with new cookies, and the other tabs pick up the new expiry.
+ *
+ * Not `authenticated`: that option may refresh, which inside replaceSession's
+ * lock would wait on itself. The cookie is made fresh before taking the lock
+ * instead.
+ */
+export async function changePassword(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  await ensureFreshSession();
+  await replaceSession(() =>
+    apiRequest<{ accessTokenExpiresAt: string }>("/account/password", {
+      body: { ...input, client: "web" },
+    }),
+  );
 }
 
 /** `password` is required for accounts that have one. */

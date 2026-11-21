@@ -12,13 +12,18 @@ import app.circadium.persistence.enums.UserRole;
 import app.circadium.persistence.repository.AuditLogRepository;
 import app.circadium.persistence.repository.SessionRepository;
 import app.circadium.persistence.repository.UserRepository;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
@@ -46,6 +51,12 @@ class TokenServiceIntegrationTest {
 
     @Autowired
     AuditLogRepository auditLogRepository;
+
+    @Autowired
+    DataSource dataSource;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     @Test
     void startSessionIssuesVerifiableAccessTokenAndStoresOnlyTheHash() {
@@ -136,6 +147,55 @@ class TokenServiceIntegrationTest {
         assertThatThrownBy(() -> tokenService.refresh(tokens.refreshToken(), ClientInfo.UNKNOWN))
                 .isInstanceOf(InvalidRefreshTokenException.class);
         tokenService.logout(tokens.refreshToken(), ClientInfo.UNKNOWN);
+    }
+
+    /**
+     * A password change or reset holds the user row from its update until it commits. A refresh that arrives
+     * in between must wait, then find its token gone; rotating anyway would insert a session the change's
+     * delete cannot see, and that token would survive the change.
+     */
+    @Test
+    void refreshWaitsForAPasswordChangeInProgressAndThenFindsItsTokenGone() throws Exception {
+        User user = newUser(UserRole.USER);
+        IssuedTokens tokens = tokenService.startSession(user, null);
+
+        try (Connection change = dataSource.getConnection()) {
+            change.setAutoCommit(false);
+            execute(change, "update users set password_changed_at = now() where id = ?", user.getId());
+
+            CompletableFuture<IssuedTokens> refresh = CompletableFuture.supplyAsync(
+                    () -> tokenService.refresh(tokens.refreshToken(), ClientInfo.UNKNOWN));
+            awaitATransactionWaitingForALock();
+            assertThat(refresh).isNotDone();
+
+            execute(change, "delete from sessions where \"userId\" = ?", user.getId());
+            change.commit();
+
+            assertThatThrownBy(refresh::join).hasCauseInstanceOf(InvalidRefreshTokenException.class);
+        }
+        assertThat(jdbcTemplate.queryForObject("select count(*) from sessions where \"userId\" = ?",
+                Integer.class, user.getId())).isZero();
+    }
+
+    private static void execute(Connection connection, String sql, String parameter) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, parameter);
+            statement.executeUpdate();
+        }
+    }
+
+    private void awaitATransactionWaitingForALock() throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+        while (System.nanoTime() < deadline) {
+            Integer waiting = jdbcTemplate.queryForObject("""
+                    select count(*) from pg_stat_activity
+                    where wait_event_type = 'Lock' and datname = current_database()""", Integer.class);
+            if (waiting != null && waiting > 0) {
+                return;
+            }
+            Thread.sleep(20);
+        }
+        throw new AssertionError("The refresh never waited for the password change's lock on the user row");
     }
 
     private Session findSession(IssuedTokens tokens) {
