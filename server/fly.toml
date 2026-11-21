@@ -6,6 +6,12 @@ primary_region = "fra"
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  # The new version boots next to the old one and takes over only once its health check passes. A release
+  # that fails at startup (e.g. the schema check, run before the web's build has applied a new Prisma
+  # migration) then leaves the old version serving instead of taking staging down.
+  strategy = "bluegreen"
+
 [env]
   # Non-secret config. Database credentials are set separately via `fly secrets set`.
   SPRING_PROFILES_ACTIVE = "staging"

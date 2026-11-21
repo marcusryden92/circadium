@@ -34,6 +34,13 @@ Tests use Testcontainers with the Postgres image pinned to `postgres:16` and the
 `@ServiceConnection` pattern, which auto-wires the datasource from a throwaway container
 — so `verify`/`test` require Docker Desktop to be running. `compile` does not.
 
+Deploys: a push to `feature/server` that touches `server/` runs `verify` in
+`.github/workflows/server-ci.yml`, then `flyctl deploy --remote-only` to
+`circadium-server-staging` (GitHub secret `FLY_API_TOKEN_STAGING`, a deploy token for that
+app only). `fly.toml` deploys blue-green: a release that fails its health check never takes
+over. If the schema check fails because the web's build had not yet applied a new Prisma
+migration, re-run the job once the Vercel deploy is done.
+
 ## Configuration and database
 
 Config is environment-only across three profiles in `application.yml` (`local` is the
