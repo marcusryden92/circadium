@@ -178,7 +178,7 @@
   │   │       ├── habit.prisma          # HabitBucket + Habit + HabitItem — trackers over repeating top-level planner items, grouped by the habits surface's OWN bucket entity, distinct from Category (outside the OCC diff sync; the OccurrenceCompletion log lives in calendar.prisma)
   │   │       └── viewState.prisma      # UserViewState — per-user graph/mindmap canvas view preferences (outside the OCC diff sync)
   │   ├── migrations/                   # 0_init … add_habit_buckets — see "Migration history" below for the full list
-  │   ├── seed.ts                       # Wholesale reseed (admin@lifeplan.com / "password")
+  │   ├── seed.ts                       # Wholesale reseed (admin@circadium.app / "password")
   │   └── seed-helpers/                 # generateCategories, generateLocations (+ TravelTimes), generatePlanners, generatePlans, generateTemplates
   │
   ├── redux/                            # RE-EXPORT SHIMS over @circadium/shared/state (the real slices/thunks/store live in client/shared/src/state/ — plan item 0.7). Every file here is a one-liner so the ~50 @/redux/* import sites are untouched; edit the shared source, not these
@@ -900,7 +900,7 @@
   pnpm prisma generate                # regenerate client after schema changes
   ```
 
-  The seed creates a single admin user (`admin@lifeplan.com` / `password`) and populates locations, travel times, categories, templates, and planners. Seed planners are labeled with location markers `A/B/C/D` (no-location / Work / Home / Gym).
+  The seed creates a single admin user (`admin@circadium.app` / `password`) and populates locations, travel times, categories, templates, and planners. Seed planners are labeled with location markers `A/B/C/D` (no-location / Work / Home / Gym).
 
   Migration history (single source of truth in [prisma/migrations/](prisma/migrations/)):
 

@@ -5,9 +5,9 @@ backend so the product can have WebSocket-driven multi-session sync, app-closed 
 notifications, and a real mobile client. This is a plain Maven project built and run
 independently of the `client/` pnpm workspace — the two halves share no tooling.
 
-**The authoritative plan is [`_notes/java-backend-plan.md`](../_notes/java-backend-plan.md)**
-(note the leading underscore; the root CLAUDE.md's `notes/...` link is stale). Work
-proceeds one numbered item per session; read the plan's item before starting it.
+The migration plan is [`_notes/java-backend-steps/0.0a.java-backend-plan.md`](../_notes/java-backend-steps/0.0a.java-backend-plan.md),
+with one step file per numbered item beside it. Work proceeds one item per session; read
+the item's step file before starting it.
 
 ## Stack
 
@@ -34,12 +34,19 @@ Tests use Testcontainers with the Postgres image pinned to `postgres:16` and the
 `@ServiceConnection` pattern, which auto-wires the datasource from a throwaway container
 — so `verify`/`test` require Docker Desktop to be running. `compile` does not.
 
-Deploys: a push to `feature/server` that touches `server/` runs `verify` in
-`.github/workflows/server-ci.yml`, then `flyctl deploy --remote-only` to
-`circadium-server-staging` (GitHub secret `FLY_API_TOKEN_STAGING`, a deploy token for that
-app only). `fly.toml` deploys blue-green: a release that fails its health check never takes
-over. If the schema check fails because the web's build had not yet applied a new Prisma
-migration, re-run the job once the Vercel deploy is done.
+Deploys run from `.github/workflows/server-ci.yml` after `verify`, on pushes that touch
+`server/`:
+
+| Branch | Fly app | Host | Config | GitHub secret |
+|---|---|---|---|---|
+| `feature/server` | `circadium-server-staging` | `api.staging.circadium.app` | `fly.toml` | `FLY_API_TOKEN_STAGING` |
+| `main` | `circadium-server` | `api.circadium.app` | `fly.prod.toml` | `FLY_API_TOKEN_PROD` |
+
+Each secret is a deploy token for its own app only. Both apps run one always-on machine in
+`fra` and deploy blue-green: a release that fails its health check never takes over. If the
+schema check fails because the web's Vercel build had not yet applied a new Prisma
+migration, re-run the job once the Vercel deploy is done. A manual deploy from `server/` is
+`fly deploy --remote-only` (staging) or `fly deploy --remote-only -c fly.prod.toml` (prod).
 
 ## Configuration and database
 
