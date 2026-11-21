@@ -62,7 +62,14 @@ resource server: every request needs a valid RS256 access JWT except the endpoin
 `GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
 `POST /auth/password-reset[/confirm]`, `/error`). New public endpoints go in that one list.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
-`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`.
+`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. Besides signature, `iss`, `aud` and `exp`,
+the decoder requires the token's `sid` family to still have a `sessions` row
+(`auth/SessionFamilyValidator`), so sign-out, reuse detection and a password change or reset
+end access tokens at once, not after 15 minutes. A sign-in that passed the emailed 2FA code
+carries `amr: ["pwd","otp","mfa"]` (stored as `sessions.twoFactorVerified`, copied on
+rotation); the web's admin tools require it. API responses carry
+`Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` (not Swagger UI).
+Actuator exposes only `health` and `info` over HTTP.
 
 Two clients, two token transports (`auth/ClientType`):
 
@@ -72,11 +79,16 @@ Two clients, two token transports (`auth/ClientType`):
   body (only the expiry times). Login/2FA opt in with `"client":"web"` (default `mobile`); a
   handoff code remembers which client started the Google sign-in; refresh/logout with no
   body read the refresh cookie. Access cookie: `Domain=${AUTH_COOKIE_DOMAIN}`, `Path=/`,
-  SameSite=Lax, so the web server receives it too. Refresh cookie: host-only, `Path=/auth`,
+  SameSite=Lax, so the web server receives it too. Refresh cookie: host-only, `Path=/`,
   SameSite=Strict. Names and domain are `circadium.auth.cookies` (`AuthCookieProperties`);
   `AUTH_COOKIE_DOMAIN` is required outside `local` (blank there: host-only, not Secure).
-  Staging uses its own cookie names because prod's access cookie also reaches staging's
-  subdomains.
+  Deployed names carry the browser prefixes (`__Secure-circadium_access`,
+  `__Host-circadium_refresh`; staging `__Secure-circadium_staging_access`,
+  `__Host-circadium_staging_refresh`), so no sibling subdomain can plant a same-named refresh
+  cookie; `local` keeps `circadium_access` / `circadium_refresh`, since prefixes need Secure.
+  A prefixed name that the browser would drop (not Secure, or `__Host-` with a Domain) fails
+  startup. Staging uses its own cookie names because prod's access cookie also reaches
+  staging's subdomains. The web's `AUTH_ACCESS_COOKIE` must match the access name.
 - `auth/CookieBearerTokenResolver` takes the header first, then the access cookie, but never
   the cookie on a public endpoint (Spring 401s an invalid token even where none is required,
   so a stale cookie would break login and refresh).
@@ -106,9 +118,26 @@ the rate limiter.
 Abuse controls on the public auth endpoints, two layers:
 
 - `auth/RateLimitFilter` — per-IP Bucket4j buckets held in memory (Caffeine), running
-  before Spring Security. Correct only while the server is a single instance.
+  before Spring Security. Correct only while the server is a single instance. Rules match
+  the decoded path with `PathPatternRequestMatcher`, as Spring Security and the handlers do;
+  keying on the raw request URI let `/auth/l%6Fgin` skip the login bucket.
 - `auth/LoginThrottle` — per-email lockout in `auth_lockouts` (5th failure locks 1 min,
   doubling to a 1 h cap, forgotten after 24 h), keyed whether or not the account exists.
+
+New passwords (register, reset, change) go through `auth/PasswordPolicy`: 12+ characters
+counted as code points with runs of spaces collapsed, at most 72 bytes (bcrypt), no
+composition rules, and not in Have I Been Pwned's range API (`external/passwords`, k-anonymity:
+only 5 hex characters of the SHA-1 leave; unreachable means accepted, with a warning).
+Existing shorter passwords still sign in. Tests replace the lookup with `FakeBreachedPasswords`
+(in `TestcontainersConfiguration`), so no test reaches the network.
+
+Sensitive changes by a signed-in caller re-check the current password through
+`auth/CurrentPasswordCheck`, under the login lockout: password change, account deletion
+request, `POST /account/email` (emails a link to the new address and a notice to the current
+one; the account moves when the link is opened, and the old address is told again) and
+`POST /account/two-factor` (emails the account on every change). Google-only accounts get
+`no_password` for the email and 2FA endpoints. A password change or reset also deletes the
+user's pending email-change tokens.
 
 Security events go to `audit_log` through `auth/AuditLogger`, which writes in its own
 transaction (`REQUIRES_NEW`) so rows survive the failing request that produced them.
@@ -132,8 +161,10 @@ Sentry with the user id for a manual erasure. Optional in every profile: without
 logs a warning and deletion skips it. Tests swap in `RecordingAnalyticsEraser`.
 
 The token tables (`VerificationToken`, `PasswordResetToken`,
-`AccountDeletionToken`, `TwoFactorToken`) hold raw values because the web app reads them
-too; tokens are issued for the stored email casing, since the web looks them up exactly.
+`AccountDeletionToken`, `TwoFactorToken`) hold raw values because the NextAuth build on
+`main`, which a rollback would bring back, reads them raw; tokens are issued for the stored
+email casing, since that build looks them up exactly. This branch's web no longer touches
+these tables.
 
 Existing users: change their columns with the targeted updates in `UserRepository`
 (`updatePassword`, `updateVerifiedEmail`), never by saving a `User` loaded earlier. Saving
@@ -153,7 +184,9 @@ Token settings live under `circadium.auth` (`auth/AuthProperties`):
   every other profile refuses to start.
 
 Refresh tokens are opaque, stored only as SHA-256 hashes in `sessions`, rotated on every
-use, and grouped by `familyId`; replaying a rotated token deletes the whole family.
+use, and grouped by `familyId`; replaying a rotated token deletes the whole family. A
+sign-in lasts `refresh-token-ttl` (30 days) from the sign-in: rotation copies the family's
+`expiresAt`, so use never extends it.
 Rotated rows must be kept until expiry or reuse becomes undetectable. A refresh locks the
 user row before its session row (`UserRepository.findByRefreshTokenHashForShare`), so anything
 that ends a user's sessions must update the user row first, in the same transaction, as the

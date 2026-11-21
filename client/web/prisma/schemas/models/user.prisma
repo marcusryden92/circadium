@@ -119,16 +119,20 @@ model TwoFactorConfirmation {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Owned by the Java server: one refresh token in a rotation chain. Every row of
+// a family carries the sign-in's expiresAt and whether it passed the emailed
+// two-factor code; the web reads only whether a family still exists.
 model Session {
-  id         String   @id @default(uuid())
-  userId     String
-  familyId   String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  lastUsedAt DateTime @default(now())
-  deviceName String?
-  replacedBy String?
-  createdAt  DateTime @default(now())
+  id                String   @id @default(uuid())
+  userId            String
+  familyId          String
+  tokenHash         String   @unique
+  expiresAt         DateTime
+  lastUsedAt        DateTime @default(now())
+  deviceName        String?
+  replacedBy        String?
+  createdAt         DateTime @default(now())
+  twoFactorVerified Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

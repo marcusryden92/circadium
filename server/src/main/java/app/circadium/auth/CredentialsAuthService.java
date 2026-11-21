@@ -30,6 +30,7 @@ public class CredentialsAuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
     private final LoginThrottle loginThrottle;
     private final AccountTokens accountTokens;
     private final AccountMailer accountMailer;
@@ -40,10 +41,11 @@ public class CredentialsAuthService {
     private final String timingDummyHash;
 
     public CredentialsAuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            LoginThrottle loginThrottle, AccountTokens accountTokens, AccountMailer accountMailer,
-            TokenService tokenService, AuditLogger auditLogger) {
+            PasswordPolicy passwordPolicy, LoginThrottle loginThrottle, AccountTokens accountTokens,
+            AccountMailer accountMailer, TokenService tokenService, AuditLogger auditLogger) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicy = passwordPolicy;
         this.loginThrottle = loginThrottle;
         this.accountTokens = accountTokens;
         this.accountMailer = accountMailer;
@@ -72,7 +74,7 @@ public class CredentialsAuthService {
             auditLogger.record(AuditEvent.TWO_FACTOR_CHALLENGE, user.getId(), normalize(user.getEmail()), client, null);
             return new LoginOutcome.TwoFactorRequired();
         }
-        return completeLogin(user, client);
+        return completeLogin(user, client, false);
     }
 
     /**
@@ -84,10 +86,13 @@ public class CredentialsAuthService {
         if (user.getEmailVerified() == null) {
             return resendVerification(user, client);
         }
-        if (user.isTwoFactorEnabled() && !accountTokens.consumeTwoFactorCode(user.getEmail(), code)) {
+        if (!user.isTwoFactorEnabled()) {
+            return completeLogin(user, client, false);
+        }
+        if (!accountTokens.consumeTwoFactorCode(user.getEmail(), code)) {
             throw failure(normalize(email), user, client, "bad_two_factor_code");
         }
-        return completeLogin(user, client);
+        return completeLogin(user, client, true);
     }
 
     /**
@@ -97,7 +102,7 @@ public class CredentialsAuthService {
      */
     public void register(String name, String email, String password, ClientInfo client) {
         String normalizedEmail = normalize(email);
-        PasswordPolicy.requireValidNewPassword(password);
+        passwordPolicy.requireValidNewPassword(password);
 
         Optional<User> existing = userRepository.findFirstByEmailIgnoreCase(normalizedEmail);
         if (existing.isPresent()) {
@@ -160,18 +165,21 @@ public class CredentialsAuthService {
         return new LoginOutcome.EmailVerificationSent();
     }
 
-    private LoginOutcome completeLogin(User user, ClientInfo client) {
+    private LoginOutcome completeLogin(User user, ClientInfo client, boolean twoFactorVerified) {
         loginThrottle.recordSuccess(normalize(user.getEmail()));
-        IssuedTokens tokens = tokenService.startSession(user, client.userAgent());
-        auditLogger.record(AuditEvent.LOGIN_SUCCESS, user.getId(), normalize(user.getEmail()), client, null);
+        IssuedTokens tokens = tokenService.startSession(user, client.userAgent(), twoFactorVerified);
+        auditLogger.record(AuditEvent.LOGIN_SUCCESS, user.getId(), normalize(user.getEmail()), client,
+                twoFactorVerified ? "two_factor" : null);
         return new LoginOutcome.Authenticated(tokens);
     }
 
+    /** The application log names the account by id only; the email address stays in {@code audit_log}. */
     private InvalidCredentialsException failure(String key, User user, ClientInfo client, String reason) {
         String userId = user == null ? null : user.getId();
         auditLogger.record(AuditEvent.LOGIN_FAILURE, userId, key, client, reason);
         loginThrottle.recordFailure(key).ifPresent(lock -> {
-            log.warn("Login locked for {} for {}", key, lock);
+            log.warn("Login locked for {} for {}", userId == null ? "an address with no account" : "user " + userId,
+                    lock);
             auditLogger.record(AuditEvent.ACCOUNT_LOCKED, userId, key, client, "lock=" + lock);
         });
         return new InvalidCredentialsException();

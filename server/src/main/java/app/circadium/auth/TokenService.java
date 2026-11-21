@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -31,6 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Only the SHA-256 hash of a refresh token is stored, so a leaked database cannot be replayed against
  * {@code /auth/refresh}. A plain (unsalted) hash is sufficient because the token is 256 random bits, not
  * a guessable secret like a password.
+ *
+ * <p>A sign-in lasts {@code refreshTokenTtl} from the moment it started: rotation hands the new refresh token
+ * the old one's expiry, so an account in daily use still has to sign in again once that time is up.
  */
 @Slf4j
 @Service
@@ -39,6 +43,14 @@ public class TokenService {
 
     static final String ROLE_CLAIM = "role";
     static final String SESSION_FAMILY_CLAIM = "sid";
+
+    /**
+     * RFC 8176 authentication method references, present only on tokens of a sign-in that passed the emailed code
+     * as well as the password. The web app's admin tools require {@value #MFA_METHOD}.
+     */
+    static final String AUTH_METHODS_CLAIM = "amr";
+    static final String MFA_METHOD = "mfa";
+    private static final List<String> TWO_FACTOR_METHODS = List.of("pwd", "otp", MFA_METHOD);
 
     private static final int REFRESH_TOKEN_BYTES = 32;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -52,12 +64,29 @@ public class TokenService {
     private final AuditLogger auditLogger;
     private final Clock clock;
 
-    /** Starts a new session family; called by the login flows once a user is authenticated. */
+    /** Starts a new session family for a sign-in that proved one factor. */
     @Transactional
     public IssuedTokens startSession(User user, String deviceName) {
+        return startSession(user, deviceName, false);
+    }
+
+    /**
+     * Starts a new session family; called by the login flows once a user is authenticated.
+     *
+     * @param twoFactorVerified the sign-in passed the emailed code too; carried through every rotation
+     */
+    @Transactional
+    public IssuedTokens startSession(User user, String deviceName, boolean twoFactorVerified) {
         Instant now = now();
-        NewSession refresh = createSession(user.getId(), UUID.randomUUID().toString(), deviceName, now);
+        NewSession refresh = createSession(user.getId(), UUID.randomUUID().toString(), deviceName, now,
+                now.plus(properties.refreshTokenTtl()), twoFactorVerified);
         return issue(user, refresh, now);
+    }
+
+    /** True when the token belongs to a sign-in that passed the emailed code as well as the password. */
+    public static boolean isTwoFactorVerified(Jwt jwt) {
+        List<String> methods = jwt.getClaimAsStringList(AUTH_METHODS_CLAIM);
+        return methods != null && methods.contains(MFA_METHOD);
     }
 
     /**
@@ -93,7 +122,8 @@ public class TokenService {
             throw new InvalidRefreshTokenException();
         }
 
-        NewSession next = createSession(user.getId(), current.getFamilyId(), current.getDeviceName(), now);
+        NewSession next = createSession(user.getId(), current.getFamilyId(), current.getDeviceName(), now,
+                current.getExpiresAt(), current.isTwoFactorVerified());
         current.setReplacedBy(next.session().getId());
         current.setLastUsedAt(now);
         return issue(user, next, now);
@@ -135,7 +165,7 @@ public class TokenService {
         JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256)
                 .keyId(signingKeys.activeKeyId())
                 .build();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(properties.issuer())
                 .subject(user.getId())
                 .audience(List.of(properties.audience()))
@@ -143,13 +173,16 @@ public class TokenService {
                 .expiresAt(accessExpiresAt)
                 .id(UUID.randomUUID().toString())
                 .claim(ROLE_CLAIM, user.getRole().name())
-                .claim(SESSION_FAMILY_CLAIM, refresh.session().getFamilyId())
-                .build();
-        String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+                .claim(SESSION_FAMILY_CLAIM, refresh.session().getFamilyId());
+        if (refresh.session().isTwoFactorVerified()) {
+            claims.claim(AUTH_METHODS_CLAIM, TWO_FACTOR_METHODS);
+        }
+        String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
         return new IssuedTokens(accessToken, accessExpiresAt, refresh.rawToken(), refresh.session().getExpiresAt());
     }
 
-    private NewSession createSession(String userId, String familyId, String deviceName, Instant now) {
+    private NewSession createSession(String userId, String familyId, String deviceName, Instant now,
+            Instant expiresAt, boolean twoFactorVerified) {
         byte[] bytes = new byte[REFRESH_TOKEN_BYTES];
         SECURE_RANDOM.nextBytes(bytes);
         String rawToken = TOKEN_ENCODER.encodeToString(bytes);
@@ -159,10 +192,11 @@ public class TokenService {
         session.setUserId(userId);
         session.setFamilyId(familyId);
         session.setTokenHash(hashRefreshToken(rawToken));
-        session.setExpiresAt(now.plus(properties.refreshTokenTtl()));
+        session.setExpiresAt(expiresAt);
         session.setLastUsedAt(now);
         session.setCreatedAt(now);
         session.setDeviceName(deviceName);
+        session.setTwoFactorVerified(twoFactorVerified);
         sessionRepository.save(session);
         return new NewSession(session, rawToken);
     }

@@ -14,6 +14,9 @@ import lombok.Setter;
  *
  * <p>Hibernate writes every mapped column on insert, so the database defaults on {@code lastUsedAt}
  * and {@code createdAt} never apply; callers must set both.
+ *
+ * <p>{@code expiresAt} is the family's, set at sign-in and copied on every rotation, so using a session never
+ * extends it. {@code twoFactorVerified} records that the sign-in passed the emailed code; it is copied too.
  */
 @Entity
 @Table(name = "sessions")
@@ -39,4 +42,6 @@ public class Session {
     private String replacedBy;
 
     private Instant createdAt;
+
+    private boolean twoFactorVerified;
 }

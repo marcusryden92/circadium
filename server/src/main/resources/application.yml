@@ -42,10 +42,11 @@ circadium:
     access-token-ttl: 15m
     refresh-token-ttl: 30d
     allow-ephemeral-key: false
-    # AUTH_COOKIE_DOMAIN is the parent domain of the web and API hosts (see AuthCookieProperties).
+    # AUTH_COOKIE_DOMAIN is the parent domain of the web and API hosts. The name prefixes make the browser
+    # enforce Secure (and, for __Host-, host-only on Path=/); see AuthCookieProperties.
     cookies:
-      access-name: circadium_access
-      refresh-name: circadium_refresh
+      access-name: __Secure-circadium_access
+      refresh-name: __Host-circadium_refresh
       domain: ${AUTH_COOKIE_DOMAIN}
       secure: true
   mail:
@@ -64,6 +65,12 @@ circadium:
     mobile-completion-url: circadium://auth/oauth/complete
   cors:
     allowed-origins: ${circadium.mail.web-base-url}
+  # New passwords are looked up in Have I Been Pwned's range API (k-anonymity: only 5 hex characters of the
+  # password's SHA-1 leave the server). Unreachable means the password is accepted (see PwnedPasswordsClient).
+  passwords:
+    pwned:
+      enabled: true
+      base-url: https://api.pwnedpasswords.com
   # Erases a deleted account's PostHog person (see PosthogProperties). Optional: both blank turns it off.
   analytics:
     posthog:
@@ -71,11 +78,12 @@ circadium:
       project-id: ${POSTHOG_PROJECT_ID:}
       api-host: https://eu.posthog.com
 
+# Metrics stay inside the process: nothing scrapes them, and over HTTP every signed-in user could read them.
 management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, prometheus
+        include: health, info
   endpoint:
     health:
       show-details: never
@@ -108,7 +116,10 @@ circadium:
   auth:
     issuer: ${AUTH_ISSUER:http://localhost:8080}
     allow-ephemeral-key: true
+    # Plain-HTTP localhost cannot hold Secure cookies, so the names go without the prefixes.
     cookies:
+      access-name: circadium_access
+      refresh-name: circadium_refresh
       domain: ""
       secure: false
   mail:
@@ -131,8 +142,8 @@ circadium:
     # Prod's access cookie is scoped to circadium.app, so browsers also send it to the hosts under
     # staging.circadium.app. Distinct names keep each environment reading only its own tokens.
     cookies:
-      access-name: circadium_staging_access
-      refresh-name: circadium_staging_refresh
+      access-name: __Secure-circadium_staging_access
+      refresh-name: __Host-circadium_staging_refresh
 logging:
   structured:
     format:

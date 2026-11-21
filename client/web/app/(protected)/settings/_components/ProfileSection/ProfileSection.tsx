@@ -21,10 +21,7 @@ export function ProfileSection({ user }: ProfileSectionProps) {
 
   const onSave = async () => {
     clear();
-    const result = await run({
-      name: name.trim() || undefined,
-      role: user.role,
-    });
+    const result = await run({ name: name.trim() || undefined });
     if (!result) return;
     if (result.error) setError(result.error);
     else if (result.success) setSuccess(result.success);

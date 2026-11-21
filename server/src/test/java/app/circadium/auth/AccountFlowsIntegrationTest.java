@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.circadium.TestcontainersConfiguration;
 import app.circadium.auth.RecordingAccountMailer.Kind;
+import app.circadium.external.passwords.FakeBreachedPasswords;
 import app.circadium.persistence.entity.AuditLog;
 import app.circadium.persistence.entity.PasswordResetToken;
 import app.circadium.persistence.entity.User;
@@ -90,6 +91,9 @@ class AccountFlowsIntegrationTest {
     @Autowired
     RecordingAnalyticsEraser analyticsEraser;
 
+    @Autowired
+    FakeBreachedPasswords breachedPasswords;
+
     @TestConfiguration(proxyBeanMethods = false)
     static class MailConfig {
         @Bean
@@ -142,7 +146,7 @@ class AccountFlowsIntegrationTest {
     }
 
     @Test
-    void emailChangeTokenMovesTheAccountToTheNewAddress() throws Exception {
+    void emailChangeTokenMovesTheAccountToTheNewAddressAndTellsTheOldOne() throws Exception {
         User user = saveUser(uniqueEmail(), "password-1", true);
         String newEmail = uniqueEmail();
         VerificationToken token = saveVerificationToken(newEmail, user.getId(), Instant.now().plusSeconds(600));
@@ -155,6 +159,7 @@ class AccountFlowsIntegrationTest {
         assertThat(auditLogRepository.findAllByUserIdOrderByCreatedAtAsc(user.getId()))
                 .extracting(AuditLog::getEvent)
                 .containsExactlyInAnyOrder("EMAIL_CHANGED", "EMAIL_VERIFIED");
+        assertThat(mailer.latest(Kind.EMAIL_CHANGED, user.getEmail())).contains(newEmail);
     }
 
     @Test
@@ -251,9 +256,56 @@ class AccountFlowsIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.password").isNotEmpty());
         perform(ip, "/auth/password-reset/confirm", """
-                {"token":"%s","password":"long-enough"}""".formatted(token.getToken()))
+                {"token":"%s","password":"long-enough-now"}""".formatted(token.getToken()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("expired_token"));
+    }
+
+    @Test
+    void resetRefusesABreachedPasswordAndKeepsTheLink() throws Exception {
+        String email = uniqueEmail();
+        User user = saveUser(email, "old-password", true);
+        String ip = nextIp();
+        perform(ip, "/auth/password-reset", """
+                {"email":"%s"}""".formatted(email)).andExpect(status().isAccepted());
+        String token = mailer.latest(Kind.PASSWORD_RESET, email).orElseThrow();
+        breachedPasswords.add("correct horse battery staple");
+
+        perform(ip, "/auth/password-reset/confirm", """
+                {"token":"%s","password":"correct horse battery staple"}""".formatted(token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("password_breached"));
+        perform(ip, "/auth/password-reset/confirm", """
+                {"token":"%s","password":"ab            cd"}""".formatted(token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("password_too_short"));
+
+        assertThat(passwordEncoder.matches("old-password", userRepository.findById(user.getId()).orElseThrow()
+                .getPassword())).isTrue();
+        perform(ip, "/auth/password-reset/confirm", """
+                {"token":"%s","password":"a different long one"}""".formatted(token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resetCancelsAPendingEmailChange() throws Exception {
+        String email = uniqueEmail();
+        User user = saveUser(email, "old-password", true);
+        VerificationToken pendingChange = saveVerificationToken(uniqueEmail(), user.getId(),
+                Instant.now().plusSeconds(600));
+        String ip = nextIp();
+        perform(ip, "/auth/password-reset", """
+                {"email":"%s"}""".formatted(email)).andExpect(status().isAccepted());
+
+        perform(ip, "/auth/password-reset/confirm", """
+                {"token":"%s","password":"new-password"}""".formatted(
+                        mailer.latest(Kind.PASSWORD_RESET, email).orElseThrow()))
+                .andExpect(status().isOk());
+
+        perform(ip, "/auth/verify-email", tokenBody(pendingChange.getToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("invalid_token"));
+        assertThat(userRepository.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(email);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package app.circadium.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import app.circadium.auth.AuthController.TokenResponse;
 import app.circadium.auth.AuthCookies.Delivery;
@@ -42,8 +43,32 @@ class AuthCookiesTest {
                 "Path=/", "Domain=circadium.app", "Max-Age=900", "Secure", "HttpOnly", "SameSite=Lax");
         assertThat(cookies.get(1)).startsWith("circadium_refresh=refresh-token-value;");
         assertThat(attributes(cookies.get(1))).contains(
-                "Path=/auth", "Max-Age=2592000", "Secure", "HttpOnly", "SameSite=Strict");
+                "Path=/", "Max-Age=2592000", "Secure", "HttpOnly", "SameSite=Strict");
         assertThat(attributes(cookies.get(1))).noneMatch(attribute -> attribute.startsWith("Domain="));
+    }
+
+    /** The browser accepts a __Host- cookie only host-only, Secure and on Path=/, which is what is sent. */
+    @Test
+    void prefixedNamesGetTheAttributesTheirPrefixRequires() {
+        AuthCookies prefixed = new AuthCookies(
+                new AuthCookieProperties("__Secure-circadium_access", "__Host-circadium_refresh", "circadium.app", true),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        List<String> cookies = setCookies(prefixed.deliver(TOKENS, ClientType.WEB).headers());
+
+        assertThat(cookies.get(0)).startsWith("__Secure-circadium_access=");
+        assertThat(attributes(cookies.get(0))).contains("Secure", "Domain=circadium.app");
+        assertThat(cookies.get(1)).startsWith("__Host-circadium_refresh=");
+        assertThat(attributes(cookies.get(1))).contains("Secure", "Path=/");
+        assertThat(attributes(cookies.get(1))).noneMatch(attribute -> attribute.startsWith("Domain="));
+    }
+
+    @Test
+    void prefixedNamesThatTheBrowserWouldDropFailAtStartup() {
+        assertThatThrownBy(() -> new AuthCookieProperties("__Secure-a", "__Host-r", "", false))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new AuthCookieProperties("__Host-a", "r", "circadium.app", true))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -83,7 +108,7 @@ class AuthCookiesTest {
         assertThat(cookies.get(0)).startsWith("circadium_access=;");
         assertThat(attributes(cookies.get(0))).contains("Path=/", "Domain=circadium.app", "Max-Age=0");
         assertThat(cookies.get(1)).startsWith("circadium_refresh=;");
-        assertThat(attributes(cookies.get(1))).contains("Path=/auth", "Max-Age=0");
+        assertThat(attributes(cookies.get(1))).contains("Path=/", "Max-Age=0");
         assertThat(attributes(cookies.get(1))).noneMatch(attribute -> attribute.startsWith("Domain="));
     }
 

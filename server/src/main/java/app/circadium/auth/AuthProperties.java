@@ -13,6 +13,9 @@ import org.springframework.validation.annotation.Validated;
  * ({@code CIRCADIUM_AUTH_SIGNINGKEYS_0_KID} / {@code CIRCADIUM_AUTH_SIGNINGKEYS_0_PRIVATEKEY}, ...); the
  * first entry signs, every entry verifies, so rotation is: prepend the new key, deploy, drop the old one
  * after one access-token lifetime.
+ *
+ * <p>{@code refreshTokenTtl} is the absolute lifetime of a sign-in, counted from the sign-in; refreshing does
+ * not extend it.
  */
 @Validated
 @ConfigurationProperties("circadium.auth")

@@ -1,5 +1,4 @@
 import * as z from "zod";
-import { UserRole } from "@/generated/client";
 
 // The same limits the Java API enforces, checked here first so a mistake is
 // shown next to its field instead of as a rejected request.
@@ -8,11 +7,23 @@ const MAX_NAME_LENGTH = 100;
 // bcrypt reads only the first 72 bytes, so longer passwords would silently
 // share a hash. Bytes, not characters: accents and emoji take several.
 const MAX_PASSWORD_BYTES = 72;
+export const MIN_PASSWORD_LENGTH = 12;
 
-/** For setting a password. Signing in accepts the older 6-character ones. */
+/**
+ * Characters (not UTF-16 units), with each run of spaces counted once, as the
+ * Java API counts them: padding a short password with spaces does not make it
+ * long.
+ */
+export function passwordLength(value: string): number {
+  return [...value.replace(/ {2,}/g, " ")].length;
+}
+
+/** For setting a password. Signing in accepts older, shorter ones. */
 const newPassword = z
   .string()
-  .min(8, { message: "At least 8 characters." })
+  .refine((value) => passwordLength(value) >= MIN_PASSWORD_LENGTH, {
+    message: `At least ${MIN_PASSWORD_LENGTH} characters.`,
+  })
   .refine(
     (value) => new TextEncoder().encode(value).length <= MAX_PASSWORD_BYTES,
     {
@@ -27,14 +38,23 @@ const email = z
   .email({ message: "Email invalid." })
   .max(MAX_EMAIL_LENGTH, { message: "Email too long." });
 
+/**
+ * The profile fields the web still writes itself. Email and two-factor
+ * changes need the current password and go through the Java API.
+ */
 export const SettingsSchema = z.object({
-  name: z.optional(z.string()),
-  isTwoFactorEnabled: z.optional(z.boolean()),
-  role: z.enum([UserRole.ADMIN, UserRole.USER]),
-  email: z.optional(z.string().email()),
+  name: z.optional(z.string().trim().max(MAX_NAME_LENGTH)),
 });
 
-/** The current password may be one of the older 6-character ones. */
+export const EmailChangeSchema = z.object({
+  currentPassword: z
+    .string()
+    .min(1, { message: "Enter your current password." })
+    .max(256, { message: "Current password too long." }),
+  newEmail: email,
+});
+
+/** The current password may be an older, shorter one. */
 export const PasswordChangeSchema = z
   .object({
     currentPassword: z

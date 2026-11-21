@@ -1,7 +1,6 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const domain = process.env.NEXT_PUBLIC_APP_URL;
 
 // Palette pulled from themeLight so mail visually matches the Circadium UI.
 // Custom variables and rgba() are collapsed to hex/opaque values — email
@@ -116,27 +115,6 @@ ${
 </body>
 </html>
 `;
-
-export const sendVerificationEmail = async (email: string, token: string) => {
-  const confirmationLink = `${domain}/auth/new-verification?token=${token}`;
-  const html = renderEmail({
-    preheader: "Verify your email to finish signing up for Circadium",
-    eyebrow: "Verify email",
-    heading: "Confirm your email",
-    bodyHtml: `
-<p style="margin:0 0 12px;">Welcome to Circadium. Confirm this email address to activate your account.</p>
-<p style="margin:0;font-size:13px;color:${palette.muted};">If you didn&rsquo;t create an account, you can ignore this email.</p>
-`,
-    cta: { label: "Verify email", href: confirmationLink },
-  });
-
-  await resend.emails.send({
-    from: "support@circadium.app",
-    to: email,
-    subject: "Confirm your email",
-    html,
-  });
-};
 
 const escapeHtml = (value: string) =>
   value

@@ -24,6 +24,9 @@ public interface SessionRepository extends JpaRepository<Session, String> {
 
     long countByFamilyId(String familyId);
 
+    /** False once the family has been signed out, revoked for reuse, or ended by a password change or reset. */
+    boolean existsByFamilyId(String familyId);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from Session s where s.familyId = :familyId")
     int deleteAllByFamilyId(@Param("familyId") String familyId);

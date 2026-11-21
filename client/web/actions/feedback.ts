@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { isAdminSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendFeedbackEmail } from "@/lib/mail";
 import { exportUserData } from "@/actions/dataExport";
@@ -187,7 +188,8 @@ export async function deleteSuggestion(id: string): Promise<void> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const where =
-    session.user.role === "ADMIN" ? { id } : { id, userId: session.user.id };
+  const where = isAdminSession(session)
+    ? { id }
+    : { id, userId: session.user.id };
   await db.suggestion.deleteMany({ where });
 }

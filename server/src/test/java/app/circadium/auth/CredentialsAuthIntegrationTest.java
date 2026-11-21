@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import app.circadium.TestcontainersConfiguration;
 import app.circadium.auth.RecordingAccountMailer.Kind;
+import app.circadium.external.passwords.FakeBreachedPasswords;
 import app.circadium.persistence.entity.AuditLog;
 import app.circadium.persistence.entity.TwoFactorToken;
 import app.circadium.persistence.entity.User;
@@ -18,6 +19,7 @@ import app.circadium.persistence.repository.TwoFactorTokenRepository;
 import app.circadium.persistence.repository.UserRepository;
 import app.circadium.persistence.repository.VerificationTokenRepository;
 import com.jayway.jsonpath.JsonPath;
+import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -76,6 +78,9 @@ class CredentialsAuthIntegrationTest {
 
     @Autowired
     RecordingAccountMailer mailer;
+
+    @Autowired
+    FakeBreachedPasswords breachedPasswords;
 
     @TestConfiguration(proxyBeanMethods = false)
     static class MailConfig {
@@ -183,6 +188,42 @@ class CredentialsAuthIntegrationTest {
         login(nextIp(), uniqueEmail(), "spray").andExpect(status().isUnauthorized());
     }
 
+    /** Spring decodes the path before routing, so {@code /auth/l%6Fgin} is the login endpoint and its bucket. */
+    @Test
+    void ipRateLimiterCannotBeSidesteppedByEncodingThePath() throws Exception {
+        String ip = nextIp();
+        for (int request = 1; request <= 10; request++) {
+            login(ip, uniqueEmail(), "spray").andExpect(status().isUnauthorized());
+        }
+
+        for (String encoded : List.of("/auth/l%6Fgin", "/auth/%6c%6f%67%69%6e", "/%61uth/login")) {
+            mockMvc.perform(json(ip, URI.create(encoded),
+                            "{\"email\":\"%s\",\"password\":\"spray\"}".formatted(uniqueEmail())))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.instance").value("/auth/login"));
+        }
+    }
+
+    @Test
+    void onlyASignInThatPassedTheEmailedCodeCarriesTheMfaMethod() throws Exception {
+        String ip = nextIp();
+        String plainEmail = uniqueEmail();
+        saveUser(plainEmail, passwordEncoder.encode("right-password"), true, false);
+        String twoFactorEmail = uniqueEmail();
+        saveUser(twoFactorEmail, passwordEncoder.encode("right-password"), true, true);
+
+        String plain = login(ip, plainEmail, "right-password").andReturn().getResponse().getContentAsString();
+        login(ip, twoFactorEmail, "right-password").andExpect(jsonPath("$.status").value("TWO_FACTOR_REQUIRED"));
+        String verified = twoFactor(ip, twoFactorEmail, "right-password",
+                mailer.latest(Kind.TWO_FACTOR, twoFactorEmail).orElseThrow())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(TokenService.isTwoFactorVerified(jwtDecoder.decode(JsonPath.read(plain, "$.tokens.accessToken"))))
+                .isFalse();
+        assertThat(jwtDecoder.decode(JsonPath.<String>read(verified, "$.tokens.accessToken"))
+                .getClaimAsStringList("amr")).containsExactly("pwd", "otp", "mfa");
+    }
+
     @Test
     void twoFactorLoginRequiresTheEmailedCodeOnce() throws Exception {
         String email = uniqueEmail();
@@ -271,6 +312,30 @@ class CredentialsAuthIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.email").isNotEmpty())
                 .andExpect(jsonPath("$.errors.password").isNotEmpty());
+        register(nextIp(), "Name", uniqueEmail(), "eleven-char")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.password").isNotEmpty());
+    }
+
+    /**
+     * Refused before the account lookup, so the answer for a taken address is the same as for a free one. Runs of
+     * spaces count once, so padding cannot reach the minimum.
+     */
+    @Test
+    void registerRefusesBreachedAndPaddedPasswords() throws Exception {
+        String ip = nextIp();
+        String email = uniqueEmail();
+        breachedPasswords.add("summer-holiday-2026");
+
+        register(ip, "Name", email, "summer-holiday-2026")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("password_breached"));
+        register(ip, "Name", email, "pass          word")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("password_too_short"));
+
+        assertThat(userRepository.findFirstByEmailIgnoreCase(email)).isEmpty();
+        assertThat(mailer.count(Kind.VERIFICATION, email)).isZero();
     }
 
     private ResultActions login(String ip, String email, String password) throws Exception {
@@ -289,6 +354,11 @@ class CredentialsAuthIntegrationTest {
     }
 
     private static RequestBuilder json(String ip, String path, String body) {
+        return json(ip, URI.create(path), body);
+    }
+
+    /** A {@link URI} is sent as written; the string form would percent-encode the {@code %} of an encoded path. */
+    private static RequestBuilder json(String ip, URI path, String body) {
         return post(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body)

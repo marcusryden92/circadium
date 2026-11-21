@@ -6,6 +6,7 @@ import app.circadium.persistence.entity.PasswordResetToken;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.repository.PasswordResetTokenRepository;
 import app.circadium.persistence.repository.UserRepository;
+import app.circadium.persistence.repository.VerificationTokenRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
@@ -26,9 +27,11 @@ public class PasswordResetService {
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final VerificationTokenRepository verificationTokenRepository;
     private final AccountTokens accountTokens;
     private final AccountMailer accountMailer;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
     private final TokenService tokenService;
     private final LoginThrottle loginThrottle;
     private final AuditLogger auditLogger;
@@ -60,12 +63,12 @@ public class PasswordResetService {
     }
 
     /**
-     * Sets the new password, signs out every device, and lifts any lockout: following the emailed link
-     * proves control of the address, and a reset is usually done because someone else may hold a session.
-     * The web app also refuses access tokens issued before {@code passwordChangedAt}.
+     * Sets the new password, signs out every device, cancels a pending email change, and lifts any lockout:
+     * following the emailed link proves control of the address, and a reset is usually done because someone else
+     * may hold a session (and may have asked to move the account to their own address).
      */
     public void resetPassword(String rawToken, String newPassword, ClientInfo client) {
-        PasswordPolicy.requireValidNewPassword(newPassword);
+        passwordPolicy.requireValidNewPassword(newPassword);
         PasswordResetToken token = passwordResetTokenRepository.findByToken(rawToken)
                 .orElseThrow(AccountFlowException::invalidLink);
         Instant now = DbTime.now(clock);
@@ -83,6 +86,7 @@ public class PasswordResetService {
             passwordResetTokenRepository.deleteAllByEmail(token.getEmail());
             userRepository.updatePassword(user.getId(), hash, now);
             tokenService.revokeAllSessions(user.getId());
+            verificationTokenRepository.deleteAllByUserId(user.getId());
         });
 
         String key = CredentialsAuthService.normalize(user.getEmail());

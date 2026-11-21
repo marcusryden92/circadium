@@ -9,8 +9,10 @@ import {
   redeemGoogleSignIn,
   register,
   requestAccountDeletion,
+  requestEmailChange,
   requestPasswordReset,
   resetPassword,
+  setTwoFactor,
   signInWithPassword,
   verifyEmail,
   verifyTwoFactorCode,
@@ -130,6 +132,22 @@ describe("the account flows", () => {
         { body: { confirmEmail: "ada@example.com", password: "secret" }, authenticated: true },
       ],
       ["/account/deletion/confirm", { body: { token: "t3" }, authenticated: true }],
+    ]);
+  });
+
+  it("send the email change and the two-factor switch as the signed-in user, with the password", async () => {
+    await requestEmailChange({ currentPassword: "secret", newEmail: "new@example.com" });
+    await setTwoFactor({ currentPassword: "secret", enabled: false });
+
+    expect(apiRequestMock.mock.calls).toEqual([
+      [
+        "/account/email",
+        { body: { currentPassword: "secret", newEmail: "new@example.com" }, authenticated: true },
+      ],
+      [
+        "/account/two-factor",
+        { body: { currentPassword: "secret", enabled: false }, authenticated: true },
+      ],
     ]);
   });
 });

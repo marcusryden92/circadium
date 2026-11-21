@@ -2,9 +2,25 @@ import { createVanillaExtractPlugin } from "@vanilla-extract/next-plugin";
 
 const withVanillaExtract = createVanillaExtractPlugin();
 
+// No other site may frame a page (a framed settings page could be clicked
+// through without the user seeing it), and the page may not load plugins,
+// rebase its relative URLs, or post forms elsewhere. Scripts are not
+// restricted yet: that needs per-request nonces for Next's inline scripts.
+const CONTENT_SECURITY_POLICY =
+  "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+  // For browsers that predate frame-ancestors.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
+  poweredByHeader: false,
   // jose ships only ES modules; next/jest transforms node_modules packages
   // only when they are listed here, so Jest could not load it otherwise.
   transpilePackages: ["@circadium/shared", "jose"],
@@ -13,10 +29,12 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
   async headers() {
     return [
+      { source: "/:path*", headers: securityHeaders },
       {
         // The emailed links (?token=) and the Google sign-in return (?code=)
         // carry credentials in the URL; no request from these pages may pass
-        // it on in a Referer header.
+        // it on in a Referer header. Listed after the site-wide rule, which
+        // it overrides.
         source: "/auth/:path*",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },

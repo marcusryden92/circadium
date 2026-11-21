@@ -4,6 +4,7 @@ export { Kbd } from "./Kbd";
 export { Button } from "./Button";
 export { BottomSheet } from "./BottomSheet";
 export { Input, Field } from "./Input";
+export { PasswordInput, PasswordStrength } from "./PasswordInput";
 export { FieldStack, FieldValue } from "./FieldStack";
 export { TypeBadge } from "./TypeBadge";
 export { CategoryBadge } from "./CategoryBadge";

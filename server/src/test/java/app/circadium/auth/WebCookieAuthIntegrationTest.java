@@ -86,7 +86,7 @@ class WebCookieAuthIntegrationTest {
                 .andExpect(cookie().sameSite(access, "Lax"))
                 .andExpect(cookie().maxAge(access, allOf(greaterThan(890), lessThanOrEqualTo(900))))
                 .andExpect(cookie().httpOnly(refresh, true))
-                .andExpect(cookie().path(refresh, "/auth"))
+                .andExpect(cookie().path(refresh, "/"))
                 .andExpect(cookie().sameSite(refresh, "Strict"))
                 .andExpect(cookie().maxAge(refresh, greaterThan(29 * 24 * 3600)));
     }

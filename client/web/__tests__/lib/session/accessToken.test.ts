@@ -66,6 +66,23 @@ describe("verifyAccessToken", () => {
       sessionId: "family-1",
       issuedAt,
       expiresAt: issuedAt + 900,
+      twoFactorVerified: false,
+    });
+  });
+
+  it("reads a two-factor sign-in from Java's amr claim, and only from mfa", async () => {
+    const verified = await sign({ claims: { amr: ["pwd", "otp", "mfa"] } });
+    const passwordOnly = await sign({ claims: { amr: ["pwd"] } });
+    const malformed = await sign({ claims: { amr: "mfa" } });
+
+    await expect(verifyAccessToken(verified, keys)).resolves.toMatchObject({
+      twoFactorVerified: true,
+    });
+    await expect(verifyAccessToken(passwordOnly, keys)).resolves.toMatchObject({
+      twoFactorVerified: false,
+    });
+    await expect(verifyAccessToken(malformed, keys)).resolves.toMatchObject({
+      twoFactorVerified: false,
     });
   });
 

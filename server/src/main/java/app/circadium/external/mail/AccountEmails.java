@@ -175,6 +175,86 @@ public class AccountEmails {
                 """.formatted(resetLink));
     }
 
+    public EmailMessage emailChangeVerification(String newEmail, String token) {
+        String link = link("/auth/new-verification", token);
+        return new EmailMessage("email_change_verification", properties.securityFrom(), newEmail,
+                "Confirm your new email",
+                render("Confirm your new Circadium email address", "Security", "Confirm your new email",
+                        PARAGRAPH.formatted("Confirm this address to make it the sign-in email for your Circadium "
+                                + "account. The link expires in 1 hour.")
+                                + FINE_PRINT.formatted("If you didn&rsquo;t ask for this, ignore this email; nothing "
+                                        + "changes."),
+                        "Confirm email", link),
+                """
+                Confirm this address to make it the sign-in email for your Circadium account (the link expires \
+                in 1 hour):
+
+                %s
+
+                If you didn't ask for this, ignore this email; nothing changes.
+                """.formatted(link));
+    }
+
+    public EmailMessage emailChangeRequested(String currentEmail, String newEmail) {
+        String resetLink = webBaseUrl + "/auth/reset";
+        return new EmailMessage("email_change_requested", properties.securityFrom(), currentEmail,
+                "Your Circadium email is about to change",
+                render("Someone asked to change your Circadium email", "Security", "Your email is about to change",
+                        PARAGRAPH.formatted("Someone signed in to your Circadium account asked to change its email "
+                                + "to <strong>" + escape(newEmail) + "</strong>. The change happens once the link we "
+                                + "sent to that address is opened.")
+                                + FINE_PRINT.formatted("If this wasn&rsquo;t you, reset your password now: that "
+                                        + "cancels the change and signs out every device."),
+                        "Reset password", resetLink),
+                """
+                Someone signed in to your Circadium account asked to change its email to %s. The change happens \
+                once the link we sent to that address is opened.
+
+                If this wasn't you, reset your password now: that cancels the change and signs out every device.
+
+                %s
+                """.formatted(newEmail, resetLink));
+    }
+
+    public EmailMessage emailChanged(String previousEmail, String newEmail) {
+        return new EmailMessage("email_changed", properties.securityFrom(), previousEmail,
+                "Your Circadium email was changed",
+                render("Your Circadium email was changed", "Security", "Your email was changed",
+                        PARAGRAPH.formatted("Your Circadium account now signs in with <strong>" + escape(newEmail)
+                                + "</strong>. This address no longer does.")
+                                + FINE_PRINT.formatted("If this wasn&rsquo;t you, contact support@circadium.app "
+                                        + "right away."),
+                        null, null),
+                """
+                Your Circadium account now signs in with %s. This address no longer does.
+
+                If this wasn't you, contact support@circadium.app right away.
+                """.formatted(newEmail));
+    }
+
+    public EmailMessage twoFactorChanged(String email, boolean enabled) {
+        String resetLink = webBaseUrl + "/auth/reset";
+        String state = enabled ? "on" : "off";
+        String effect = enabled
+                ? "Signing in now also needs a code we email to this address."
+                : "Signing in now needs only your password.";
+        return new EmailMessage("two_factor_changed", properties.securityFrom(), email,
+                "Two-factor sign-in was turned " + state,
+                render("Two-factor sign-in was turned " + state, "Security", "Two-factor sign-in is " + state,
+                        PARAGRAPH.formatted("Two-factor sign-in for your Circadium account was just turned "
+                                + state + ". " + effect)
+                                + FINE_PRINT.formatted("If this wasn&rsquo;t you, reset your password right away and "
+                                        + "contact support@circadium.app."),
+                        "Reset password", resetLink),
+                """
+                Two-factor sign-in for your Circadium account was just turned %s. %s
+
+                If this wasn't you, reset your password right away and contact support@circadium.app:
+
+                %s
+                """.formatted(state, effect, resetLink));
+    }
+
     public EmailMessage accountDeletion(String email, String token) {
         String link = link("/auth/confirm-deletion", token);
         return new EmailMessage("account_deletion", properties.securityFrom(), email, "Confirm account deletion",

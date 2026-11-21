@@ -37,6 +37,26 @@ public class LoggingAccountMailer implements AccountMailer {
     }
 
     @Override
+    public void sendEmailChangeVerification(String newEmail, String token) {
+        logSecret("email change verification", newEmail, token);
+    }
+
+    @Override
+    public void sendEmailChangeRequestedNotice(String currentEmail, String newEmail) {
+        log.info("[mail] email change requested notice to {}", currentEmail);
+    }
+
+    @Override
+    public void sendEmailChangedNotice(String previousEmail, String newEmail) {
+        log.info("[mail] email changed notice to {}", previousEmail);
+    }
+
+    @Override
+    public void sendTwoFactorChangedNotice(String email, boolean enabled) {
+        log.info("[mail] two-factor changed notice to {} (enabled={})", email, enabled);
+    }
+
+    @Override
     public void sendAccountDeletionEmail(String email, String token) {
         logSecret("account deletion email", email, token);
     }

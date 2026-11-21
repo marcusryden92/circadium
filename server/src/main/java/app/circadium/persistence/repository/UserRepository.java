@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The web app writes {@code users} too (the sync bumps {@code dataVersion} on every save), and saving a
@@ -39,4 +40,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("update User u set u.email = :email, u.emailVerified = :verifiedAt where u.id = :id")
     int updateVerifiedEmail(@Param("id") String id, @Param("email") String email,
             @Param("verifiedAt") Instant verifiedAt);
+
+    /** Its own transaction: unlike the password and email updates, no other write has to commit with it. */
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update User u set u.isTwoFactorEnabled = :enabled where u.id = :id")
+    int updateTwoFactorEnabled(@Param("id") String id, @Param("enabled") boolean enabled);
 }

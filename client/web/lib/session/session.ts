@@ -24,6 +24,12 @@ export type Session = {
    * freshly loaded page learns when to refresh it.
    */
   accessTokenExpiresAt: string;
+  /**
+   * This sign-in passed the emailed code as well as the password. The admin
+   * tools require it; the account's 2FA setting alone says nothing about how
+   * this particular session started.
+   */
+  twoFactorVerified: boolean;
 };
 
 /**
@@ -43,9 +49,11 @@ export function issuedBeforePasswordChange(
  * The signed-in user for this request, from the Java access cookie, or null.
  *
  * The token proves who the caller is; the rest of the user comes from the
- * database, which is also authoritative for the role. A deleted account or a
- * token from before a password change counts as signed out, even though the
- * token itself is still within its lifetime.
+ * database, which is also authoritative for the role. A deleted account, an
+ * ended sign-in (signed out, or every session ended by a password change or
+ * reset: Java deletes the family's `sessions` rows), or a token from before a
+ * password change counts as signed out, even though the token itself is still
+ * within its lifetime.
  */
 export const getSession = cache(async (): Promise<Session | null> => {
   const token = (await cookies()).get(accessCookieName())?.value;
@@ -65,10 +73,15 @@ export const getSession = cache(async (): Promise<Session | null> => {
         isTwoFactorEnabled: true,
         passwordChangedAt: true,
         accounts: { select: { id: true }, take: 1 },
+        sessions: {
+          where: { familyId: claims.sessionId },
+          select: { id: true },
+          take: 1,
+        },
       },
     }),
   );
-  if (!user) return null;
+  if (!user || user.sessions.length === 0) return null;
   if (issuedBeforePasswordChange(claims.issuedAt, user.passwordChangedAt)) {
     return null;
   }
@@ -83,5 +96,6 @@ export const getSession = cache(async (): Promise<Session | null> => {
       isOAuth: user.accounts.length > 0,
     },
     accessTokenExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
+    twoFactorVerified: claims.twoFactorVerified,
   };
 });

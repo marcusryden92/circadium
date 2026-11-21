@@ -50,7 +50,7 @@ public class OAuthHandoffController {
         Redemption.Redeemed redeemed = (Redemption.Redeemed) redemption;
         User user = userRepository.findById(redeemed.userId()).orElseThrow(OAuthHandoffController::invalidCode);
 
-        IssuedTokens tokens = tokenService.startSession(user, client.userAgent());
+        IssuedTokens tokens = tokenService.startSession(user, client.userAgent(), false);
         String email = user.getEmail() == null ? null : CredentialsAuthService.normalize(user.getEmail());
         auditLogger.record(AuditEvent.LOGIN_SUCCESS, user.getId(), email, client,
                 "oauth " + redeemed.client().parameter());

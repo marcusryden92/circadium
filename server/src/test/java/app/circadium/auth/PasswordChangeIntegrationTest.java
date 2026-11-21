@@ -95,7 +95,7 @@ class PasswordChangeIntegrationTest {
                 .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(cookie().httpOnly(cookieProperties.accessName(), true))
                 .andExpect(cookie().httpOnly(cookieProperties.refreshName(), true))
-                .andExpect(cookie().path(cookieProperties.refreshName(), "/auth"))
+                .andExpect(cookie().path(cookieProperties.refreshName(), "/"))
                 .andReturn().getResponse();
 
         User updated = userRepository.findById(user.getId()).orElseThrow();

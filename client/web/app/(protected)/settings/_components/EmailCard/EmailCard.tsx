@@ -1,34 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Input } from "@/components/ui";
-import { settings } from "@/actions/settings";
+import { Button, Field, Input, PasswordInput } from "@/components/ui";
+import { requestEmailChange } from "@/lib/api/auth";
+import { describeApiError } from "@/lib/api/errorMessage";
 import { useServerAction } from "@/hooks/useServerAction";
-import type { UserRole } from "@/generated/client";
+import { EmailChangeSchema } from "@/schemas";
 import { StatusLine } from "../StatusLine";
 import { card, cardTitle, fieldNote, footerRow } from "../../page.css";
 
-interface EmailCardProps {
-  user: { email?: string; role: UserRole; isOAuth?: boolean };
+async function sendEmailChange(values: {
+  currentPassword: string;
+  newEmail: string;
+}): Promise<{ success?: string; error?: string }> {
+  try {
+    await requestEmailChange(values);
+    return {
+      success: `We sent a link to ${values.newEmail}. Your email changes once you open it.`,
+    };
+  } catch (error) {
+    return { error: describeApiError(error) };
+  }
 }
 
+interface EmailCardProps {
+  user: { email?: string; isOAuth?: boolean };
+}
+
+/**
+ * Changing the sign-in email needs the current password: with only a session,
+ * someone could move the account to their own address and then reset the
+ * password from there. The current address is told about the request.
+ */
 export function EmailCard({ user }: EmailCardProps) {
   const [email, setEmail] = useState(user.email ?? "");
+  const [password, setPassword] = useState("");
   const { run, status, isPending, setSuccess, setError, clear } =
-    useServerAction(settings);
+    useServerAction(sendEmailChange);
 
-  const dirty = email.trim() !== (user.email ?? "");
+  const dirty = email.trim().toLowerCase() !== (user.email ?? "").toLowerCase();
   const disabled = !!user.isOAuth;
 
   const onSave = async () => {
     clear();
-    const result = await run({
-      email: email.trim() || undefined,
-      role: user.role,
+    const parsed = EmailChangeSchema.safeParse({
+      currentPassword: password,
+      newEmail: email,
     });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Check the details and try again.");
+      return;
+    }
+    const result = await run(parsed.data);
     if (!result) return;
-    if (result.error) setError(result.error);
-    else if (result.success) setSuccess(result.success);
+    if (result.error) {
+      setError(result.error);
+    } else if (result.success) {
+      setSuccess(result.success);
+      setPassword("");
+    }
   };
 
   return (
@@ -40,12 +70,23 @@ export function EmailCard({ user }: EmailCardProps) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={disabled || isPending}
+          autoComplete="email"
         />
       </Field>
+      {!disabled && dirty && (
+        <Field label="Your password">
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            disabled={isPending}
+          />
+        </Field>
+      )}
       <span className={fieldNote}>
         {disabled
           ? "Your email is managed by your OAuth provider — change it there."
-          : "Changing email sends a verification link to the new address. The change isn't applied until you click the link."}
+          : "Changing email sends a link to the new address and a notice to the current one. The change isn't applied until you open the link."}
       </span>
       {!disabled && (
         <div className={footerRow}>
@@ -54,7 +95,7 @@ export function EmailCard({ user }: EmailCardProps) {
             variant="solid"
             size="sm"
             onClick={onSave}
-            disabled={!dirty || isPending}
+            disabled={!dirty || password.length === 0 || isPending}
           >
             {isPending ? "Sending…" : "Send verification"}
           </Button>

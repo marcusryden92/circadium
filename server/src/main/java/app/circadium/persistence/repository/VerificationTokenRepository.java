@@ -21,4 +21,9 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from VerificationToken t where t.email = :email")
     int deleteAllByEmail(@Param("email") String email);
+
+    /** Only email-change tokens carry a user id, so this cancels the user's pending email change. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from VerificationToken t where t.userId = :userId")
+    int deleteAllByUserId(@Param("userId") String userId);
 }

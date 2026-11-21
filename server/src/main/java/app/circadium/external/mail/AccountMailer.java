@@ -19,6 +19,17 @@ public interface AccountMailer {
     /** Sent after a successful reset, so the owner learns about a reset they did not make. */
     void sendPasswordChangedNotice(String email);
 
+    /** The link that moves a signed-in account to {@code newEmail}; sent to the new address. */
+    void sendEmailChangeVerification(String newEmail, String token);
+
+    /** Sent to the current address when a change is requested, while the owner can still stop it. */
+    void sendEmailChangeRequestedNotice(String currentEmail, String newEmail);
+
+    /** Sent to the previous address once the account has moved. */
+    void sendEmailChangedNotice(String previousEmail, String newEmail);
+
+    void sendTwoFactorChangedNotice(String email, boolean enabled);
+
     void sendAccountDeletionEmail(String email, String token);
 
     /**

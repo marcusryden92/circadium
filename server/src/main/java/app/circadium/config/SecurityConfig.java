@@ -8,6 +8,7 @@ import app.circadium.auth.oauth.OAuthLoginHandler;
 import app.circadium.auth.oauth.OAuthStartFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -24,6 +25,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -41,6 +46,12 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 class SecurityConfig {
 
     private static final String[] API_DOCS = {"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"};
+
+    /**
+     * The API serves JSON, which a browser should never run, style, or frame. Swagger UI is an HTML page and is
+     * left without it.
+     */
+    private static final String API_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'";
 
     /** Endpoints anyone may call. The token resolver never reads the access cookie on these. */
     static final RequestMatcher PUBLIC_ENDPOINTS = new OrRequestMatcher(
@@ -95,11 +106,17 @@ class SecurityConfig {
     SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, Environment environment, AuthCookies authCookies)
             throws Exception {
         boolean local = environment.matchesProfiles("local");
+        RequestMatcher apiDocs = new OrRequestMatcher(Arrays.stream(API_DOCS)
+                .map(PathPatternRequestMatcher::pathPattern)
+                .toArray(RequestMatcher[]::new));
         http
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable())
+                .headers(headers -> headers.addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                        new NegatedRequestMatcher(apiDocs),
+                        new StaticHeadersWriter("Content-Security-Policy", API_CONTENT_SECURITY_POLICY))))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers(PUBLIC_ENDPOINTS).permitAll();

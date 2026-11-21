@@ -19,12 +19,9 @@ export function AccountSection({ user }: AccountSectionProps) {
   return (
     <>
       <EmailCard user={user} />
-      {!user.isOAuth && <PasswordCard />}
+      {!user.isOAuth && <PasswordCard email={user.email} />}
       {!user.isOAuth && (
-        <TwoFactorCard
-          initialEnabled={user.isTwoFactorEnabled}
-          userRole={user.role}
-        />
+        <TwoFactorCard initialEnabled={user.isTwoFactorEnabled} />
       )}
       <ProvidersCard user={user} />
     </>

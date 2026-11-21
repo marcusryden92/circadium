@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -27,6 +28,7 @@ public class AccountController {
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
     private final PasswordChangeService passwordChangeService;
+    private final AccountSettingsService accountSettingsService;
     private final AccountDeletionService accountDeletionService;
     private final AuthCookies authCookies;
 
@@ -56,8 +58,25 @@ public class AccountController {
     public ResponseEntity<TokenResponse> changePassword(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody PasswordChangeRequest request, HttpServletRequest httpRequest) {
         IssuedTokens tokens = passwordChangeService.changePassword(jwt.getSubject(), request.currentPassword(),
-                request.newPassword(), ClientInfo.from(httpRequest));
+                request.newPassword(), ClientInfo.from(httpRequest), TokenService.isTwoFactorVerified(jwt));
         return authCookies.deliver(tokens, request.client()).asResponse();
+    }
+
+    /** Emails a confirmation link to the new address; the account moves only once that link is opened. */
+    @PostMapping("/account/email")
+    public ResponseEntity<StatusResponse> requestEmailChange(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody EmailChangeRequest request, HttpServletRequest httpRequest) {
+        accountSettingsService.requestEmailChange(jwt.getSubject(), request.currentPassword(), request.newEmail(),
+                ClientInfo.from(httpRequest));
+        return respond(HttpStatus.ACCEPTED, "VERIFICATION_EMAIL_SENT");
+    }
+
+    @PostMapping("/account/two-factor")
+    public ResponseEntity<StatusResponse> setTwoFactor(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody TwoFactorSettingRequest request, HttpServletRequest httpRequest) {
+        accountSettingsService.setTwoFactor(jwt.getSubject(), request.currentPassword(), request.enabled(),
+                ClientInfo.from(httpRequest));
+        return respond(HttpStatus.OK, request.enabled() ? "TWO_FACTOR_ENABLED" : "TWO_FACTOR_DISABLED");
     }
 
     @PostMapping("/account/deletion")
@@ -83,24 +102,30 @@ public class AccountController {
 
     public record PasswordResetRequest(@NotBlank @Email @Size(max = 254) String email) {}
 
-    /** Same rule as registration: 8+ characters, with the 72-byte bcrypt ceiling enforced in the service. */
+    /** Same rules as registration ({@link PasswordPolicy}). */
     public record NewPasswordRequest(
             @NotBlank @Size(max = 128) String token,
-            @NotBlank @Size(min = 8, max = 72) String password) {}
+            @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_BYTES) String password) {}
 
     /**
-     * The current password has no minimum, like login's: older accounts may have 6-character ones. The new one
-     * follows registration's rule. {@code client} as in login: the web app sends {@code web} and gets cookies.
+     * The current password has no minimum, like login's: older accounts may have shorter ones. The new one
+     * follows registration's rules. {@code client} as in login: the web app sends {@code web} and gets cookies.
      */
     public record PasswordChangeRequest(
             @NotBlank @Size(max = 256) String currentPassword,
-            @NotBlank @Size(min = 8, max = 72) String newPassword,
+            @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_BYTES) String newPassword,
             ClientType client) {
 
         public PasswordChangeRequest {
             client = client == null ? ClientType.MOBILE : client;
         }
     }
+
+    public record EmailChangeRequest(
+            @NotBlank @Size(max = 256) String currentPassword,
+            @NotBlank @Email @Size(max = 254) String newEmail) {}
+
+    public record TwoFactorSettingRequest(@NotBlank @Size(max = 256) String currentPassword, @NotNull Boolean enabled) {}
 
     /** {@code password} is required for accounts that have one; OAuth-only accounts confirm by email alone. */
     public record DeletionRequest(

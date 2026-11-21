@@ -8,6 +8,9 @@ import { pushToast } from "@/redux/slices/toastSlice";
 
 jest.mock("react-redux", () => ({ useDispatch: jest.fn() }));
 jest.mock("../../lib/session/signOut", () => ({ signOut: jest.fn() }));
+jest.mock("../../lib/session/SessionProvider", () => ({
+  useSession: () => ({ status: "authenticated", data: { user: { id: "user-1" } } }),
+}));
 
 const signOutMock = signOut as jest.MockedFunction<typeof signOut>;
 const dispatch = jest.fn();
@@ -18,13 +21,14 @@ beforeEach(() => {
 });
 
 describe("useSignOut", () => {
-  it("signs out", async () => {
+  it("signs out and names the account whose device data to clear", async () => {
     signOutMock.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSignOut());
 
     await act(async () => result.current());
 
     expect(signOutMock).toHaveBeenCalledTimes(1);
+    expect(signOutMock).toHaveBeenCalledWith({ userId: "user-1" });
     expect(dispatch).not.toHaveBeenCalled();
   });
 

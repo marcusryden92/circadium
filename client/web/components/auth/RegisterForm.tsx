@@ -6,8 +6,8 @@ import * as z from "zod";
 import { useState, useTransition } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
-import { RegisterSchema } from "@/schemas";
-import { Button } from "@/components/ui";
+import { MIN_PASSWORD_LENGTH, RegisterSchema } from "@/schemas";
+import { Button, PasswordInput, PasswordStrength } from "@/components/ui";
 import { register } from "@/lib/api/auth";
 import { describeApiError } from "@/lib/api/errorMessage";
 import { AuthCard } from "./AuthCard";
@@ -113,14 +113,17 @@ export const RegisterForm = () => {
           <label htmlFor="password" className={label}>
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
-            placeholder="at least 8 characters"
-            className={input}
+            variant="boxed"
+            placeholder={`at least ${MIN_PASSWORD_LENGTH} characters`}
             disabled={isPending}
             autoComplete="new-password"
             {...form.register("password")}
+          />
+          <PasswordStrength
+            password={form.watch("password")}
+            userInputs={[form.watch("email"), form.watch("name")]}
           />
           {errors.password && (
             <span className={fieldError}>{errors.password.message}</span>
@@ -131,11 +134,10 @@ export const RegisterForm = () => {
           <label htmlFor="passwordConfirmation" className={label}>
             Confirm
           </label>
-          <input
+          <PasswordInput
             id="passwordConfirmation"
-            type="password"
+            variant="boxed"
             placeholder="retype"
-            className={input}
             disabled={isPending}
             autoComplete="new-password"
             {...form.register("passwordConfirmation")}

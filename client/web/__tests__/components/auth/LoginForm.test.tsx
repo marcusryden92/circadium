@@ -21,10 +21,14 @@ jest.mock("../../../components/auth/AuthCard", () => {
   };
 });
 jest.mock("../../../components/ui", () => {
-  const { createElement } = jest.requireActual("react");
+  const { createElement, forwardRef } = jest.requireActual("react");
   return {
     Button: ({ children, variant: _v, size: _s, ...rest }: Record<string, unknown>) =>
       createElement("button", rest, children),
+    PasswordInput: forwardRef(
+      ({ variant: _v, ...rest }: Record<string, unknown>, ref: unknown) =>
+        createElement("input", { ...rest, type: "password", ref }),
+    ),
   };
 });
 jest.mock("next/link", () => {

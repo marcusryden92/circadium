@@ -51,7 +51,7 @@ describe("usePasswordChange", () => {
 
   it.each([
     [{ current: "old-pw", next: "new-password", confirm: "new-passwort" }, "New passwords don't match."],
-    [{ current: "old-pw", next: "short", confirm: "short" }, "New password: At least 8 characters."],
+    [{ current: "old-pw", next: "eleven-char", confirm: "eleven-char" }, "New password: At least 12 characters."],
   ])("checks the form before sending it: %o", async (values, message) => {
     const { result } = renderHook(() => usePasswordChange());
     fill(result, values);

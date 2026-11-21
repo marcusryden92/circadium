@@ -27,10 +27,31 @@ class AccountEmailsTest {
                 emails.passwordChanged("user@example.com"),
                 emails.accountDeletion("user@example.com", "token"),
                 emails.existingAccount("user@example.com", true),
-                emails.existingAccount("user@example.com", false)}) {
+                emails.existingAccount("user@example.com", false),
+                emails.emailChangeVerification("new@example.com", "token"),
+                emails.emailChangeRequested("user@example.com", "new@example.com"),
+                emails.emailChanged("user@example.com", "new@example.com"),
+                emails.twoFactorChanged("user@example.com", true),
+                emails.twoFactorChanged("user@example.com", false)}) {
             assertThat(message.html()).doesNotContain("{{").contains("<!DOCTYPE html>");
             assertThat(message.text()).doesNotContain("%s").isNotBlank();
         }
+    }
+
+    /** The new address is typed by whoever holds the session, so it is escaped like any other outside value. */
+    @Test
+    void emailChangeNoticesGoToTheOldAddressAndEscapeTheNewOne() {
+        String hostile = "<b>x</b>@example.com";
+
+        EmailMessage requested = emails.emailChangeRequested("user@example.com", hostile);
+        EmailMessage changed = emails.emailChanged("user@example.com", hostile);
+
+        assertThat(requested.to()).isEqualTo("user@example.com");
+        assertThat(requested.html()).contains("&lt;b&gt;x&lt;/b&gt;@example.com").doesNotContain("<b>x</b>");
+        assertThat(requested.text()).contains("https://app.example.com/auth/reset");
+        assertThat(changed.html()).contains("&lt;b&gt;x&lt;/b&gt;@example.com").doesNotContain("<b>x</b>");
+        assertThat(emails.emailChangeVerification("new@example.com", "t").text())
+                .contains("https://app.example.com/auth/new-verification?token=t");
     }
 
     @Test

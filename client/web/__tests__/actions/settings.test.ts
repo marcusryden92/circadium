@@ -2,17 +2,10 @@
  * @jest-environment node
  */
 import { settings } from "@/actions/settings";
-import { getUserById } from "@/data/user";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 
 jest.mock("../../lib/auth", () => ({ currentUser: jest.fn() }));
-jest.mock("../../data/user", () => ({
-  getUserById: jest.fn(),
-  getUserByEmail: jest.fn(),
-}));
-jest.mock("../../lib/tokens", () => ({ generateVerificationToken: jest.fn() }));
-jest.mock("../../lib/mail", () => ({ sendVerificationEmail: jest.fn() }));
 jest.mock("../../lib/db", () => ({
   db: { user: { update: jest.fn() } },
 }));
@@ -31,46 +24,38 @@ const SESSION_USER = {
 beforeEach(() => {
   jest.clearAllMocks();
   (currentUser as jest.Mock).mockResolvedValue(SESSION_USER);
-  (getUserById as jest.Mock).mockResolvedValue({
-    id: "user-1",
-    email: "Ada@Example.com",
-    password: "$2b$10$stored-hash",
-  });
   updateMock.mockResolvedValue({});
 });
 
 describe("settings", () => {
-  it("updates only the whitelisted columns", async () => {
-    const result = await settings({
-      role: "USER",
-      name: "Ada L.",
-      isTwoFactorEnabled: true,
-    });
+  it("updates the name", async () => {
+    const result = await settings({ name: "Ada L." });
 
     expect(result).toEqual({ success: "Settings updated!" });
     expect(updateMock).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: { name: "Ada L.", isTwoFactorEnabled: true },
+      data: { name: "Ada L." },
     });
   });
 
-  it("does not take a password: that goes through the Java API", async () => {
+  it("ignores the sign-in fields: those need the password and go through the Java API", async () => {
     const result = await settings({
-      role: "USER",
-      password: "old-password",
-      newPassword: "new-password-1",
-      confirmNewPassword: "new-password-1",
+      email: "someone-else@example.com",
+      isTwoFactorEnabled: false,
+      role: "ADMIN",
+      password: "anything",
     } as Parameters<typeof settings>[0]);
 
     expect(result).toEqual({ success: "Settings updated!" });
     expect(updateMock).not.toHaveBeenCalled();
   });
 
-  it("ignores the two-factor switch for an account without a password", async () => {
-    (currentUser as jest.Mock).mockResolvedValue({ ...SESSION_USER, isOAuth: true });
+  it("refuses a caller without a session", async () => {
+    (currentUser as jest.Mock).mockResolvedValue(undefined);
 
-    await settings({ role: "USER", isTwoFactorEnabled: true });
-
+    await expect(settings({ name: "Mallory" })).resolves.toEqual({
+      error: "Unauthorized.",
+    });
     expect(updateMock).not.toHaveBeenCalled();
   });
 });

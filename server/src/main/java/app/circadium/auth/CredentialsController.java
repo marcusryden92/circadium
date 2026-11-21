@@ -63,14 +63,14 @@ public class CredentialsController {
         };
     }
 
-    /** New passwords: 8+ characters; the 72-byte bcrypt ceiling is enforced in the service. */
+    /** The rest of the new-password rules (spaces, bytes, breaches) are in {@link PasswordPolicy}. */
     public record RegisterRequest(
             @NotBlank @Size(max = 100) String name,
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(min = 8, max = 72) String password) {}
+            @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_BYTES) String password) {}
 
     /**
-     * No minimum length: accounts created by the web app may have 6-character passwords. {@code client} defaults to
+     * No minimum length: older accounts may have shorter passwords than new ones need. {@code client} defaults to
      * mobile, which receives the tokens in the body; the web app sends {@code web} and receives cookies.
      */
     public record LoginRequest(

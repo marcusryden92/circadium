@@ -1,5 +1,7 @@
 package app.circadium.auth;
 
+import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
+
 import app.circadium.web.CorrelationIdFilter;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -11,14 +13,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -53,24 +58,36 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Keyed by method and path. The Google sign-in start and callback are browser navigations (GET); each start
-     * creates a session and each callback calls Google's token endpoint, so both are bounded too.
+     * Matched the way Spring Security and the handler mappings match, on the decoded path. Matching the raw
+     * request URI instead would let {@code /auth/l%6Fgin} reach the login handler without touching its bucket.
+     * The Google sign-in start and callback are browser navigations (GET); each start creates a session and each
+     * callback calls Google's token endpoint, so both are bounded too.
      */
-    private static final Map<String, Policy> POLICIES = Map.ofEntries(
-            Map.entry("POST /auth/login", Policy.LOGIN),
-            Map.entry("POST /auth/2fa", Policy.LOGIN),
-            Map.entry("POST /auth/handoff", Policy.LOGIN),
-            Map.entry("POST /auth/register", Policy.REGISTER),
-            Map.entry("POST /auth/password-reset", Policy.PASSWORD_RESET),
-            Map.entry("POST /auth/password-reset/confirm", Policy.ACCOUNT_LINK),
-            Map.entry("POST /auth/verify-email", Policy.ACCOUNT_LINK),
-            Map.entry("POST /account/password", Policy.ACCOUNT_LINK),
-            Map.entry("POST /account/deletion", Policy.ACCOUNT_LINK),
-            Map.entry("POST /account/deletion/confirm", Policy.ACCOUNT_LINK),
-            Map.entry("POST /auth/refresh", Policy.TOKEN),
-            Map.entry("POST /auth/logout", Policy.TOKEN),
-            Map.entry("GET /oauth2/authorization/google", Policy.OAUTH),
-            Map.entry("GET /login/oauth2/code/google", Policy.OAUTH));
+    private static final List<Rule> RULES = List.of(
+            new Rule(HttpMethod.POST, "/auth/login", Policy.LOGIN),
+            new Rule(HttpMethod.POST, "/auth/2fa", Policy.LOGIN),
+            new Rule(HttpMethod.POST, "/auth/handoff", Policy.LOGIN),
+            new Rule(HttpMethod.POST, "/auth/register", Policy.REGISTER),
+            new Rule(HttpMethod.POST, "/auth/password-reset", Policy.PASSWORD_RESET),
+            new Rule(HttpMethod.POST, "/auth/password-reset/confirm", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/auth/verify-email", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/account/password", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/account/email", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/account/two-factor", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/account/deletion", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/account/deletion/confirm", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/auth/refresh", Policy.TOKEN),
+            new Rule(HttpMethod.POST, "/auth/logout", Policy.TOKEN),
+            new Rule(HttpMethod.GET, "/oauth2/authorization/google", Policy.OAUTH),
+            new Rule(HttpMethod.GET, "/login/oauth2/code/google", Policy.OAUTH));
+
+    /** {@code path} is the canonical spelling, used in the 429 body instead of whatever encoding the caller sent. */
+    private record Rule(RequestMatcher matcher, String path, Policy policy) {
+
+        Rule(HttpMethod method, String path, Policy policy) {
+            this(pathPattern(method, path), path, policy);
+        }
+    }
 
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofHours(2))
@@ -79,13 +96,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !POLICIES.containsKey(policyKey(request));
+        return ruleFor(request).isEmpty();
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        Policy policy = POLICIES.get(policyKey(request));
+        Rule rule = ruleFor(request).orElseThrow();
+        Policy policy = rule.policy();
         Bucket bucket = buckets.get(policy.name() + "|" + request.getRemoteAddr(), key -> newBucket(policy));
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
         if (probe.isConsumed()) {
@@ -95,11 +113,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         long retryAfterSeconds = TooManyAttemptsException.retryAfterSeconds(
                 Duration.ofNanos(probe.getNanosToWaitForRefill()));
         log.warn("Rate limit {} hit by {}", policy, request.getRemoteAddr());
-        reject(request, response, retryAfterSeconds);
+        reject(rule.path(), response, retryAfterSeconds);
     }
 
-    private static String policyKey(HttpServletRequest request) {
-        return request.getMethod() + " " + request.getRequestURI();
+    private static Optional<Rule> ruleFor(HttpServletRequest request) {
+        return RULES.stream().filter(rule -> rule.matcher().matches(request)).findFirst();
     }
 
     private static Bucket newBucket(Policy policy) {
@@ -112,14 +130,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Written by hand because this runs outside Spring MVC, where the ProblemDetail advice cannot reach.
      * Every interpolated value is a fixed string, a number, or a validated request id, so no escaping is needed.
      */
-    private static void reject(HttpServletRequest request, HttpServletResponse response, long retryAfterSeconds)
+    private static void reject(String path, HttpServletResponse response, long retryAfterSeconds)
             throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds));
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.getWriter().write("""
                 {"title":"Too Many Requests","status":429,"detail":"Too many requests. Try again later.",\
-                "instance":"%s","requestId":"%s"}""".formatted(request.getRequestURI(),
-                MDC.get(CorrelationIdFilter.MDC_KEY)));
+                "instance":"%s","requestId":"%s"}""".formatted(path, MDC.get(CorrelationIdFilter.MDC_KEY)));
     }
 }

@@ -79,9 +79,25 @@ public class AccountTokens {
     @Transactional
     public String issueVerificationToken(String email) {
         verificationTokenRepository.deleteAllByEmail(email);
+        return saveVerificationToken(email, null);
+    }
+
+    /**
+     * A link that moves the account to {@code newEmail} once opened. It carries the user id because the new
+     * address belongs to no user row yet. A new request replaces the user's earlier one.
+     */
+    @Transactional
+    public String issueEmailChangeToken(String userId, String newEmail) {
+        verificationTokenRepository.deleteAllByUserId(userId);
+        verificationTokenRepository.deleteAllByEmail(newEmail);
+        return saveVerificationToken(newEmail, userId);
+    }
+
+    private String saveVerificationToken(String email, String userId) {
         VerificationToken token = new VerificationToken();
         token.setId(UUID.randomUUID().toString());
         token.setEmail(email);
+        token.setUserId(userId);
         token.setToken(UUID.randomUUID().toString());
         token.setExpires(DbTime.now(clock).plus(VERIFICATION_TTL));
         verificationTokenRepository.save(token);

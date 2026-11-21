@@ -24,11 +24,17 @@ jest.mock("../../../components/auth/AuthCard", () => {
   };
 });
 jest.mock("../../../components/ui", () => {
-  const { createElement } = jest.requireActual("react");
+  const { createElement, forwardRef } = jest.requireActual("react");
   return {
     Button: ({ children, variant: _v, size: _s, ...rest }: Record<string, unknown>) =>
       createElement("button", rest, children),
     Loader: ({ label }: { label: string }) => createElement("span", null, label),
+    PasswordInput: forwardRef(
+      ({ variant: _v, ...rest }: Record<string, unknown>, ref: unknown) =>
+        createElement("input", { ...rest, type: "password", ref }),
+    ),
+    PasswordStrength: ({ password }: { password: string }) =>
+      password ? createElement("span", { "data-testid": "strength" }, password.length) : null,
   };
 });
 jest.mock("next/navigation", () => ({ useSearchParams: jest.fn() }));
@@ -77,7 +83,8 @@ describe("RegisterForm", () => {
   });
 
   it.each([
-    ["shorter than 8 characters", "short12", "At least 8 characters."],
+    ["shorter than 12 characters", "eleven-char", "At least 12 characters."],
+    ["padded to length with spaces", "ab            cd", "At least 12 characters."],
     ["over bcrypt's 72 bytes", "é".repeat(37), "Too long: at most 72 characters"],
   ])("refuses a password %s before sending it", async (_label, password, message) => {
     render(<RegisterForm />);
@@ -86,6 +93,21 @@ describe("RegisterForm", () => {
 
     expect(await screen.findByText(message, { exact: false })).toBeInTheDocument();
     expect(registerMock).not.toHaveBeenCalled();
+  });
+
+  it("shows Java's reason when it refuses a breached password", async () => {
+    registerMock.mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: "password_breached",
+        message: "This password has appeared in a data breach, so attackers try it early. Choose a different one.",
+      }),
+    );
+    render(<RegisterForm />);
+
+    fill("correct horse");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("appeared in a data breach");
   });
 });
 

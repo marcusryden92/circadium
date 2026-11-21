@@ -39,6 +39,7 @@ function userRow(overrides: Record<string, unknown> = {}) {
     isTwoFactorEnabled: false,
     passwordChangedAt: null,
     accounts: [],
+    sessions: [{ id: "session-1" }],
     ...overrides,
   };
 }
@@ -51,6 +52,7 @@ beforeEach(() => {
     sessionId: "family-1",
     issuedAt: ISSUED_AT,
     expiresAt: ISSUED_AT + 900,
+    twoFactorVerified: false,
   });
   findUserMock.mockResolvedValue(userRow());
 });
@@ -88,9 +90,34 @@ describe("getSession", () => {
         isOAuth: false,
       },
       accessTokenExpiresAt: new Date((ISSUED_AT + 900) * 1000).toISOString(),
+      twoFactorVerified: false,
     });
     expect(verifyMock).toHaveBeenCalledWith("token");
     expect(findUserMock.mock.calls[0][0].where).toEqual({ id: "user-1" });
+  });
+
+  it("is null once the token's sign-in has ended, though the token is still valid", async () => {
+    withCookies({ circadium_access: "token" });
+    findUserMock.mockResolvedValue(userRow({ sessions: [] }));
+
+    await expect(getSession()).resolves.toBeNull();
+    expect(findUserMock.mock.calls[0][0].select.sessions.where).toEqual({
+      familyId: "family-1",
+    });
+  });
+
+  it("says whether this sign-in passed the emailed code", async () => {
+    withCookies({ circadium_access: "token" });
+    verifyMock.mockResolvedValue({
+      userId: "user-1",
+      role: "USER",
+      sessionId: "family-1",
+      issuedAt: ISSUED_AT,
+      expiresAt: ISSUED_AT + 900,
+      twoFactorVerified: true,
+    });
+
+    await expect(getSession()).resolves.toMatchObject({ twoFactorVerified: true });
   });
 
   it("marks accounts with a provider link as OAuth", async () => {

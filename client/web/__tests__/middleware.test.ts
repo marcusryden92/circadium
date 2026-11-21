@@ -20,6 +20,7 @@ const CLAIMS = {
   sessionId: "family-1",
   issuedAt: 1_800_000_000,
   expiresAt: 1_800_000_900,
+  twoFactorVerified: false,
 };
 
 function request(path: string, cookie?: string, authorization?: string) {

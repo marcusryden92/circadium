@@ -2,7 +2,7 @@
 
 import { space } from "@/lib/theme";
 import { useState } from "react";
-import { Button, ConfirmModal, Field, Input } from "@/components/ui";
+import { Button, ConfirmModal, Field, Input, PasswordInput } from "@/components/ui";
 import { requestAccountDeletion } from "@/lib/api/auth";
 import { describeApiError } from "@/lib/api/errorMessage";
 import { useServerAction } from "@/hooks/useServerAction";
@@ -126,8 +126,7 @@ export function DangerSection({ user }: DangerSectionProps) {
             </Field>
             {requirePassword && (
               <Field label="Password">
-                <Input
-                  type="password"
+                <PasswordInput
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

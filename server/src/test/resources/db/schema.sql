@@ -555,6 +555,7 @@ CREATE TABLE "sessions" (
     "deviceName" TEXT,
     "replacedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "twoFactorVerified" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
 );

@@ -16,6 +16,11 @@ if (key) {
     // Ad-click ids (gclid, fbclid, ...) are masked along with them.
     mask_personal_data_properties: true,
     custom_personal_data_properties: ["token", "code"],
+    // That masking covers event properties, not a replay's own page URL, and
+    // a replay starts recording with the page load. So a page load on an auth
+    // page records nothing. Sign-in and sign-out end in full page loads, so
+    // recording resumes on the next page the app loads.
+    disable_session_recording: window.location.pathname.startsWith("/auth/"),
     session_recording: {
       maskAllInputs: true,
     },

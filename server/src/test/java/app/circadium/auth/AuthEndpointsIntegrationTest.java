@@ -30,6 +30,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -58,6 +59,19 @@ class AuthEndpointsIntegrationTest {
 
     @Autowired
     AuthProperties properties;
+
+    @Autowired
+    JwtDecoder jwtDecoder;
+
+    /** The control for the rejection tests below: the same construction with every claim right is accepted. */
+    @Test
+    void probeAcceptsAHandSignedTokenWithAllClaimsRight() throws Exception {
+        String token = sign(claims(properties.issuer(), properties.audience(), Instant.now(),
+                Instant.now().plusSeconds(600)));
+
+        mockMvc.perform(get("/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+    }
 
     @Test
     void jwksPublishesPublicKeysOnly() throws Exception {
@@ -150,6 +164,35 @@ class AuthEndpointsIntegrationTest {
     }
 
     @Test
+    void probeRejectsATokenWhoseSignInHasEnded() throws Exception {
+        IssuedTokens tokens = tokenService.startSession(newUser(), null);
+        tokenService.logout(tokens.refreshToken(), ClientInfo.UNKNOWN);
+
+        expectRejected(tokens.accessToken());
+    }
+
+    @Test
+    void apiResponsesForbidScriptsAndFramingButSwaggerUiStillWorks() throws Exception {
+        mockMvc.perform(get("/.well-known/jwks.json"))
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Content-Security-Policy"));
+    }
+
+    @Test
+    void metricsAreNotServedOverHttp() throws Exception {
+        String accessToken = tokenService.startSession(newUser(), null).accessToken();
+
+        for (String path : List.of("/actuator/metrics", "/actuator/prometheus")) {
+            mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                    .andExpect(status().isNotFound());
+        }
+        mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    }
+
+    @Test
     void refreshEndpointValidatesTheBody() throws Exception {
         mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("{\"refreshToken\":\"\"}"))
                 .andExpect(status().isBadRequest())
@@ -162,14 +205,22 @@ class AuthEndpointsIntegrationTest {
                 .andExpect(header().exists(HttpHeaders.WWW_AUTHENTICATE));
     }
 
-    private static JwtClaimsSet claims(String issuer, String audience, Instant issuedAt, Instant expiresAt) {
+    /**
+     * A live session family, so each rejection test fails on the one claim it varies rather than on the session
+     * check.
+     */
+    private JwtClaimsSet claims(String issuer, String audience, Instant issuedAt, Instant expiresAt) {
+        User user = newUser();
+        String familyId = jwtDecoder.decode(tokenService.startSession(user, null).accessToken())
+                .getClaimAsString("sid");
         return JwtClaimsSet.builder()
                 .issuer(issuer)
-                .subject(UUID.randomUUID().toString())
+                .subject(user.getId())
                 .audience(List.of(audience))
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
                 .claim("role", "USER")
+                .claim("sid", familyId)
                 .build();
     }
 

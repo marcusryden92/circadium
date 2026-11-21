@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { isAdminSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/client";
 
@@ -18,8 +19,7 @@ export interface FeedbackReportSummary {
 }
 
 async function requireAdmin(): Promise<void> {
-  const session = await auth();
-  if (session?.user?.role !== "ADMIN") throw new Error("Unauthorized");
+  if (!isAdminSession(await auth())) throw new Error("Unauthorized");
 }
 
 export async function listFeedbackReports(): Promise<FeedbackReportSummary[]> {

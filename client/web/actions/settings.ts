@@ -4,24 +4,20 @@ import * as z from "zod";
 
 import { SettingsSchema } from "@/schemas";
 import { db } from "@/lib/db";
-import { getUserByEmail, getUserById } from "@/data/user";
 
 import { currentUser } from "@/lib/auth";
-import { generateVerificationToken } from "@/lib/tokens";
-import { sendVerificationEmail } from "@/lib/mail";
 import { AiMode } from "@/generated/client";
 import { AI_MODELS } from "@/lib/aiModels";
 
+/**
+ * The display name. Everything that decides who can sign in (email, password,
+ * two-factor) is a Java endpoint that re-checks the current password
+ * (`lib/api/auth.ts`).
+ */
 export const settings = async (values: z.infer<typeof SettingsSchema>) => {
   const user = await currentUser();
 
   if (!user) {
-    return { error: "Unauthorized." };
-  }
-
-  const dbUser = await getUserById(user.id);
-
-  if (!dbUser) {
     return { error: "Unauthorized." };
   }
 
@@ -31,55 +27,12 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
   if (!parsed.success) {
     return { error: "Invalid fields." };
   }
-  const data = parsed.data;
 
-  if (user.isOAuth) {
-    data.email = undefined;
-    data.isTwoFactorEnabled = undefined;
-  }
-
-  if (data.email && data.email !== user.email) {
-    const existingUser = await getUserByEmail(data.email);
-
-    if (existingUser && existingUser.id !== user.id) {
-      return { error: "Email already in use!" };
-    }
-
-    // Bind the token to the user id — the new email doesn't resolve to any
-    // user row yet, so newVerification can't look the account up by email.
-    const verificationToken = await generateVerificationToken(
-      data.email,
-      dbUser.id,
-    );
-
-    await sendVerificationEmail(
-      verificationToken.email,
-      verificationToken.token
-    );
-
-    return { success: "Verification email sent!" };
-  }
-
-  // Explicit whitelist — never spread client input into the update. The User
-  // row also carries role, emailVerified, and the OCC dataVersion counter;
-  // none of those are settable from here. The password is changed through the
-  // Java API, which also ends the other sessions.
-  const update: {
-    name?: string;
-    isTwoFactorEnabled?: boolean;
-  } = {};
-
-  if (data.name !== undefined) {
-    update.name = data.name;
-  }
-  if (data.isTwoFactorEnabled !== undefined) {
-    update.isTwoFactorEnabled = data.isTwoFactorEnabled;
-  }
-
-  if (Object.keys(update).length > 0) {
+  // Explicit whitelist — never spread client input into the update.
+  if (parsed.data.name !== undefined) {
     await db.user.update({
-      where: { id: dbUser.id },
-      data: update,
+      where: { id: user.id },
+      data: { name: parsed.data.name },
     });
   }
   return { success: "Settings updated!" };

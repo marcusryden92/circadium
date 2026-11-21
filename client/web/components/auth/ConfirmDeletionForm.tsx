@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api/client";
 import { confirmAccountDeletion } from "@/lib/api/auth";
 import { describeApiError } from "@/lib/api/errorMessage";
 import { hardNavigate } from "@/lib/session/navigation";
+import { forgetDeviceData } from "@/lib/session/deviceData";
 import { forgetSession } from "@/lib/session/refresh";
 import { loginUrlFor, useSession } from "@/lib/session/SessionProvider";
 import { signOut } from "@/lib/session/signOut";
@@ -23,7 +24,7 @@ const SIGN_IN_FIRST =
 export function ConfirmDeletionForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   const [done, setDone] = useState(false);
@@ -43,14 +44,16 @@ export function ConfirmDeletionForm() {
         return;
       }
       setDone(true);
+      const userId = session?.user.id;
       try {
         // Java has already ended the sessions with the account; this clears
-        // the cookies and tells the other tabs.
-        await signOut({ redirectTo: "/" });
+        // the cookies, tells the other tabs, and empties this device.
+        await signOut({ redirectTo: "/", userId });
       } catch {
         // The cookies are dead weight now: the access token names a user that
         // no longer exists and the refresh token's session row is gone.
         forgetSession();
+        if (userId) await forgetDeviceData(userId);
         hardNavigate("/");
       }
     });

@@ -1,11 +1,17 @@
 "use client";
 
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, PasswordInput, PasswordStrength } from "@/components/ui";
+import { MIN_PASSWORD_LENGTH } from "@/schemas";
 import { StatusLine } from "../StatusLine";
 import { card, cardTitle, fieldGrid, footerRow } from "../../page.css";
 import { usePasswordChange } from "./usePasswordChange";
 
-export function PasswordCard() {
+interface PasswordCardProps {
+  /** Passed to the strength meter: a password built from it is easy to guess. */
+  email?: string;
+}
+
+export function PasswordCard({ email }: PasswordCardProps) {
   const { values, setters, status, isPending, filled, submit } =
     usePasswordChange();
 
@@ -14,27 +20,31 @@ export function PasswordCard() {
       <span className={cardTitle}>Password</span>
       <div className={fieldGrid}>
         <Field label="Current">
-          <Input
-            type="password"
+          <PasswordInput
             value={values.password}
             onChange={(e) => setters.setPassword(e.target.value)}
             autoComplete="current-password"
             disabled={isPending}
           />
         </Field>
-        <Field label="New">
-          <Input
-            type="password"
-            value={values.newPassword}
-            onChange={(e) => setters.setNewPassword(e.target.value)}
-            autoComplete="new-password"
-            disabled={isPending}
-            placeholder="At least 8 characters"
+        {/* The meter sits outside the <label> so its text is not read as the field's name. */}
+        <div>
+          <Field label="New">
+            <PasswordInput
+              value={values.newPassword}
+              onChange={(e) => setters.setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              disabled={isPending}
+              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+            />
+          </Field>
+          <PasswordStrength
+            password={values.newPassword}
+            userInputs={email ? [email] : []}
           />
-        </Field>
+        </div>
         <Field label="Confirm new">
-          <Input
-            type="password"
+          <PasswordInput
             value={values.confirmNewPassword}
             onChange={(e) => setters.setConfirmNewPassword(e.target.value)}
             autoComplete="new-password"

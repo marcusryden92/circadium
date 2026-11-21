@@ -8,13 +8,10 @@ import app.circadium.persistence.entity.User;
 import app.circadium.persistence.repository.AccountDeletionTokenRepository;
 import app.circadium.persistence.repository.UserRepository;
 import java.time.Clock;
-import java.time.Duration;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -33,17 +30,14 @@ public class AccountDeletionService {
     private final AccountTokens accountTokens;
     private final AccountMailer accountMailer;
     private final AnalyticsEraser analyticsEraser;
-    private final PasswordEncoder passwordEncoder;
+    private final CurrentPasswordCheck currentPasswordCheck;
     private final LoginThrottle loginThrottle;
     private final AuditLogger auditLogger;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
 
-    /**
-     * A wrong password counts toward the same lockout as a failed login, so an access token cannot be used
-     * to guess the password here instead.
-     */
+    /** The password is checked under the login lockout ({@link CurrentPasswordCheck}). */
     public void requestDeletion(String userId, String confirmEmail, String password, ClientInfo client) {
         User user = userRepository.findById(userId).orElseThrow(AccountDeletionService::accountGone);
         String email = user.getEmail();
@@ -54,20 +48,10 @@ public class AccountDeletionService {
         }
 
         if (user.getPassword() != null) {
-            Optional<Duration> lock = loginThrottle.remainingLock(key);
-            if (lock.isPresent()) {
-                auditLogger.record(AuditEvent.ACCOUNT_DELETION_DENIED, user.getId(), key, client, "locked");
-                throw new TooManyAttemptsException(lock.get());
-            }
             if (password == null || password.isEmpty()) {
                 throw new AccountFlowException(HttpStatus.BAD_REQUEST, "password_required", "Password is required.");
             }
-            if (!PasswordPolicy.fitsBcrypt(password) || !passwordEncoder.matches(password, user.getPassword())) {
-                auditLogger.record(AuditEvent.ACCOUNT_DELETION_DENIED, user.getId(), key, client, "bad_password");
-                loginThrottle.recordFailure(key).ifPresent(duration ->
-                        auditLogger.record(AuditEvent.ACCOUNT_LOCKED, user.getId(), key, client, "lock=" + duration));
-                throw new AccountFlowException(HttpStatus.FORBIDDEN, "bad_password", "Incorrect password.");
-            }
+            currentPasswordCheck.require(user, password, client, AuditEvent.ACCOUNT_DELETION_DENIED);
             loginThrottle.recordSuccess(key);
         }
 

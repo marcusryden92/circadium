@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -93,6 +94,50 @@ class TokenServiceIntegrationTest {
         assertThat(current.getFamilyId()).isEqualTo(old.getFamilyId());
         assertThat(current.getReplacedBy()).isNull();
         assertThat(jwtDecoder.decode(second.accessToken()).getSubject()).isEqualTo(user.getId());
+    }
+
+    /** Daily use cannot keep a sign-in alive forever: rotation hands on the expiry the sign-in started with. */
+    @Test
+    void refreshKeepsTheSignInsOriginalExpiry() {
+        IssuedTokens first = tokenService.startSession(newUser(UserRole.USER), null);
+
+        IssuedTokens second = tokenService.refresh(first.refreshToken(), ClientInfo.UNKNOWN);
+        IssuedTokens third = tokenService.refresh(second.refreshToken(), ClientInfo.UNKNOWN);
+
+        assertThat(second.refreshTokenExpiresAt()).isEqualTo(first.refreshTokenExpiresAt());
+        assertThat(third.refreshTokenExpiresAt()).isEqualTo(first.refreshTokenExpiresAt());
+        assertThat(findSession(third).getExpiresAt()).isEqualTo(first.refreshTokenExpiresAt());
+    }
+
+    @Test
+    void aTwoFactorSignInKeepsItsMfaMethodThroughRotation() {
+        User user = newUser(UserRole.ADMIN);
+        IssuedTokens verified = tokenService.startSession(user, null, true);
+        IssuedTokens plain = tokenService.startSession(user, null);
+
+        Jwt rotated = jwtDecoder.decode(tokenService.refresh(verified.refreshToken(), ClientInfo.UNKNOWN).accessToken());
+
+        assertThat(TokenService.isTwoFactorVerified(jwtDecoder.decode(verified.accessToken()))).isTrue();
+        assertThat(TokenService.isTwoFactorVerified(rotated)).isTrue();
+        assertThat(jwtDecoder.decode(plain.accessToken()).getClaims()).doesNotContainKey("amr");
+    }
+
+    /** The access token is otherwise still within its 15 minutes; ending the sign-in must end it too. */
+    @Test
+    void anAccessTokenStopsVerifyingOnceItsSignInEnds() {
+        User user = newUser(UserRole.USER);
+        IssuedTokens loggedOut = tokenService.startSession(user, null);
+        IssuedTokens passwordChanged = tokenService.startSession(user, null);
+        IssuedTokens otherDevice = tokenService.startSession(newUser(UserRole.USER), null);
+
+        tokenService.logout(loggedOut.refreshToken(), ClientInfo.UNKNOWN);
+        assertThatThrownBy(() -> jwtDecoder.decode(loggedOut.accessToken())).isInstanceOf(JwtValidationException.class);
+        assertThat(jwtDecoder.decode(passwordChanged.accessToken()).getSubject()).isEqualTo(user.getId());
+
+        tokenService.revokeAllSessions(user.getId());
+        assertThatThrownBy(() -> jwtDecoder.decode(passwordChanged.accessToken()))
+                .isInstanceOf(JwtValidationException.class);
+        assertThat(jwtDecoder.decode(otherDevice.accessToken()).getSubject()).isNotEqualTo(user.getId());
     }
 
     @Test

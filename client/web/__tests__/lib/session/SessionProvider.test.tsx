@@ -33,6 +33,7 @@ const SESSION: Session = {
     isOAuth: false,
   },
   accessTokenExpiresAt: "2026-11-21T10:15:00.000Z",
+  twoFactorVerified: false,
 };
 
 function Probe() {

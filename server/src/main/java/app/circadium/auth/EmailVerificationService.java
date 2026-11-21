@@ -1,5 +1,6 @@
 package app.circadium.auth;
 
+import app.circadium.external.mail.AccountMailer;
 import app.circadium.persistence.DbTime;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.entity.VerificationToken;
@@ -19,7 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>Two kinds of token share the table. A registration token resolves its user by email. An email-change
  * token carries the {@code userId}, because the new address belongs to no user row yet; consuming it moves
- * the account to that address.
+ * the account to that address and tells the previous address.
  *
  * <p>Audit rows are written after the transaction commits: they reference the user row, and an email change
  * holds a lock on that row that the audit logger's separate transaction would wait on forever.
@@ -30,6 +31,7 @@ public class EmailVerificationService {
 
     private final VerificationTokenRepository verificationTokenRepository;
     private final UserRepository userRepository;
+    private final AccountMailer accountMailer;
     private final AuditLogger auditLogger;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
@@ -69,6 +71,9 @@ public class EmailVerificationService {
         boolean changed = previousEmail == null || !previousEmail.equalsIgnoreCase(token.getEmail());
         if (changed) {
             auditLogger.record(AuditEvent.EMAIL_CHANGED, user.getId(), normalized, client, null);
+            if (previousEmail != null) {
+                accountMailer.sendEmailChangedNotice(previousEmail, token.getEmail());
+            }
         }
         auditLogger.record(AuditEvent.EMAIL_VERIFIED, user.getId(), normalized, client, null);
     }

@@ -23,9 +23,9 @@ import org.springframework.web.util.WebUtils;
  *   <li>The access cookie covers the shared parent domain and every path, so the API and the web server both
  *       receive it. SameSite=Lax because it must still arrive when a link on another site (an email) opens the
  *       web app; with Strict the web server would see a signed-in user as signed out.
- *   <li>The refresh cookie is host-only and limited to {@code /auth}, so it reaches the API's refresh and logout
- *       endpoints and nothing else, never the web server. SameSite=Strict because only the web app's own
- *       requests, which are same-site, ever need it.
+ *   <li>The refresh cookie is host-only, so it reaches the API and never the web server. SameSite=Strict because
+ *       only the web app's own requests, which are same-site, ever need it. Its path is {@code /}, which the
+ *       {@code __Host-} name prefix deployed environments use requires; only refresh and logout read it.
  * </ul>
  *
  * Max-Age follows each token's expiry, so the browser drops a cookie once its token is useless.
@@ -33,8 +33,6 @@ import org.springframework.web.util.WebUtils;
 @Component
 @RequiredArgsConstructor
 public class AuthCookies {
-
-    static final String REFRESH_COOKIE_PATH = "/auth";
 
     private final AuthCookieProperties properties;
     private final Clock clock;
@@ -98,7 +96,7 @@ public class AuthCookies {
                 .httpOnly(true)
                 .secure(properties.secure())
                 .sameSite("Strict")
-                .path(REFRESH_COOKIE_PATH)
+                .path("/")
                 .maxAge(maxAge)
                 .build();
     }

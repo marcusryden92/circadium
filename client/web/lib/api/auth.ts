@@ -94,6 +94,25 @@ export async function changePassword(input: {
   );
 }
 
+/**
+ * Emails a confirmation link to the new address; the account moves once it is
+ * opened. The current address is told about the request.
+ */
+export async function requestEmailChange(input: {
+  currentPassword: string;
+  newEmail: string;
+}): Promise<void> {
+  await apiRequest("/account/email", { body: input, authenticated: true });
+}
+
+/** The account is emailed about every change. */
+export async function setTwoFactor(input: {
+  currentPassword: string;
+  enabled: boolean;
+}): Promise<void> {
+  await apiRequest("/account/two-factor", { body: input, authenticated: true });
+}
+
 /** `password` is required for accounts that have one. */
 export async function requestAccountDeletion(input: {
   confirmEmail: string;

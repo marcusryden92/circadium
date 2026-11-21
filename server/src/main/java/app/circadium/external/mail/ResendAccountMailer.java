@@ -79,6 +79,26 @@ public class ResendAccountMailer implements AccountMailer, AutoCloseable {
     }
 
     @Override
+    public void sendEmailChangeVerification(String newEmail, String token) {
+        dispatch(emails.emailChangeVerification(newEmail, token));
+    }
+
+    @Override
+    public void sendEmailChangeRequestedNotice(String currentEmail, String newEmail) {
+        dispatch(emails.emailChangeRequested(currentEmail, newEmail));
+    }
+
+    @Override
+    public void sendEmailChangedNotice(String previousEmail, String newEmail) {
+        dispatch(emails.emailChanged(previousEmail, newEmail));
+    }
+
+    @Override
+    public void sendTwoFactorChangedNotice(String email, boolean enabled) {
+        dispatch(emails.twoFactorChanged(email, enabled));
+    }
+
+    @Override
     public void sendAccountDeletionEmail(String email, String token) {
         dispatch(emails.accountDeletion(email, token));
     }

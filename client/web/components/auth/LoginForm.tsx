@@ -9,7 +9,7 @@ import Link from "next/link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { LoginSchema, TwoFactorCodeSchema } from "@/schemas";
-import { Button } from "@/components/ui";
+import { Button, PasswordInput } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import {
   signInWithPassword,
@@ -229,11 +229,10 @@ export const LoginForm = () => {
               <label htmlFor="password" className={label}>
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
+                variant="boxed"
                 placeholder="••••••••"
-                className={input}
                 disabled={busy}
                 autoComplete="current-password"
                 {...form.register("password")}

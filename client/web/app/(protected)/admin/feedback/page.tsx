@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Eraser, Eye, Trash2 } from "lucide-react";
 import { Button, ConfirmModal, Loader, PageHeader } from "@/components/ui";
-import { useCurrentRole } from "@/hooks/useCurrentRole";
+import { useSession } from "@/lib/session/SessionProvider";
 import { startInspection } from "@/utils/inspection";
 import {
   clearFeedbackSnapshot,
@@ -50,7 +50,8 @@ const formatDateTime = (iso: string): string => {
 };
 
 export default function AdminFeedbackPage() {
-  const role = useCurrentRole();
+  const { data: session } = useSession();
+  const role = session?.user.role;
   const [reports, setReports] = useState<FeedbackReportSummary[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snapshots, setSnapshots] = useState<
@@ -61,7 +62,8 @@ export default function AdminFeedbackPage() {
     { kind: "delete" | "clear"; id: string } | null
   >(null);
 
-  const isAdmin = role === "ADMIN";
+  // The server actions enforce the same rule; this only explains a refusal.
+  const isAdmin = role === "ADMIN" && session?.twoFactorVerified === true;
 
   const reload = useCallback(async () => {
     setReports(await listFeedbackReports());
@@ -130,7 +132,11 @@ export default function AdminFeedbackPage() {
     return (
       <div className={page}>
         <PageHeader title="Feedback reports" />
-        <div className={emptyMain}>Not authorized.</div>
+        <div className={emptyMain}>
+          {role === "ADMIN"
+            ? "The admin tools need a sign-in with an emailed code. Turn on two-factor authentication in Settings, then sign out and sign in again."
+            : "Not authorized."}
+        </div>
       </div>
     );
   }

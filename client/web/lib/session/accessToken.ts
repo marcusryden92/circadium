@@ -19,6 +19,11 @@ export type AccessTokenClaims = {
   issuedAt: number;
   /** Seconds since the epoch. */
   expiresAt: number;
+  /**
+   * The sign-in passed the emailed code as well as the password: Java lists
+   * "mfa" in the RFC 8176 `amr` claim, and only then.
+   */
+  twoFactorVerified: boolean;
 };
 
 // Vercel and Fly clocks are NTP-synced; this only absorbs sub-second drift
@@ -77,7 +82,7 @@ export async function verifyAccessToken(
     throw error;
   }
 
-  const { sub, iat, exp, role, sid } = payload;
+  const { sub, iat, exp, role, sid, amr } = payload;
   if (
     typeof sub !== "string" ||
     typeof iat !== "number" ||
@@ -93,5 +98,6 @@ export async function verifyAccessToken(
     sessionId: sid,
     issuedAt: iat,
     expiresAt: exp,
+    twoFactorVerified: Array.isArray(amr) && amr.includes("mfa"),
   };
 }
