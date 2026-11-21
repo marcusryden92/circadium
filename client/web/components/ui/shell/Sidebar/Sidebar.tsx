@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { signOut } from "next-auth/react";
 import {
   ChevronLeft,
   LogOut,
@@ -13,6 +12,7 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react";
+import { useSignOut } from "@/hooks/useSignOut";
 import { useTheme } from "../../ThemeProvider";
 import { Logo } from "../../Logo";
 import { useAssistant } from "../AssistantContext";
@@ -165,6 +165,7 @@ function UserMenu({
   userName: string;
   userInitial: string;
 }) {
+  const signOut = useSignOut();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const [portalReady, setPortalReady] = useState(false);

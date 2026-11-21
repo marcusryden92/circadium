@@ -64,6 +64,12 @@ circadium:
     mobile-completion-url: circadium://auth/oauth/complete
   cors:
     allowed-origins: ${circadium.mail.web-base-url}
+  # Erases a deleted account's PostHog person (see PosthogProperties). Optional: both blank turns it off.
+  analytics:
+    posthog:
+      personal-api-key: ${POSTHOG_PERSONAL_API_KEY:}
+      project-id: ${POSTHOG_PROJECT_ID:}
+      api-host: https://eu.posthog.com
 
 management:
   endpoints:

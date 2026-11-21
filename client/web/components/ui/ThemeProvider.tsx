@@ -10,8 +10,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { useSession } from "next-auth/react";
 import { assignInlineVars } from "@vanilla-extract/dynamic";
+import { useSession } from "@/lib/session/SessionProvider";
 import { themeLight, themeDark, vars, type ThemeVars } from "@/lib/theme";
 
 export type ThemeName = "light" | "dark";

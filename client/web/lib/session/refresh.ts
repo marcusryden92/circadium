@@ -80,6 +80,15 @@ export function forgetSession(): void {
   }
 }
 
+/**
+ * True when a tab of this browser held a session that was not signed out, so
+ * the refresh cookie may still be live. Lets a signed-out page skip a refresh
+ * that could only fail.
+ */
+export function hasRememberedSession(): boolean {
+  return readShared() !== null;
+}
+
 /** Fires when the session ends in this tab or another one. */
 export function onSessionEnded(
   listener: (reason: SessionEndReason) => void,

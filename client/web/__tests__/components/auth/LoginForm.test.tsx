@@ -5,6 +5,8 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { ApiError } from "@/lib/api/client";
 import { signInWithPassword, verifyTwoFactorCode } from "@/lib/api/auth";
 import { hardNavigate } from "@/lib/session/navigation";
+import { hasRememberedSession, refreshSession } from "@/lib/session/refresh";
+import { useSession } from "@/lib/session/SessionProvider";
 
 // Vanilla Extract styles only compile inside the Next build, so the styled
 // leaves are swapped for plain elements.
@@ -36,10 +38,20 @@ jest.mock("next/link", () => {
 jest.mock("next/navigation", () => ({ useSearchParams: jest.fn() }));
 jest.mock("../../../lib/api/auth");
 jest.mock("../../../lib/session/navigation", () => ({ hardNavigate: jest.fn() }));
+jest.mock("../../../lib/session/refresh", () => ({
+  hasRememberedSession: jest.fn(),
+  refreshSession: jest.fn(),
+}));
+jest.mock("../../../lib/session/SessionProvider", () => ({
+  useSession: jest.fn(),
+}));
 
 const useSearchParamsMock = useSearchParams as jest.Mock;
 const signInMock = signInWithPassword as jest.MockedFunction<typeof signInWithPassword>;
 const verifyMock = verifyTwoFactorCode as jest.MockedFunction<typeof verifyTwoFactorCode>;
+const rememberedMock = hasRememberedSession as jest.MockedFunction<typeof hasRememberedSession>;
+const refreshMock = refreshSession as jest.MockedFunction<typeof refreshSession>;
+const useSessionMock = useSession as jest.Mock;
 
 function renderAt(query = "") {
   useSearchParamsMock.mockReturnValue(new URLSearchParams(query));
@@ -73,7 +85,77 @@ async function reachCodeStep() {
   await settled("Verify");
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  rememberedMock.mockReturnValue(false);
+  useSessionMock.mockReturnValue({ data: null, status: "unauthenticated" });
+});
+
+describe("LoginForm, for a visitor who may already be signed in", () => {
+  it("sends a signed-in visitor on without asking for anything", async () => {
+    useSessionMock.mockReturnValue({ data: {}, status: "authenticated" });
+    renderAt("callbackUrl=%2Fcalendar");
+
+    await waitFor(() => expect(hardNavigate).toHaveBeenCalledWith("/calendar"));
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+  });
+
+  it("renews an expired access cookie with the refresh cookie, then goes back", async () => {
+    rememberedMock.mockReturnValue(true);
+    refreshMock.mockResolvedValue("refreshed");
+    renderAt("callbackUrl=%2Fsettings");
+
+    await waitFor(() => expect(hardNavigate).toHaveBeenCalledWith("/settings"));
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the form, disabled, while the refresh is out", async () => {
+    rememberedMock.mockReturnValue(true);
+    let finish: (outcome: "signed-out") => void = () => {};
+    refreshMock.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    renderAt();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Signing you back in...",
+    );
+    expect(screen.getByLabelText("Email")).toBeDisabled();
+
+    finish("signed-out");
+    await waitFor(() => expect(screen.getByLabelText("Email")).toBeEnabled());
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(hardNavigate).not.toHaveBeenCalled();
+  });
+
+  it.each(["signed-out", "unavailable"] as const)(
+    "asks for the password when the refresh comes back %s",
+    async (outcome) => {
+      rememberedMock.mockReturnValue(true);
+      refreshMock.mockResolvedValue(outcome);
+      renderAt();
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled(),
+      );
+      expect(hardNavigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not try a refresh in a browser that holds no session", () => {
+    renderAt();
+
+    expect(refreshMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  });
+
+  it("explains the sign-out after a password change", () => {
+    renderAt("reason=password-changed&callbackUrl=%2Fsettings");
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Your password was changed and every device was signed out.",
+    );
+  });
+});
 
 describe("LoginForm", () => {
   it("signs in and loads the page the user was sent from", async () => {

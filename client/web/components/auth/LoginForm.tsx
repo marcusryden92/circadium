@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -19,6 +19,8 @@ import {
 import { describeApiError } from "@/lib/api/errorMessage";
 import { safeCallbackUrl } from "@/lib/session/callbackUrl";
 import { hardNavigate } from "@/lib/session/navigation";
+import { hasRememberedSession, refreshSession } from "@/lib/session/refresh";
+import { useSession } from "@/lib/session/SessionProvider";
 import { AuthCard } from "./AuthCard";
 import {
   form as formStyle,
@@ -39,30 +41,70 @@ type LoginValues = z.infer<typeof LoginSchema>;
 type Step = "password" | "code";
 
 const CODE_SENT = "We emailed you a 6-digit code. It expires in 5 minutes.";
+const RESUMING = "Signing you back in...";
+const PASSWORD_CHANGED =
+  "Your password was changed and every device was signed out. Sign in with the new password.";
 
 export const LoginForm = () => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
+  const { status: sessionStatus } = useSession();
 
   const [step, setStep] = useState<Step>("password");
   const [error, setError] = useState<string>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useState<string | undefined>(() =>
+    searchParams.get("reason") === "password-changed"
+      ? PASSWORD_CHANGED
+      : undefined,
+  );
   const [isPending, startTransition] = useTransition();
   // Stays set while the browser loads the next page, so the form cannot be
   // sent twice (each send would start another session).
   const [leaving, setLeaving] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(LoginSchema),
     defaultValues: { email: "", password: "", code: "" },
   });
 
+  const leave = () => {
+    setLeaving(true);
+    // A full page load: the server renders the new session, and nothing held
+    // in memory from before the sign-in carries over.
+    hardNavigate(safeCallbackUrl(callbackUrl, window.location.origin));
+  };
+
+  // A visitor may already be signed in. The common case is an access cookie
+  // that expired while no tab was open: the refresh cookie is still good, but
+  // it only ever goes to the API, so only this page can trade it for a new
+  // access cookie. A browser that holds no session skips the attempt. Both
+  // dependencies are fixed for the life of the page, so this runs once.
+  useEffect(() => {
+    const signedIn = sessionStatus === "authenticated";
+    if (!signedIn && !hasRememberedSession()) return;
+    let active = true;
+    setResuming(true);
+    const resumed = signedIn
+      ? Promise.resolve(true)
+      : refreshSession().then((outcome) => outcome === "refreshed");
+    void resumed.then((ok) => {
+      if (!active) return;
+      if (ok) {
+        setLeaving(true);
+        hardNavigate(safeCallbackUrl(callbackUrl, window.location.origin));
+      } else {
+        setResuming(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [sessionStatus, callbackUrl]);
+
   const follow = (outcome: SignInOutcome) => {
     if (outcome === "signed-in") {
-      setLeaving(true);
-      // A full page load: the server renders the new session, and nothing
-      // held in memory from before the sign-in carries over.
-      hardNavigate(safeCallbackUrl(callbackUrl, window.location.origin));
+      leave();
     } else if (outcome === "two-factor-required") {
       setStep("code");
       form.setValue("code", "");
@@ -120,7 +162,8 @@ export const LoginForm = () => {
   const resendCode = () => send(form.getValues(), "password");
 
   const errors = form.formState.errors;
-  const busy = isPending || leaving;
+  const busy = isPending || leaving || resuming;
+  const status = resuming ? RESUMING : notice;
 
   return (
     <AuthCard
@@ -219,10 +262,10 @@ export const LoginForm = () => {
             <span>{error}</span>
           </div>
         )}
-        {notice && (
+        {status && (
           <div className={alertSuccess} role="status">
             <CheckCircle2 size={14} strokeWidth={2.2} />
-            <span>{notice}</span>
+            <span>{status}</span>
           </div>
         )}
 

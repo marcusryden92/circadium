@@ -87,12 +87,21 @@ class AccountFlowsIntegrationTest {
     @Autowired
     RecordingAccountMailer mailer;
 
+    @Autowired
+    RecordingAnalyticsEraser analyticsEraser;
+
     @TestConfiguration(proxyBeanMethods = false)
     static class MailConfig {
         @Bean
         @Primary
         RecordingAccountMailer recordingAccountMailer() {
             return new RecordingAccountMailer();
+        }
+
+        @Bean
+        @Primary
+        RecordingAnalyticsEraser recordingAnalyticsEraser() {
+            return new RecordingAnalyticsEraser();
         }
     }
 
@@ -277,6 +286,7 @@ class AccountFlowsIntegrationTest {
         assertThat(accountDeletionTokenRepository.findByToken(token)).isEmpty();
         assertThat(count("select count(*) from audit_log where event = 'ACCOUNT_DELETED' and detail = ?",
                 "user=" + user.getId())).isEqualTo(1);
+        assertThat(analyticsEraser.erased()).contains(user.getId());
     }
 
     @Test
@@ -322,6 +332,7 @@ class AccountFlowsIntegrationTest {
                 .andExpect(jsonPath("$.code").value("wrong_account"));
         assertThat(userRepository.findById(owner.getId())).isPresent();
         assertThat(userRepository.findById(other.getId())).isPresent();
+        assertThat(analyticsEraser.erased()).doesNotContain(owner.getId(), other.getId());
     }
 
     @Test

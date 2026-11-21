@@ -1,5 +1,6 @@
 package app.circadium.auth;
 
+import app.circadium.external.analytics.AnalyticsEraser;
 import app.circadium.external.mail.AccountMailer;
 import app.circadium.persistence.DbTime;
 import app.circadium.persistence.entity.AccountDeletionToken;
@@ -31,6 +32,7 @@ public class AccountDeletionService {
     private final AccountDeletionTokenRepository accountDeletionTokenRepository;
     private final AccountTokens accountTokens;
     private final AccountMailer accountMailer;
+    private final AnalyticsEraser analyticsEraser;
     private final PasswordEncoder passwordEncoder;
     private final LoginThrottle loginThrottle;
     private final AuditLogger auditLogger;
@@ -80,6 +82,9 @@ public class AccountDeletionService {
      *
      * <p>The audit row is written after the commit and without a user id: {@code audit_log} rows cascade with
      * their user, and a row naming the user being deleted would wait on the delete's own lock.
+     *
+     * <p>The analytics person is erased after the commit too, so a rolled-back deletion keeps it, and in the
+     * background, so the response does not wait on the analytics service.
      */
     public void confirmDeletion(String userId, String rawToken, ClientInfo client) {
         AccountDeletionToken token = accountDeletionTokenRepository.findByToken(rawToken)
@@ -103,6 +108,7 @@ public class AccountDeletionService {
 
         log.info("Deleted account {}", user.getId());
         auditLogger.record(AuditEvent.ACCOUNT_DELETED, null, null, client, "user=" + user.getId());
+        analyticsEraser.erasePerson(user.getId());
     }
 
     private void erase(User user) {

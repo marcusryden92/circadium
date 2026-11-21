@@ -327,3 +327,28 @@ describe("other tabs", () => {
     expect(shared()).toBeNull();
   });
 });
+
+describe("hasRememberedSession", () => {
+  it("is false in a browser that never held a session", () => {
+    expect(refresh.hasRememberedSession()).toBe(false);
+  });
+
+  it("is true once a tab has run the keeper, even after that tab closed", () => {
+    refresh.startSessionKeeper({ userId: "user-1", accessTokenExpiresAt: NOW + 15 * MINUTE })();
+
+    expect(refresh.hasRememberedSession()).toBe(true);
+  });
+
+  it("is false after a sign-out or a refused refresh", () => {
+    refresh.startSessionKeeper({ userId: "user-1", accessTokenExpiresAt: NOW + 15 * MINUTE });
+    refresh.forgetSession();
+
+    expect(refresh.hasRememberedSession()).toBe(false);
+  });
+
+  it("ignores a value it cannot read", () => {
+    localStorage.setItem(SHARED_KEY, "{not json");
+
+    expect(refresh.hasRememberedSession()).toBe(false);
+  });
+});

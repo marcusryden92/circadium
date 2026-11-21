@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import type { Session } from "next-auth";
-import { SessionProvider } from "next-auth/react";
-import { auth } from "@/auth";
+import { getSession, type Session } from "@/lib/session/session";
+import { SessionProvider } from "@/lib/session/SessionProvider";
 import { fontDisplay, fontUI, fontLogo } from "@/lib/theme/fonts";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import PostHogProvider from "@/context/PostHogProvider";
@@ -22,12 +21,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // The root layout sits above every error boundary, so an unhandled throw
-  // here (e.g. a cold-start auth/DB failure) blanks the whole tab. Degrade to
-  // a null session instead — SessionProvider re-fetches it client-side once
-  // the server is warm.
+  // here (a cold-start DB failure, Java's keys unreachable) blanks the whole
+  // tab. Degrade to a null session instead; the next page load tries again.
   let session: Session | null = null;
   try {
-    session = await auth();
+    session = await getSession();
   } catch {
     session = null;
   }

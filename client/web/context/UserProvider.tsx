@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/lib/session/SessionProvider";
 import { setUser } from "@/redux/slices/userSlice";
 import {
   setSchedulingSettings,
@@ -22,12 +22,12 @@ export default function UserProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const user: User | undefined = session?.user;
 
-  // NextAuth refetches the session on every window focus, handing down a new
-  // `user` object with identical data. Keying the account-scoped fetch below on
-  // this ref (not the object reference) stops a tab refocus from re-fetching
-  // scheduling settings and bumping setAllTravelTimes/setDefaultTransportMode —
-  // which otherwise cascade into CalendarProvider's settings-regen effect and
-  // trigger a full engine regen (that could clobber an unsynced edit).
+  // A server re-render (router.refresh) hands down a new `user` object with
+  // identical data. Keying the account-scoped fetch below on this ref (not the
+  // object reference) stops that from re-fetching scheduling settings and
+  // bumping setAllTravelTimes/setDefaultTransportMode — which otherwise cascade
+  // into CalendarProvider's settings-regen effect and trigger a full engine
+  // regen (that could clobber an unsynced edit).
   const hydratedSchedulingForUserRef = useRef<string | null>(null);
 
   useEffect(() => {

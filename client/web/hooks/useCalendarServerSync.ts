@@ -29,6 +29,7 @@ import {
 } from "@circadium/shared/sync/syncLoop";
 import { syncCalendarData } from "@/actions/calendar-actions/syncCalendarData";
 import type { FreshState } from "@/actions/calendar-actions/fetchFreshState";
+import { ensureFreshSession } from "@/lib/session/refresh";
 
 const useCalendarServerSync = (
   userId: string | undefined,
@@ -231,8 +232,12 @@ const useCalendarServerSync = (
   const loopRef = useRef<SyncLoop | null>(null);
   if (!loopRef.current) {
     loopRef.current = createSyncLoop({
-      transport: (changes, clientKnownDataVersion) =>
-        syncCalendarData(changes, clientKnownDataVersion),
+      // A server action cannot refresh the access cookie itself, and the first
+      // sync after a tab wakes can run before the session keeper catches up.
+      transport: async (changes, clientKnownDataVersion) => {
+        await ensureFreshSession();
+        return syncCalendarData(changes, clientKnownDataVersion);
+      },
       getSnapshot: () => latestStateRef.current,
       getBaseline: () => ({
         planner: previousPlanner.current,

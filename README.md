@@ -19,7 +19,7 @@ The scheduling engine considers task urgency, location proximity, category time 
 - **UI:** shadcn/ui, Radix UI, Tailwind CSS, FullCalendar
 - **State:** Redux Toolkit, React Context
 - **Backend:** Next.js Server Actions, Prisma ORM, PostgreSQL
-- **Auth:** NextAuth v5
+- **Auth:** the Spring Boot API in `server/` (RS256 access JWT + rotated refresh token, as HttpOnly cookies for the web)
 
 ## Getting Started
 
@@ -29,7 +29,8 @@ pnpm install
 
 # Set up environment variables
 cp .env.example .env
-# Fill in DATABASE_URL, NEXTAUTH_SECRET, OAuth credentials, etc.
+# Fill in DATABASE_URL, the Google/Microsoft calendar credentials, etc.
+# Sign-in needs the Java API running locally (server/, port 8080).
 
 # Push schema to database
 pnpm prisma generate

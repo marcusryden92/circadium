@@ -115,7 +115,16 @@ Mail (`external/mail`, settings under `circadium.mail`): `ResendAccountMailer` w
 otherwise `LoggingAccountMailer`, which is only allowed under `local` (it logs tokens
 there) — any other profile refuses to start without a key. `WEB_BASE_URL` (the web app's
 origin, used for emailed links) is required outside `local`. Tests swap in
-`RecordingAccountMailer`. The token tables (`VerificationToken`, `PasswordResetToken`,
+`RecordingAccountMailer`.
+
+Analytics erasure (`external/analytics`, settings under `circadium.analytics.posthog`): with
+`POSTHOG_PERSONAL_API_KEY` (scope `person:write`) and `POSTHOG_PROJECT_ID` set, a confirmed account
+deletion erases the user's PostHog person (the web identifies people by user id) and their events,
+after the commit and on a background thread, retried on 429/5xx/network errors; a failure goes to
+Sentry with the user id for a manual erasure. Optional in every profile: without both values startup
+logs a warning and deletion skips it. Tests swap in `RecordingAnalyticsEraser`.
+
+The token tables (`VerificationToken`, `PasswordResetToken`,
 `AccountDeletionToken`, `TwoFactorToken`) hold raw values because the web app reads them
 too; tokens are issued for the stored email casing, since the web looks them up exactly.
 

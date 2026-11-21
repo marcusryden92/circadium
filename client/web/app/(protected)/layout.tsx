@@ -1,7 +1,9 @@
 import { type ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { retry } from "@/lib/retry";
+import type { Session } from "@/lib/session/session";
 import type { AiMode } from "@/generated/client";
 import { ProtectedProviders } from "./ProtectedProviders";
 
@@ -15,15 +17,29 @@ export default async function CircadiumLayout({
 }: {
   children: ReactNode;
 }) {
+  // undefined: the session could not be checked (database or Java keys
+  // unreachable). The app then renders without account data, and every server
+  // action fails closed on its own auth() call.
+  let session: Session | null | undefined;
+  try {
+    session = await auth();
+  } catch {
+    session = undefined;
+  }
+  // The middleware already turned away requests without a valid token; this
+  // catches the tokens only the database can refuse (account deleted, issued
+  // before the last password change).
+  if (session === null) redirect("/auth/login");
+
   let needsOnboarding = false;
   let aiMode: AiMode | null = null;
   let aiModel: string | null = null;
   try {
-    const session = await auth();
-    if (session?.user?.id) {
+    if (session) {
+      const userId = session.user.id;
       const user = await retry(() =>
         db.user.findUnique({
-          where: { id: session.user.id },
+          where: { id: userId },
           select: { onboardedAt: true, aiMode: true, aiModel: true },
         }),
       );

@@ -12,7 +12,7 @@
   - **React** 19, **TypeScript** 6.0.3 (strict, `moduleResolution: "bundler"`, `@/*` path alias).
   - **Prisma** 7.8 with `@prisma/adapter-pg` driver adapter (Prisma 7 requires a driver adapter at construction time — see [lib/db.ts](lib/db.ts)). Client is generated to `generated/client` (outside `/prisma/` so the VS Code Prisma extension doesn't merge its embedded `schema.prisma` copy with the source schema) and imported as `@/generated/client`.
   - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev`).
-  - **NextAuth** v5 (5.0.0-beta.32). Edge-safe config in [auth.config.ts](auth.config.ts) (OAuth providers only, used by middleware); full config with Credentials + adapter in [auth.ts](auth.ts).
+  - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server actions. Sign-in, registration, reset, verification, deletion and Google sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
   - **Vanilla Extract** for styling — `@vanilla-extract/{css,sprinkles,recipes,dynamic,next-plugin}`. Every page/component has a co-located `*.css.ts` file. There is no Tailwind in this project despite a leftover `components.json`.
   - **Redux Toolkit** for cross-component state, **React Context** for scoped providers (Store, User, Calendar, Capture, Search).
   - **FullCalendar** 6.1 for the calendar surface (with `@fullcalendar/luxon3` + **Luxon** 3 as the timezone plugin); **date-fns** 3 for date math (engine has its own [dateTimeService](utils/calendar-generation/utils/dateTimeService.ts)); **rrule** for template recurrence.
@@ -30,7 +30,7 @@
   - **No narration comments** ("// fixed to handle X", "// updated to use new API"). Comments explain *why* something non-obvious exists, not *what* the code does.
   - **No summary, changelog, refactor-notes, or migration-notes markdown files** added to the repo. Make the change and commit.
   - **Absolute imports with `@/`** prefix.
-  - **Prefer server actions** (`"use server"` files in [actions/](actions/)) over `app/api/` routes. API routes exist only for `auth/`, `admin/`, and `integrations/{google,microsoft}/` (the calendar OAuth connect + callback handlers, which need a redirect URI a server action can't provide). (The AI assistant's old SSE route is gone — its tool-use loop runs in the browser on the user's own key; see the AI-assistant section.)
+  - **Prefer server actions** (`"use server"` files in [actions/](actions/)) over `app/api/` routes. API routes exist only for `admin/` and `integrations/{google,microsoft}/` (the calendar OAuth connect + callback handlers, which need a redirect URI a server action can't provide). (The AI assistant's old SSE route is gone — its tool-use loop runs in the browser on the user's own key; see the AI-assistant section.)
   - **Zod schemas** in [schemas/](schemas/) for any user-facing form.
   - Spell out "category" — never "cat".
   - The location surface is named **Locations**, not "Places" (Google Places is the underlying API, but the user-facing concept is Location).
@@ -62,13 +62,13 @@
   │   │   ├── queues/                   # Queue (pipe) management — rail + member list + add-member modal
   │   │   ├── onboarding/               # First-run 6-step overlay (Welcome/Roles/Locations/Week/BrainDump/AI); _lib builders, _steps, _components
   │   │   └── settings/
-  │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete/error — client pages that call the Java API
+  │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete — client pages that call the Java API
   │   ├── api/                          # auth/ + admin/ + integrations/{google,microsoft}/ (calendar OAuth connect + callback)
   │   ├── privacy/                      # Public GDPR privacy-policy page (outside the (protected) group; in publicRoutes)
   │   └── test-shell/, test-tokens/, logo-test/  # Dev scaffolding
   │
   ├── actions/                          # Server actions (preferred backend surface)
-  │   ├── settings.ts                   # Profile/email/2FA/password changes (still on Prisma); sign-in, registration, reset, verification and deletion are Java endpoints (lib/api/auth.ts)
+  │   ├── settings.ts                   # Profile/email/2FA/password changes (still on Prisma; a password change also deletes the user's Java `sessions` rows, signing out every device); sign-in, registration, reset, verification and deletion are Java endpoints (lib/api/auth.ts)
   │   ├── onboarding.ts                 # completeOnboarding() — stamps User.onboardedAt
   │   ├── scheduling.ts                 # UserSchedulingPreferences + TaskPreferences
   │   ├── categories.ts                 # Category CRUD + planner-category assignment
@@ -128,7 +128,8 @@
   │   ├── useCalendarStateActions       # updatePlannerArray / updateTemplateArray / updateAll
   │   ├── useManuallyRefreshCalendar    # User-triggered regen
   │   ├── useViewStatePersistence       # Load-once + debounced-save for a canvas page's UserViewState blob (graph/mindmap)
-  │   ├── useServerAction               # useTransition + status pattern for mutations
+  │   ├── useServerAction               # useTransition + status pattern for mutations (refreshes a lapsing access cookie first)
+  │   ├── useSignOut                    # The sign-out buttons: signOut(), or a toast saying the user is still signed in
   │   ├── useIsMobile                   # matchMedia on media.mobile (narrow viewport OR landscape phone) — for JS-level mobile treatments (view types, bottom sheets)
   │   ├── useCoarsePointer              # matchMedia on media.touch — drives the touch interaction model (canvas gestures, touch legends, sheet swaps) on all touch devices, tablets included
   │   ├── useAIDraftState               # AI-assistant working drafts (forest/templates/windows/precedence/habits) + chat + conversation persistence
@@ -141,7 +142,7 @@
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
   │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401), auth.ts (account endpoints), errorMessage.ts (describeApiError)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), googleSignIn (PKCE start + pending read)
-  │   ├── auth.ts                       # Helpers around NextAuth session
+  │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
   │   ├── google-maps-api.ts            # Places autocomplete + Routes API travel matrix
   │   ├── mail.ts, tokens.ts            # Email-change verification + support mail (the sign-in, reset and deletion mails come from Java)
@@ -245,9 +246,9 @@
   │   └── calendar-generation-deep-dive.md
   │
   ├── notes/                            # Personal notes / TODOs — NOT documentation, do not quote
-  ├── middleware.ts                     # Route protection (uses edge-safe auth.config.ts)
-  ├── routes.ts                         # publicRoutes, authRoutes, apiAuthPrefix, DEFAULT_LOGIN_REDIRECT (/dashboard)
-  ├── auth.ts, auth.config.ts, next-auth.d.ts
+  ├── middleware.ts                     # Staging gate + route protection (verifies the Java access cookie, edge-safe)
+  ├── routes.ts                         # publicRoutes, authRoutes, DEFAULT_LOGIN_REDIRECT (/dashboard)
+  ├── auth.ts                           # auth() = lib/session getSession, for server actions and route handlers
   ├── docker-compose.dev.yml
   ├── prisma.config.ts, components.json (legacy), jest.config.ts, jest.setup.ts
   ├── next.config.mjs                   # withVanillaExtract + rrule webpack alias
@@ -770,9 +771,10 @@
 
   ## App routes & access control
 
-  - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|error|reset|new-password]`, and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
-  - `middleware.ts` uses the **edge-safe** `auth.config.ts` (OAuth providers only) — it must NOT import anything Node-only. The Credentials provider, bcrypt, and DB access live in `auth.ts`.
-  - Everything under `app/(protected)/` requires login. Unauthenticated requests are redirected to `/`.
+  - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion", "/auth/oauth/complete"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|reset|new-password]` (pages for signed-out visitors; a `callbackUrl` pointing at one falls back to the dashboard), and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
+  - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only (Prisma, bcrypt). It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` adds the database checks (account still exists, token not older than the last password change) on every render and server action.
+  - Every route outside `publicRoutes` and `authRoutes` requires a valid access token. Without one the middleware redirects to `/auth/login?callbackUrl=<path>`; the login page first tries a silent refresh (the refresh cookie only ever reaches the API, so only the browser can use it) and sends a signed-in visitor on. If Java's keys cannot be fetched the middleware answers 503 rather than treating the visitor as signed out. The `(protected)` layout redirects to the login page when `getSession()` refuses a token the middleware accepted. Auth pages are never redirected away from by the middleware: a token the database refuses would loop.
+  - Session changes (sign-in, sign-out, password change, a user switch in another tab) are always full page loads ([lib/session/navigation.ts](lib/session/navigation.ts)), so no Redux state or PostHog identity crosses accounts; [PostHogProvider](context/PostHogProvider.tsx) resets a stored identity on a signed-out page.
 
   Nav structure (from [components/ui/shell/nav.ts](components/ui/shell/nav.ts)):
 
@@ -955,10 +957,11 @@
 
   ```
   NEXT_PUBLIC_APP_URL="http://localhost:3000"
-  NEXTAUTH_SECRET=""
+  NEXT_PUBLIC_API_URL=""              # Java API origin, also the JWT issuer (local default http://localhost:8080; required in production builds)
+  AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; required in production builds)
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
-  GOOGLE_CLIENT_ID=""                 # OAuth login AND Google Calendar import (see note below)
+  GOOGLE_CLIENT_ID=""                 # Google Calendar import (see note below); Google sign-in is configured on the Java API
   GOOGLE_CLIENT_SECRET=""
   GOOGLE_MAPS_API_KEY=""              # Places API (New) + Routes API (computeRouteMatrix)
   MICROSOFT_CLIENT_ID=""              # Microsoft Graph calendar import (optional — see note below)
@@ -969,7 +972,7 @@
   # (Reserved for the future MANAGED mode's server-side proxy.)
   ```
 
-  The Google Calendar integration adds **no new variable** — it reuses `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and `NEXT_PUBLIC_APP_URL`. But the Google Cloud OAuth client must have the **Calendar API** enabled with the `https://www.googleapis.com/auth/calendar.readonly` scope, and a **second authorized redirect URI** registered: `${NEXT_PUBLIC_APP_URL}/api/integrations/google/callback` (distinct from the NextAuth callback).
+  The Google Calendar integration adds **no new variable** — it reuses `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and `NEXT_PUBLIC_APP_URL`. But the Google Cloud OAuth client must have the **Calendar API** enabled with the `https://www.googleapis.com/auth/calendar.readonly` scope, and a **second authorized redirect URI** registered: `${NEXT_PUBLIC_APP_URL}/api/integrations/google/callback` (distinct from the Java API's sign-in callback).
 
   The Microsoft Calendar integration needs its own app registration (Microsoft Entra admin center → App registrations, supported account types "Accounts in any organizational directory and personal Microsoft accounts", i.e. common tenant): `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` come from it, with the **Web** redirect URI `${NEXT_PUBLIC_APP_URL}/api/integrations/microsoft/callback` and delegated Graph permission `Calendars.Read` (+ `openid`, `email`, `offline_access`). No admin consent needed. When the variables are unset the Connect Microsoft button fails with "Microsoft OAuth credentials are not configured"; ICS import is unaffected.
 

@@ -56,9 +56,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.109.0
         version: 0.109.0(zod@3.24.3)
-      '@auth/prisma-adapter':
-        specifier: ^2.11.2
-        version: 2.11.2(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))
       '@circadium/shared':
         specifier: workspace:*
         version: link:../shared
@@ -152,9 +149,6 @@ importers:
       next:
         specifier: 16.3.0
         version: 16.3.0(@babel/core@7.26.10)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      next-auth:
-        specifier: 5.0.0-beta.32
-        version: 5.0.0-beta.32(next@16.3.0(@babel/core@7.26.10)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       node-ical:
         specifier: ^0.27.1
         version: 0.27.1
@@ -163,7 +157,7 @@ importers:
         version: 0.1.7
       posthog-js:
         specifier: ^1.413.3
-        version: 1.413.3(preact-render-to-string@6.5.11(preact@10.24.3))
+        version: 1.413.3(preact-render-to-string@6.5.11)
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -294,39 +288,6 @@ packages:
     peerDependenciesMeta:
       zod:
         optional: true
-
-  '@auth/core@0.41.2':
-    resolution: {integrity: sha512-Hx5MNBxN2fJTbJKGUKAA0wca43D0Akl3TvufY54Gn8lop7F+34vU1zA1pn0vQfIoVuLIrpfc2nkyjwIaPJMW7w==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      nodemailer: ^7.0.7
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
-  '@auth/core@0.41.3':
-    resolution: {integrity: sha512-sJ3JMHHkXMD3aOjopv7mOBTO1Ocw4b0fAEXJBz6k7YHLpYQI6C40jCUPc5fNvUKxXRXNE1/sRISA15UrwWJBTw==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      nodemailer: ^7.0.7 || ^8.0.5
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
-  '@auth/prisma-adapter@2.11.2':
-    resolution: {integrity: sha512-GyNEUNtrPgDPs0M4xX6F5i7jTsCKwU6BXV9zutctcoo6K1Ud+juckrmQS11uyNgeWsw6sliextHbU/e+8lsizQ==}
-    peerDependencies:
-      '@prisma/client': '>=2.26.0 || >=3 || >=4 || >=5 || >=6'
 
   '@babel/code-frame@7.26.2':
     resolution: {integrity: sha512-RJlIHRueQgwWitWgF8OdFYGZX328Ax5BCemNGlqHfplnRT9ESi8JkFlvaVYbS+UubVY6dpv87Fs2u5M29iNFVQ==}
@@ -1155,9 +1116,6 @@ packages:
 
   '@oxc-project/types@0.132.0':
     resolution: {integrity: sha512-FESMOxil5Se014ui/Eq8fT5uHJo6nIRwH0PfJrZJXs6Gek3ZVFOrpUv3YIZT20m+extU98Hg1Ym72U58rlsxUQ==}
-
-  '@panva/hkdf@1.2.1':
-    resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
 
   '@posthog/browser-common@0.4.0':
     resolution: {integrity: sha512-W9DCGVks15docUMPvJ2nd8NS16Gn74bsGWuaeg31beEKFSjdW8wvnQ1ETY6WSql5pYxZb3GdJmEUZVVstKSrBQ==}
@@ -3911,22 +3869,6 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
-  next-auth@5.0.0-beta.32:
-    resolution: {integrity: sha512-CGlChIEWZ6LltNVxrE5yiySMID+Idpmry47JYA5lLwgD8Sx02a8M65VL0TWVz9nbnOioS/tCW/rP/0+mE7Qp4Q==}
-    peerDependencies:
-      '@simplewebauthn/browser': ^9.0.1
-      '@simplewebauthn/server': ^9.0.2
-      next: ^14.0.0-0 || ^15.0.0 || ^16.0.0
-      nodemailer: ^7.0.7 || ^8.0.5
-      react: ^18.2.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@simplewebauthn/browser':
-        optional: true
-      '@simplewebauthn/server':
-        optional: true
-      nodemailer:
-        optional: true
-
   next@16.3.0:
     resolution: {integrity: sha512-NEdGOzH+08eTXMUp9UYkA99Nhi5N6Thrhc1jgFOQgfgnGK/dA2hRwBpXep+exdFQrnwlRf/3Wixyp8lLBUpE2A==}
     engines: {node: '>=20.9.0'}
@@ -3969,9 +3911,6 @@ packages:
 
   nwsapi@2.2.20:
     resolution: {integrity: sha512-/ieB+mDe4MrrKMT8z+mQL8klXydZWGR5Dowt4RAGKbJ3kIGEx3X4ljUo+6V73IXtUPWgfOlU5B9MlGxFO5T+cA==}
-
-  oauth4webapi@3.5.0:
-    resolution: {integrity: sha512-DF3mLWNuxPkxJkHmWxbSFz4aE5CjWOsm465VBfBdWzmzX4Mg3vF8icxK+iKqfdWrIumBJ2TaoNQWx+SQc2bsPQ==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -4187,9 +4126,6 @@ packages:
 
   preact@10.12.1:
     resolution: {integrity: sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==}
-
-  preact@10.24.3:
-    resolution: {integrity: sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==}
 
   preact@10.29.8:
     resolution: {integrity: sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q==}
@@ -5139,31 +5075,6 @@ snapshots:
     optionalDependencies:
       zod: 3.24.3
 
-  '@auth/core@0.41.2':
-    dependencies:
-      '@panva/hkdf': 1.2.1
-      jose: 6.2.18
-      oauth4webapi: 3.5.0
-      preact: 10.24.3
-      preact-render-to-string: 6.5.11(preact@10.24.3)
-
-  '@auth/core@0.41.3':
-    dependencies:
-      '@panva/hkdf': 1.2.1
-      jose: 6.2.18
-      oauth4webapi: 3.5.0
-      preact: 10.24.3
-      preact-render-to-string: 6.5.11(preact@10.24.3)
-
-  '@auth/prisma-adapter@2.11.2(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))':
-    dependencies:
-      '@auth/core': 0.41.2
-      '@prisma/client': 7.8.0(prisma@7.8.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@simplewebauthn/browser'
-      - '@simplewebauthn/server'
-      - nodemailer
-
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
@@ -5983,8 +5894,6 @@ snapshots:
       fastq: 1.19.1
 
   '@oxc-project/types@0.132.0': {}
-
-  '@panva/hkdf@1.2.1': {}
 
   '@posthog/browser-common@0.4.0':
     dependencies:
@@ -9360,12 +9269,6 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@5.0.0-beta.32(next@16.3.0(@babel/core@7.26.10)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
-    dependencies:
-      '@auth/core': 0.41.3
-      next: 16.3.0(@babel/core@7.26.10)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      react: 19.2.8
-
   next@16.3.0(@babel/core@7.26.10)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.3.0
@@ -9407,8 +9310,6 @@ snapshots:
       path-key: 3.1.1
 
   nwsapi@2.2.20: {}
-
-  oauth4webapi@3.5.0: {}
 
   object-assign@4.1.1: {}
 
@@ -9618,7 +9519,7 @@ snapshots:
 
   postgres@3.4.7: {}
 
-  posthog-js@1.413.3(preact-render-to-string@6.5.11(preact@10.24.3)):
+  posthog-js@1.413.3(preact-render-to-string@6.5.11):
     dependencies:
       '@posthog/browser-common': 0.4.0
       '@posthog/core': 1.46.9
@@ -9626,24 +9527,23 @@ snapshots:
       core-js: 3.50.0
       dompurify: 3.4.13
       fflate: 0.4.9
-      preact: 10.29.8(preact-render-to-string@6.5.11(preact@10.24.3))
+      preact: 10.29.8(preact-render-to-string@6.5.11)
       query-selector-shadow-dom: 1.0.1
       web-vitals: 5.3.0
       web-vitals-soft-navs: web-vitals@6.0.0
     transitivePeerDependencies:
       - preact-render-to-string
 
-  preact-render-to-string@6.5.11(preact@10.24.3):
+  preact-render-to-string@6.5.11(preact@10.29.8):
     dependencies:
-      preact: 10.24.3
+      preact: 10.29.8(preact-render-to-string@6.5.11)
+    optional: true
 
   preact@10.12.1: {}
 
-  preact@10.24.3: {}
-
-  preact@10.29.8(preact-render-to-string@6.5.11(preact@10.24.3)):
+  preact@10.29.8(preact-render-to-string@6.5.11):
     optionalDependencies:
-      preact-render-to-string: 6.5.11(preact@10.24.3)
+      preact-render-to-string: 6.5.11(preact@10.29.8)
 
   prelude-ls@1.2.1: {}
 

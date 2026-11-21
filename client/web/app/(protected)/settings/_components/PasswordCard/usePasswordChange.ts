@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { settings } from "@/actions/settings";
 import { useServerAction } from "@/hooks/useServerAction";
+import { hardNavigate } from "@/lib/session/navigation";
+import { forgetSession } from "@/lib/session/refresh";
 import type { UserRole } from "@/generated/client";
 
 export function usePasswordChange(userRole: UserRole) {
@@ -39,6 +41,13 @@ export function usePasswordChange(userRole: UserRole) {
     if (!result) return;
     if (result.error) {
       setError(result.error);
+    } else if (result.signedOut) {
+      // The change ended this session too. Forgetting it here also sends the
+      // other open tabs to the login page.
+      forgetSession();
+      hardNavigate(
+        `/auth/login?reason=password-changed&callbackUrl=${encodeURIComponent("/settings")}`,
+      );
     } else if (result.success) {
       setSuccess(result.success);
       reset();

@@ -2,6 +2,8 @@
 
 import { useCallback, useState, useTransition } from "react";
 
+import { ensureFreshSession } from "@/lib/session/refresh";
+
 export type ServerActionStatus =
   | { tone: "error" | "success"; text: string }
   | null;
@@ -28,6 +30,9 @@ export function useServerAction<Args extends unknown[], R = unknown>(
       return new Promise<R | undefined>((resolve) => {
         startTransition(async () => {
           try {
+            // A server action cannot refresh the access cookie itself, and a
+            // tab just woken from sleep may not have caught up yet.
+            await ensureFreshSession();
             const result = await action(...args);
             resolve(result);
           } catch (err) {

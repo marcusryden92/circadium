@@ -2,6 +2,7 @@
 
 import * as z from "zod";
 import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
 
 import { SettingsSchema } from "@/schemas";
 import { db } from "@/lib/db";
@@ -20,7 +21,7 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
     return { error: "Unauthorized." };
   }
 
-  const dbUser = await getUserById(user.id as string);
+  const dbUser = await getUserById(user.id);
 
   if (!dbUser) {
     return { error: "Unauthorized." };
@@ -95,12 +96,38 @@ export const settings = async (values: z.infer<typeof SettingsSchema>) => {
     return { success: "Settings updated!" };
   }
 
-  await db.user.update({
+  const userUpdate = db.user.update({
     where: { id: dbUser.id },
     data: update,
   });
 
-  return { success: "Settings updated!" };
+  if (!update.password) {
+    await userUpdate;
+    return { success: "Settings updated!" };
+  }
+
+  // A new password must lock out whoever knew the old one. Deleting the
+  // sessions rows ends every refresh token; the access tokens still alive are
+  // refused by getSession, which rejects tokens issued before
+  // passwordChangedAt.
+  const request = await headers();
+  await db.$transaction([
+    userUpdate,
+    db.session.deleteMany({ where: { userId: dbUser.id } }),
+    db.auditLog.create({
+      data: {
+        userId: dbUser.id,
+        event: "PASSWORD_CHANGED",
+        // The audit log keys emails the way Java's lockout does.
+        email: dbUser.email?.trim().toLowerCase() ?? null,
+        ipAddress:
+          request.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
+        userAgent: request.get("user-agent"),
+      },
+    }),
+  ]);
+
+  return { success: "Password changed.", signedOut: true };
 };
 
 // The mode is the only server-known part of the AI setup: the API key itself

@@ -3,13 +3,11 @@
   "compilerOptions": {
     "types": ["jest", "@testing-library/jest-dom", "node"]
   },
-  // next-auth.d.ts: component tests reach code typed by its Session augmentation.
   "include": [
     "__tests__/**/*.ts",
     "__tests__/**/*.tsx",
     "jest.setup.ts",
-    "types/css.d.ts",
-    "next-auth.d.ts"
+    "types/css.d.ts"
   ],
   // The base config excludes __tests__ — without overriding exclude here the
   // inherited entry would win over include and this project would be empty.

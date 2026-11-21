@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
 import {
   AlertTriangle,
   Bell,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button, PageHeader } from "@/components/ui";
 import type { UserRole } from "@/generated/client";
+import { useSignOut } from "@/hooks/useSignOut";
 import { ProfileSection } from "./ProfileSection";
 import { AccountSection } from "./AccountSection";
 import { SchedulingSection } from "./SchedulingSection";
@@ -111,6 +111,7 @@ interface SettingsUser {
 
 export function SettingsView({ user }: { user: SettingsUser }) {
   const [section, setSection] = useState<SectionId>("profile");
+  const signOut = useSignOut();
 
   return (
     <div className={page}>
@@ -119,7 +120,7 @@ export function SettingsView({ user }: { user: SettingsUser }) {
         <span className={userBadge}>
           {user.name || user.email || "Signed in"}
         </span>
-        <Button variant="glass" size="sm" onClick={() => signOut()}>
+        <Button variant="glass" size="sm" onClick={signOut}>
           <LogOut size={12} strokeWidth={2.2} />
           Sign out
         </Button>

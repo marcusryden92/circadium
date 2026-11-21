@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { signOut } from "next-auth/react";
 import { Settings, Moon, Sun, LogOut, Search, Sparkles } from "lucide-react";
+import { useSignOut } from "@/hooks/useSignOut";
 import { useShellOverlayOpen } from "../ShellOverlayContext";
 import { useSearch } from "../SearchContext";
 import { useAssistant } from "../AssistantContext";
@@ -43,6 +43,7 @@ export function MobileTabs() {
   const { setOpen: setSearchOpen } = useSearch();
   const { openAssistant } = useAssistant();
   const overlayOpen = useShellOverlayOpen();
+  const signOut = useSignOut();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // A full-screen shell surface (AI assistant, WeekStructureModal) is open —
