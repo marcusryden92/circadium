@@ -5,7 +5,9 @@ const withVanillaExtract = createVanillaExtractPlugin();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
-  transpilePackages: ["@circadium/shared"],
+  // jose ships only ES modules; next/jest transforms node_modules packages
+  // only when they are listed here, so Jest could not load it otherwise.
+  transpilePackages: ["@circadium/shared", "jose"],
   // PostHog's API paths use trailing slashes (/e/), which the default
   // trailing-slash redirect would strip before the rewrite matches.
   skipTrailingSlashRedirect: true,

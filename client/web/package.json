@@ -26,8 +26,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.0",
-    "@circadium/shared": "workspace:*",
     "@auth/prisma-adapter": "^2.11.2",
+    "@circadium/shared": "workspace:*",
     "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.21",
@@ -54,6 +54,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "gsap": "^3.15.0",
+    "jose": "^6.2.18",
     "lucide-react": "^1.25.0",
     "luxon": "^3.7.2",
     "next": "16.3.0",
