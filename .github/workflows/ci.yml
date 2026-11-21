@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The version comes from the packageManager field in client/package.json.
       - name: Set up pnpm
