@@ -107,6 +107,7 @@ interface SettingsUser {
   role: UserRole;
   isTwoFactorEnabled: boolean;
   isOAuth?: boolean;
+  signInProviders?: string[];
 }
 
 export function SettingsView({ user }: { user: SettingsUser }) {

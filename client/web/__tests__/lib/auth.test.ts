@@ -15,6 +15,7 @@ function session(role: "ADMIN" | "USER", twoFactorVerified: boolean): Session {
       role,
       isTwoFactorEnabled: true,
       isOAuth: false,
+      signInProviders: [],
     },
     accessTokenExpiresAt: "2026-11-21T10:15:00.000Z",
     twoFactorVerified,

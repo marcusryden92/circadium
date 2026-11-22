@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 
 import { OAuthComplete } from "@/components/auth/OAuthComplete";
 import { ApiError } from "@/lib/api/client";
-import { redeemGoogleSignIn } from "@/lib/api/auth";
+import { redeemOAuthSignIn } from "@/lib/api/auth";
 import { hardNavigate } from "@/lib/session/navigation";
 
 jest.mock("../../../components/auth/AuthForm.css", () =>
@@ -37,14 +37,22 @@ jest.mock("../../../components/ui", () => {
 jest.mock("../../../lib/api/auth");
 jest.mock("../../../lib/session/navigation", () => ({ hardNavigate: jest.fn() }));
 
-const redeemMock = redeemGoogleSignIn as jest.MockedFunction<typeof redeemGoogleSignIn>;
-const PENDING_KEY = "circadium:google-sign-in";
+const redeemMock = redeemOAuthSignIn as jest.MockedFunction<typeof redeemOAuthSignIn>;
+const PENDING_KEY = "circadium:oauth-sign-in";
 const CODE = "c".repeat(43);
 const VERIFIER = "v".repeat(43);
 
-function arriveWith(query: string, pending?: { verifier: string; callbackUrl: string | null }) {
+function arriveWith(
+  query: string,
+  pending?: { provider?: string; verifier: string; callbackUrl: string | null },
+) {
   window.history.replaceState(null, "", `/auth/oauth/complete?${query}`);
-  if (pending) sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+  if (pending) {
+    sessionStorage.setItem(
+      PENDING_KEY,
+      JSON.stringify({ provider: "google", ...pending }),
+    );
+  }
 }
 
 beforeEach(() => {
@@ -92,13 +100,13 @@ describe("OAuthComplete", () => {
   });
 
   it.each([
-    ["account_exists", "This email already has a Circadium account that signs in with a password."],
-    ["email_unverified", "Google has not verified this email address"],
-    ["access_denied", "Google sign-in was cancelled."],
-    ["oauth_failed", "Google sign-in did not work. Try again."],
-    ["anything_else", "Google sign-in did not work. Try again."],
-  ])("explains error=%s without redeeming anything", async (code, message) => {
-    arriveWith(`error=${code}`, { verifier: VERIFIER, callbackUrl: "/library" });
+    ["account_exists", "google", "This email already has a Circadium account. Sign in the way you signed up"],
+    ["email_missing", "apple", "Apple did not share an email address"],
+    ["access_denied", "microsoft", "Microsoft sign-in was cancelled."],
+    ["oauth_failed", "google", "Google sign-in did not work. Try again."],
+    ["anything_else", "apple", "Apple sign-in did not work. Try again."],
+  ])("explains error=%s from %s without redeeming anything", async (code, provider, message) => {
+    arriveWith(`error=${code}`, { provider, verifier: VERIFIER, callbackUrl: "/library" });
 
     render(<OAuthComplete />);
 
@@ -108,6 +116,32 @@ describe("OAuthComplete", () => {
       "href",
       "/auth/login?callbackUrl=%2Flibrary",
     );
+  });
+
+  it("names no provider when this tab has no sign-in to go by", async () => {
+    arriveWith("error=access_denied");
+
+    render(<OAuthComplete />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The sign-in was cancelled.");
+  });
+
+  it("sends a first Microsoft sign-in to its inbox without redeeming anything", async () => {
+    arriveWith("status=verification_sent", {
+      provider: "microsoft",
+      verifier: VERIFIER,
+      callbackUrl: null,
+    });
+
+    render(<OAuthComplete />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Check the inbox of the email address on your Microsoft account",
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(redeemMock).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("");
+    expect(sessionStorage.getItem(PENDING_KEY)).toBeNull();
   });
 
   it("refuses to finish a sign-in this tab did not start", async () => {

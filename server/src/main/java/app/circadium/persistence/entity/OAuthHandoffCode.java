@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * A one-time code that hands a finished Google sign-in to the client that started it. The raw code only ever
+ * A one-time code that hands a finished provider sign-in to the client that started it. The raw code only ever
  * exists in the redirect to that client; this row keeps its SHA-256 hash, so a leaked table cannot be redeemed.
  *
  * <p>{@code challenge} is the base64url SHA-256 of a verifier the client generated before the sign-in began;

@@ -34,7 +34,7 @@ public class OAuthHandoffController {
     private final AuthCookies authCookies;
 
     /**
-     * Trades the one-time code from a finished Google sign-in, plus the verifier only the client that started the
+     * Trades the one-time code from a finished provider sign-in, plus the verifier only the client that started the
      * sign-in holds, for the same tokens {@code /auth/login} returns. The code remembers which app started the
      * sign-in, so a web sign-in always ends in cookies.
      */

@@ -1,13 +1,19 @@
 package app.circadium.auth;
 
+import app.circadium.auth.oauth.AppleTokenRevoker;
+import app.circadium.auth.oauth.SignInProvider;
 import app.circadium.external.analytics.AnalyticsEraser;
 import app.circadium.external.mail.AccountMailer;
 import app.circadium.persistence.DbTime;
+import app.circadium.persistence.entity.Account;
 import app.circadium.persistence.entity.AccountDeletionToken;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.repository.AccountDeletionTokenRepository;
+import app.circadium.persistence.repository.AccountRepository;
 import app.circadium.persistence.repository.UserRepository;
 import java.time.Clock;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,6 +36,8 @@ public class AccountDeletionService {
     private final AccountTokens accountTokens;
     private final AccountMailer accountMailer;
     private final AnalyticsEraser analyticsEraser;
+    private final AppleTokenRevoker appleTokenRevoker;
+    private final AccountRepository accountRepository;
     private final CurrentPasswordCheck currentPasswordCheck;
     private final LoginThrottle loginThrottle;
     private final AuditLogger auditLogger;
@@ -68,7 +76,8 @@ public class AccountDeletionService {
      * their user, and a row naming the user being deleted would wait on the delete's own lock.
      *
      * <p>The analytics person is erased after the commit too, so a rolled-back deletion keeps it, and in the
-     * background, so the response does not wait on the analytics service.
+     * background, so the response does not wait on the analytics service. Sign in with Apple's authorization is
+     * revoked the same way; its refresh token is read before the {@code accounts} rows cascade away.
      */
     public void confirmDeletion(String userId, String rawToken, ClientInfo client) {
         AccountDeletionToken token = accountDeletionTokenRepository.findByToken(rawToken)
@@ -83,16 +92,23 @@ public class AccountDeletionService {
         }
         User user = userRepository.findById(userId).orElseThrow(AccountDeletionService::accountGone);
 
-        transactionTemplate.executeWithoutResult(status -> {
+        List<String> appleTokens = transactionTemplate.execute(status -> {
             if (accountDeletionTokenRepository.deleteByToken(rawToken) != 1) {
                 throw AccountFlowException.invalidLink();
             }
+            List<String> tokens = accountRepository
+                    .findAllByUserIdAndProvider(user.getId(), SignInProvider.APPLE.registrationId()).stream()
+                    .map(Account::getRefreshToken)
+                    .filter(Objects::nonNull)
+                    .toList();
             erase(user);
+            return tokens;
         });
 
         log.info("Deleted account {}", user.getId());
         auditLogger.record(AuditEvent.ACCOUNT_DELETED, null, null, client, "user=" + user.getId());
         analyticsEraser.erasePerson(user.getId());
+        appleTokens.forEach(appleTokenRevoker::revoke);
     }
 
     private void erase(User user) {

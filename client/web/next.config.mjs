@@ -31,7 +31,7 @@ const nextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       {
-        // The emailed links (?token=) and the Google sign-in return (?code=)
+        // The emailed links (?token=) and the provider sign-in return (?code=)
         // carry credentials in the URL; no request from these pages may pass
         // it on in a Referer header. Listed after the site-wide rule, which
         // it overrides.

@@ -66,7 +66,7 @@ default; `staging`, `prod`). Secrets never live in the repo.
 `config/SecurityConfig` has two filter chains. The API chain is a stateless token
 resource server: every request needs a valid RS256 access JWT except the endpoints in
 `SecurityConfig.PUBLIC_ENDPOINTS` (`/actuator/health/**`, `/actuator/info`,
-`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
+`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff,oauth/confirm}`,
 `POST /auth/password-reset[/confirm]`, `/error`). New public endpoints go in that one list.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
 `role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. Besides signature, `iss`, `aud` and `exp`,
@@ -84,7 +84,7 @@ Two clients, two token transports (`auth/ClientType`):
   take the refresh token in the body.
 - **Web** gets tokens as HttpOnly cookies from `auth/AuthCookies` and never sees them in a
   body (only the expiry times). Login/2FA opt in with `"client":"web"` (default `mobile`); a
-  handoff code remembers which client started the Google sign-in; refresh/logout with no
+  handoff code remembers which client started the provider sign-in; refresh/logout with no
   body read the refresh cookie. Access cookie: `Domain=${AUTH_COOKIE_DOMAIN}`, `Path=/`,
   SameSite=Lax, so the web server receives it too. Refresh cookie: host-only, `Path=/`,
   SameSite=Strict. Names and domain are `circadium.auth.cookies` (`AuthCookieProperties`);
@@ -108,19 +108,35 @@ browser's cookies. GET endpoints must stay free of side effects: browsers send n
 on plain GETs.
 
 The OAuth chain (ordered first) matches only `/oauth2/authorization/**` and
-`/login/oauth2/code/**`: Google sign-in (`auth/oauth`), run by Spring Security's OAuth 2.0
-client with PKCE forced on. It is the only place a session exists (cookie `circadium_oauth`,
-10 minutes), holding state/PKCE/nonce plus the caller's `client` + `challenge` for the round
-trip to Google; `OAuthLoginHandler` ends it on the callback and redirects to the configured
-web or mobile completion URL with `?code=` (a 60-second one-time handoff code, stored hashed
-in `oauth_handoff_codes`) or `?error=`. `POST /auth/handoff` trades the code plus the client's
-verifier for normal tokens. Google's own tokens are never stored. Accounts match on the
-NextAuth-era `accounts` row (provider + subject); an email that already has an account is
-refused, never auto-linked. Settings live under `circadium.oauth`: `GOOGLE_CLIENT_ID` /
-`GOOGLE_CLIENT_SECRET` are required outside `local` (startup fails otherwise; `local` without
-them disables Google sign-in), and the callback URI Google must have registered is
-`${AUTH_ISSUER}/login/oauth2/code/google`. The in-memory session is single-instance only, like
-the rate limiter.
+`/login/oauth2/code/**`: sign-in with Google, Microsoft and Apple (`auth/oauth`, one
+`SignInProvider` per provider), run by Spring Security's OAuth 2.0 client. PKCE is on for
+Google and Microsoft and off for Apple, which documents no PKCE parameters (Spring 7's default
+is on). It is the only place a session exists (cookie `circadium_oauth`, 10 minutes, SameSite=None
+outside `local` because Apple returns with a cross-site form POST, which browsers never send Lax
+cookies on), holding state/PKCE/nonce plus the caller's `client` + `challenge` for the round trip;
+`OAuthLoginHandler` ends it on the callback and redirects to the configured web or mobile
+completion URL with `?code=` (a 60-second one-time handoff code, stored hashed in
+`oauth_handoff_codes`), `?status=verification_sent`, or `?error=`. `POST /auth/handoff` trades the
+code plus the client's verifier for normal tokens. Accounts match on the NextAuth-era `accounts`
+row (provider + subject; Microsoft's subject is `oid`, because its `sub` is pairwise per app
+registration). An email the provider vouches for (Google's and Apple's `email_verified`) gets an
+account at once; any other (every Microsoft one) gets a row in `oauth_pending_signups` and an
+emailed link to `/auth/oauth/confirm`, and `POST /auth/oauth/confirm` creates the account without
+signing anyone in. An email that already has an account is refused, never auto-linked (for an
+unvouched email by a notice mailed to the owner, so the browser cannot probe addresses).
+Provider tokens are never stored, except Apple's refresh token on its `accounts` row, which account
+deletion uses to revoke the app at Apple (`AppleTokenRevoker`). Provider specifics: Microsoft uses
+the `common` endpoints and `MicrosoftIssuerValidator` (the issuer must be the template with the
+token's own `tid`); Apple's client secret is an ES256 JWT `AppleClientSecret` signs per request,
+its callback is a POST that `CorsConfig` lets through, and the name arrives only in the first
+callback's `user` form field. Settings live under `circadium.oauth`: `OAUTH_PROVIDERS` (default
+`google,microsoft,apple`) lists the providers offered, and each listed one must be configured
+outside `local` (startup fails otherwise; `local` switches unconfigured ones off):
+`GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` (the calendar-import Entra app),
+`APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (the
+`.p8`). The web's `NEXT_PUBLIC_OAUTH_PROVIDERS` must list the same set. Each provider must have
+`${AUTH_ISSUER}/login/oauth2/code/<provider>` registered. The in-memory session is
+single-instance only, like the rate limiter.
 
 Abuse controls on the public auth endpoints, two layers:
 
@@ -142,7 +158,7 @@ Sensitive changes by a signed-in caller re-check the current password through
 `auth/CurrentPasswordCheck`, under the login lockout: password change, account deletion
 request, `POST /account/email` (emails a link to the new address and a notice to the current
 one; the account moves when the link is opened, and the old address is told again) and
-`POST /account/two-factor` (emails the account on every change). Google-only accounts get
+`POST /account/two-factor` (emails the account on every change). Provider-only accounts get
 `no_password` for the email and 2FA endpoints. A password change or reset also deletes the
 user's pending email-change tokens.
 

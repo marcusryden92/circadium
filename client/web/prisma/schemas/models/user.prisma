@@ -184,6 +184,25 @@ model OAuthHandoffCode {
   @@map("oauth_handoff_codes")
 }
 
+// Owned by the Java server. A first sign-in through a provider that does not
+// vouch for the email address (Microsoft) waits here until the address's owner
+// opens the emailed link; no user row exists before that. Only the link
+// token's SHA-256 is stored.
+model OAuthPendingSignup {
+  tokenHash String   @id
+  provider  String
+  subject   String
+  email     String
+  name      String?
+  image     String?
+  createdAt DateTime
+  expiresAt DateTime
+
+  @@unique([provider, subject])
+  @@index([expiresAt])
+  @@map("oauth_pending_signups")
+}
+
 model AccountDeletionToken {
   id      String   @id @default(cuid())
   userId  String   @unique

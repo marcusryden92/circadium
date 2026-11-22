@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.Serializable;
 
-/** Who started the sign-in in progress; kept in the session between the start and Google's callback. */
+/** Who started the sign-in in progress; kept in the session between the start and the provider's callback. */
 record PendingOAuthLogin(ClientType client, String challenge) implements Serializable {
 
     static final String SESSION_ATTRIBUTE = PendingOAuthLogin.class.getName();
@@ -15,7 +15,7 @@ record PendingOAuthLogin(ClientType client, String challenge) implements Seriali
     }
 
     /**
-     * Reads the pending sign-in and ends the session, which is only needed for the round trip to Google. Null when
+     * Reads the pending sign-in and ends the session, which is only needed for the round trip to the provider. Null when
      * this browser has no sign-in in progress (never started, timed out, or already finished).
      */
     static PendingOAuthLogin take(HttpServletRequest request) {

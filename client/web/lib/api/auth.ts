@@ -128,12 +128,25 @@ export async function confirmAccountDeletion(token: string): Promise<void> {
   });
 }
 
-/** Trades the code from a finished Google sign-in for session cookies. */
-export async function redeemGoogleSignIn(input: {
+/** Trades the code from a finished provider sign-in for session cookies. */
+export async function redeemOAuthSignIn(input: {
   code: string;
   verifier: string;
 }): Promise<void> {
   await apiRequest("/auth/handoff", { body: input });
+}
+
+/**
+ * Opens the link mailed for a first sign-in through a provider that does not
+ * vouch for the email (Microsoft). The account is created but nobody is signed
+ * in; the answer names the provider to sign in with next.
+ */
+export async function confirmOAuthSignup(
+  token: string,
+): Promise<{ provider: string }> {
+  return apiRequest<{ provider: string }>("/auth/oauth/confirm", {
+    body: { token },
+  });
 }
 
 function outcomeOf(response: SignInResponse | undefined): SignInOutcome {

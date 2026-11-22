@@ -12,7 +12,7 @@
   - **React** 19, **TypeScript** 6.0.3 (strict, `moduleResolution: "bundler"`, `@/*` path alias).
   - **Prisma** 7.8 with `@prisma/adapter-pg` driver adapter (Prisma 7 requires a driver adapter at construction time — see [lib/db.ts](lib/db.ts)). Client is generated to `generated/client` (outside `/prisma/` so the VS Code Prisma extension doesn't merge its embedded `schema.prisma` copy with the source schema) and imported as `@/generated/client`.
   - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev`).
-  - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server actions. Sign-in, registration, reset, verification, deletion and Google sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
+  - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server actions. Sign-in, registration, reset, verification, deletion and Google / Microsoft / Apple sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
   - **Vanilla Extract** for styling — `@vanilla-extract/{css,sprinkles,recipes,dynamic,next-plugin}`. Every page/component has a co-located `*.css.ts` file. There is no Tailwind in this project despite a leftover `components.json`.
   - **Redux Toolkit** for cross-component state, **React Context** for scoped providers (Store, User, Calendar, Capture, Search).
   - **FullCalendar** 6.1 for the calendar surface (with `@fullcalendar/luxon3` + **Luxon** 3 as the timezone plugin); **date-fns** 3 for date math (engine has its own [dateTimeService](utils/calendar-generation/utils/dateTimeService.ts)); **rrule** for template recurrence.
@@ -62,7 +62,7 @@
   │   │   ├── queues/                   # Queue (pipe) management — rail + member list + add-member modal
   │   │   ├── onboarding/               # First-run 6-step overlay (Welcome/Roles/Locations/Week/BrainDump/AI); _lib builders, _steps, _components
   │   │   └── settings/
-  │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete — client pages that call the Java API
+  │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete/oauth/confirm — client pages that call the Java API
   │   ├── api/                          # auth/ + admin/ + integrations/{google,microsoft}/ (calendar OAuth connect + callback)
   │   ├── privacy/                      # Public GDPR privacy-policy page (outside the (protected) group; in publicRoutes)
   │   └── (dev)/                        # Dev scaffolding (test-shell, test-tokens, logo-test); its layout 404s in production builds
@@ -91,7 +91,7 @@
   │       └── sync-handlers/            # One handler per table (planner, calendar, extendedProps, template, category, timeWindow, categoryEvent, travelEvent, engineMessage, queue, queueMember, dependency, location, travelTime)
   │
   ├── components/
-  │   ├── auth/                         # AuthCard, the auth forms (post to Java via lib/api/auth), Social (starts Google sign-in with a PKCE verifier), OAuthComplete (redeems the handoff code), LoginButton
+  │   ├── auth/                         # AuthCard, the auth forms (post to Java via lib/api/auth), Social (the provider buttons from NEXT_PUBLIC_OAUTH_PROVIDERS; starts a sign-in with a PKCE verifier), OAuthComplete (redeems the handoff code, or shows the "check your email" step), OAuthConfirm (the emailed link after a first Microsoft sign-in: creates the account on a button press, then offers the provider sign-in), LoginButton
   │   ├── calendar/                     # WeekStructureModal + editors (Template, Window, Event tile)
   │   ├── draft/                        # Global AI assistant UI — chat (+ DB-backed history popover) + tabbed Goals/Week/Categories/Queues/Habits diff view; mounted in the AppShell assistant slot, opened anywhere via mod+I / sidebar / item-detail entry points. One folder per component: AIDraftModal, AssistantGate (BYOK key-entry panel shown when AI isn't ready), ChatPane, ChatHistoryPopover, GlobalAssistant, JsonTreeView, TemplateWeekView, WindowsView, PrecedenceView, HabitsView. The draft-domain logic (ops/diff/apply/contracts + the in-browser engine) lives in utils/draft/, the state hook in hooks/useAIDraftState
   │   ├── draggable/                    # DragBox, DraggableItem, TaskDivider, DraggableContext
@@ -141,7 +141,7 @@
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
   │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401), auth.ts (account endpoints), errorMessage.ts (describeApiError)
-  │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), googleSignIn (PKCE start + pending read)
+  │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
   │   ├── google-maps-api.ts            # Places autocomplete + Routes API travel matrix
@@ -772,7 +772,7 @@
 
   ## App routes & access control
 
-  - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion", "/auth/oauth/complete"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|reset|new-password]` (pages for signed-out visitors; a `callbackUrl` pointing at one falls back to the dashboard), and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
+  - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion", "/auth/oauth/complete", "/auth/oauth/confirm"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|reset|new-password]` (pages for signed-out visitors; a `callbackUrl` pointing at one falls back to the dashboard), and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
   - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only (Prisma, bcrypt). It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` adds the database checks (account still exists, the token's `sid` family still has a `sessions` row, i.e. not signed out or ended by a password change or reset, and token not older than the last password change) on every render and server action. `getSession().twoFactorVerified` comes from the token's `amr` claim: this sign-in passed the emailed code.
   - Every route outside `publicRoutes` and `authRoutes` requires a valid access token. Without one the middleware redirects to `/auth/login?callbackUrl=<path>`; the login page first tries a silent refresh (the refresh cookie only ever reaches the API, so only the browser can use it) and sends a signed-in visitor on. If Java's keys cannot be fetched the middleware answers 503 rather than treating the visitor as signed out. The `(protected)` layout redirects to the login page when `getSession()` refuses a token the middleware accepted. Auth pages are never redirected away from by the middleware: a token the database refuses would loop.
   - Session changes (sign-in, sign-out, password change, a user switch in another tab) are always full page loads ([lib/session/navigation.ts](lib/session/navigation.ts)), so no Redux state or PostHog identity crosses accounts; [PostHogProvider](context/PostHogProvider.tsx) resets a stored identity on a signed-out page. An explicit sign-out (and a confirmed deletion) also runs `forgetDeviceData(userId)` ([lib/session/deviceData.ts](lib/session/deviceData.ts)): every localStorage key ending in `.<userId>` except `theme.*` goes, and so does the AI key vault. New user-scoped keys must follow that suffix convention to be cleared. PostHog records no session replay on a page load under `/auth/*` (the emailed-link and OAuth URLs carry credentials).
@@ -962,6 +962,7 @@
   NEXT_PUBLIC_APP_URL="http://localhost:3000"
   NEXT_PUBLIC_API_URL=""              # Java API origin, also the JWT issuer (local default http://localhost:8080; required in production builds)
   AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; staging __Secure-circadium_staging_access, prod __Secure-circadium_access; required in production builds)
+  NEXT_PUBLIC_OAUTH_PROVIDERS=""      # Sign-in buttons, comma-separated (default google,microsoft,apple); must match the API's OAUTH_PROVIDERS
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
   GOOGLE_CLIENT_ID=""                 # Google Calendar import (see note below); Google sign-in is configured on the Java API

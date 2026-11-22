@@ -14,12 +14,12 @@ public class AccountFlowException extends ErrorResponseException {
         super(status, problem(status, code, detail), null);
     }
 
-    static AccountFlowException invalidLink() {
+    public static AccountFlowException invalidLink() {
         return new AccountFlowException(HttpStatus.BAD_REQUEST, "invalid_token",
                 "This link is invalid or has already been used.");
     }
 
-    static AccountFlowException expiredLink() {
+    public static AccountFlowException expiredLink() {
         return new AccountFlowException(HttpStatus.BAD_REQUEST, "expired_token",
                 "This link has expired. Request a new one.");
     }

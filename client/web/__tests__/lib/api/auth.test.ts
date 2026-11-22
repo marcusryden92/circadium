@@ -6,7 +6,8 @@ import { ensureFreshSession, replaceSession } from "@/lib/session/refresh";
 import {
   changePassword,
   confirmAccountDeletion,
-  redeemGoogleSignIn,
+  confirmOAuthSignup,
+  redeemOAuthSignIn,
   register,
   requestAccountDeletion,
   requestEmailChange,
@@ -90,7 +91,8 @@ describe("the account flows", () => {
     await requestPasswordReset("ada@example.com");
     await resetPassword({ token: "t1", password: "long enough" });
     await verifyEmail("t2");
-    await redeemGoogleSignIn({ code: "c".repeat(43), verifier: "v".repeat(43) });
+    await redeemOAuthSignIn({ code: "c".repeat(43), verifier: "v".repeat(43) });
+    await confirmOAuthSignup("t".repeat(43));
 
     expect(apiRequestMock.mock.calls).toEqual([
       ["/auth/register", { body: { name: "Ada", email: "ada@example.com", password: "long enough" } }],
@@ -98,6 +100,7 @@ describe("the account flows", () => {
       ["/auth/password-reset/confirm", { body: { token: "t1", password: "long enough" } }],
       ["/auth/verify-email", { body: { token: "t2" } }],
       ["/auth/handoff", { body: { code: "c".repeat(43), verifier: "v".repeat(43) } }],
+      ["/auth/oauth/confirm", { body: { token: "t".repeat(43) } }],
     ]);
   });
 

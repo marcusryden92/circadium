@@ -59,7 +59,18 @@ class AccountEmailsTest {
         assertThat(emails.existingAccount("user@example.com", true).text()).contains("/auth/reset");
         assertThat(emails.existingAccount("user@example.com", false).text())
                 .doesNotContain("/auth/reset")
-                .contains("Google account");
+                .contains("Google, Microsoft or Apple account");
+    }
+
+    @Test
+    void oauthSignupConfirmationLinksToTheConfirmPageAndNamesTheProvider() {
+        EmailMessage message = emails.oauthSignupConfirmation("user@example.com", "tok_en-123", "Microsoft");
+
+        assertThat(message.text())
+                .contains("/auth/oauth/confirm?token=tok_en-123")
+                .contains("with a Microsoft account")
+                .contains("sign in with Microsoft again");
+        assertThat(message.html()).contains("/auth/oauth/confirm?token=tok_en-123");
     }
 
     @Test

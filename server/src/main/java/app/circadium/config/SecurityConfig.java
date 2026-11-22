@@ -4,10 +4,10 @@ import static org.springframework.security.web.servlet.util.matcher.PathPatternR
 
 import app.circadium.auth.AuthCookies;
 import app.circadium.auth.CookieBearerTokenResolver;
+import app.circadium.auth.oauth.OAuthClientConfig;
 import app.circadium.auth.oauth.OAuthLoginHandler;
 import app.circadium.auth.oauth.OAuthStartFilter;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import app.circadium.auth.oauth.SignInAuthorizedClients;
 import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,11 +16,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -33,14 +33,14 @@ import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
- * Two filter chains. The OAuth chain handles only Google sign-in's start and callback; everything else is the
+ * Two filter chains. The OAuth chain handles only provider sign-in's start and callback; everything else is the
  * stateless token API, which takes the access token from the {@code Authorization} header (mobile) or the access
  * cookie (web).
  *
  * <p>Spring's CSRF tokens are off on both. A bearer header is never attached by a browser on its own. Requests
  * authenticated by cookie are covered by SameSite plus {@link CorsConfig}, which refuses any request from an origin
- * other than the web app's before it reaches this chain. The OAuth endpoints are GET navigations whose callback is
- * protected by {@code state}.
+ * other than the web app's before it reaches this chain. The OAuth endpoints are browser navigations (Apple's callback
+ * a cross-site form POST, which CORS lets through) whose callback is protected by {@code state}.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
@@ -68,18 +68,23 @@ class SecurityConfig {
             pathPattern(HttpMethod.POST, "/auth/verify-email"),
             pathPattern(HttpMethod.POST, "/auth/password-reset"),
             pathPattern(HttpMethod.POST, "/auth/password-reset/confirm"),
-            pathPattern(HttpMethod.POST, "/auth/handoff"));
+            pathPattern(HttpMethod.POST, "/auth/handoff"),
+            pathPattern(HttpMethod.POST, "/auth/oauth/confirm"));
 
     /**
-     * Google sign-in, the only part of the API with server-side state: Spring keeps {@code state}, the PKCE
-     * verifier and the nonce in a session for the round trip to Google, and the handler ends that session on the
-     * callback. Nothing here authenticates later requests; a sign-in ends in a handoff code that
+     * Provider sign-in, the only part of the API with server-side state: Spring keeps {@code state}, the PKCE
+     * verifier and the nonce in a session for the round trip to the provider, and the handler ends that session on
+     * the callback. Nothing here authenticates later requests; a sign-in ends in a handoff code that
      * {@code POST /auth/handoff} exchanges for ordinary bearer tokens.
      */
     @Bean
     @Order(1)
     SecurityFilterChain oauthLoginFilterChain(HttpSecurity http, ClientRegistrationRepository registrations,
-            OAuthLoginHandler handler) throws Exception {
+            OAuthLoginHandler handler,
+            OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> signInTokenClient) throws Exception {
+        DefaultOAuth2AuthorizationRequestResolver authorizationRequests = new DefaultOAuth2AuthorizationRequestResolver(
+                registrations, OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
+        authorizationRequests.setAuthorizationRequestCustomizer(OAuthClientConfig::customizeAuthorizationRequest);
         http
                 .securityMatcher("/oauth2/authorization/**", "/login/oauth2/code/**")
                 .csrf(csrf -> csrf.disable())
@@ -94,7 +99,9 @@ class SecurityConfig {
                 .addFilterBefore(new OAuthStartFilter(registrations), OAuth2AuthorizationRequestRedirectFilter.class)
                 .oauth2Login(login -> login
                         .clientRegistrationRepository(registrations)
-                        .authorizedClientRepository(new DiscardingAuthorizedClientRepository())
+                        .authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(authorizationRequests))
+                        .tokenEndpoint(endpoint -> endpoint.accessTokenResponseClient(signInTokenClient))
+                        .authorizedClientRepository(new SignInAuthorizedClients())
                         .securityContextRepository(new RequestAttributeSecurityContextRepository())
                         .successHandler(handler)
                         .failureHandler(handler));
@@ -141,28 +148,5 @@ class SecurityConfig {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authorities);
         return converter;
-    }
-
-    /**
-     * Spring would otherwise keep every signed-in user's Google access token in memory for the life of the process.
-     * Sign-in only needs the identity, so the token is dropped as soon as the callback is handled.
-     */
-    private static final class DiscardingAuthorizedClientRepository implements OAuth2AuthorizedClientRepository {
-
-        @Override
-        public <T extends OAuth2AuthorizedClient> T loadAuthorizedClient(String clientRegistrationId,
-                Authentication principal, HttpServletRequest request) {
-            return null;
-        }
-
-        @Override
-        public void saveAuthorizedClient(OAuth2AuthorizedClient authorizedClient, Authentication principal,
-                HttpServletRequest request, HttpServletResponse response) {
-        }
-
-        @Override
-        public void removeAuthorizedClient(String clientRegistrationId, Authentication principal,
-                HttpServletRequest request, HttpServletResponse response) {
-        }
     }
 }

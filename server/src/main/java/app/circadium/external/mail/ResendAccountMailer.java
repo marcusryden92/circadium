@@ -64,6 +64,11 @@ public class ResendAccountMailer implements AccountMailer, AutoCloseable {
     }
 
     @Override
+    public void sendOAuthSignupConfirmation(String email, String token, String provider) {
+        dispatch(emails.oauthSignupConfirmation(email, token, provider));
+    }
+
+    @Override
     public void sendTwoFactorCode(String email, String code) {
         dispatch(emails.twoFactorCode(email, code));
     }

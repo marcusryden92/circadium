@@ -23,8 +23,9 @@ spring:
   flyway:
     enabled: false
 
-# The only session is Google sign-in's round trip (see SecurityConfig). Lax, not Strict: Google's redirect back is
-# a cross-site navigation, and the browser must still send this cookie on it.
+# The only session is provider sign-in's round trip (see SecurityConfig). SameSite=None: Apple returns the browser
+# with a cross-site form POST, and browsers send Lax cookies only on cross-site GETs. The cookie is read only by the
+# sign-in chain, where state, not SameSite, ties the callback to the browser that started it.
 server:
   servlet:
     session:
@@ -33,7 +34,7 @@ server:
         name: circadium_oauth
         http-only: true
         secure: true
-        same-site: lax
+        same-site: none
 
 circadium:
   auth:
@@ -57,9 +58,20 @@ circadium:
     support-from: Circadium <support@circadium.app>
     allow-logging-fallback: false
   oauth:
+    # Every provider listed must be configured outside local. Narrow the list to roll a provider out (or back)
+    # deliberately; the web's NEXT_PUBLIC_OAUTH_PROVIDERS must match.
+    providers: ${OAUTH_PROVIDERS:google,microsoft,apple}
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
+    microsoft:
+      client-id: ${MICROSOFT_CLIENT_ID:}
+      client-secret: ${MICROSOFT_CLIENT_SECRET:}
+    apple:
+      client-id: ${APPLE_CLIENT_ID:}
+      team-id: ${APPLE_TEAM_ID:}
+      key-id: ${APPLE_KEY_ID:}
+      private-key: ${APPLE_PRIVATE_KEY:}
     redirect-base-url: ${circadium.auth.issuer}
     web-completion-url: ${circadium.mail.web-base-url}/auth/oauth/complete
     mobile-completion-url: circadium://auth/oauth/complete
@@ -107,11 +119,14 @@ spring:
     url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5433/circadium_dev}
     username: ${DATABASE_USERNAME:circadium}
     password: ${DATABASE_PASSWORD:circadium}
+# Plain-HTTP localhost cannot hold a SameSite=None cookie (it needs Secure). Apple sign-in cannot run locally
+# anyway: Apple accepts only HTTPS return URLs on a real domain.
 server:
   servlet:
     session:
       cookie:
         secure: false
+        same-site: lax
 circadium:
   auth:
     issuer: ${AUTH_ISSUER:http://localhost:8080}
