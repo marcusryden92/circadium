@@ -135,9 +135,11 @@ describe("OAuthComplete", () => {
 
     render(<OAuthComplete />);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(
       "Check the inbox of the email address on your Microsoft account",
     );
+    expect(notice).toHaveTextContent("If it doesn't arrive, check your spam folder.");
     expect(screen.queryByRole("alert")).toBeNull();
     expect(redeemMock).not.toHaveBeenCalled();
     expect(window.location.search).toBe("");

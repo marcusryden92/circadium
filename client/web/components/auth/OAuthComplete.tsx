@@ -15,6 +15,7 @@ import {
 import { hardNavigate } from "@/lib/session/navigation";
 import { AuthCard } from "./AuthCard";
 import { alertError, alertSuccess } from "./AuthForm.css";
+import { SPAM_HINT } from "./spamHint";
 
 /** The `error` values Java's sign-in handler can send back. */
 function signInError(code: string | null, provider: SignInProvider | undefined) {
@@ -64,7 +65,7 @@ export function OAuthComplete() {
     if (status === "verification_sent") {
       const name = pending ? PROVIDER_NAMES[pending.provider] : "the provider";
       setNotice(
-        `Check the inbox of the email address on your ${name} account: we sent it a link with the next step.`,
+        `Check the inbox of the email address on your ${name} account: we sent it a link with the next step. ${SPAM_HINT}`,
       );
       return;
     }

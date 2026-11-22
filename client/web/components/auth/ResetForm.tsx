@@ -21,6 +21,7 @@ import {
   alertSuccess,
   submit,
 } from "./AuthForm.css";
+import { SPAM_HINT } from "./spamHint";
 
 export function ResetForm() {
   const [isPending, startTransition] = useTransition();
@@ -40,7 +41,7 @@ export function ResetForm() {
         await requestPasswordReset(values.email);
         // Java answers the same for unknown addresses, so neither can this.
         setSuccess(
-          `If ${values.email} signs in with a password, we sent it a reset link. The link works for an hour.`,
+          `If ${values.email} signs in with a password, we sent it a reset link. The link works for an hour. ${SPAM_HINT}`,
         );
       } catch (err) {
         setError(describeApiError(err));

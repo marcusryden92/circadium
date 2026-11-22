@@ -21,6 +21,7 @@ import {
   alertSuccess,
   submit,
 } from "./AuthForm.css";
+import { SPAM_HINT } from "./spamHint";
 
 export const RegisterForm = () => {
   const [isPending, startTransition] = useTransition();
@@ -51,7 +52,7 @@ export const RegisterForm = () => {
         // Worded to fit both cases Java cannot tell apart here: a new account
         // gets a confirmation link, a taken address gets a notice instead.
         setSuccess(
-          `We sent an email to ${values.email}. Open the link in it to finish signing up.`,
+          `We sent an email to ${values.email}. Open the link in it to finish signing up. ${SPAM_HINT}`,
         );
       } catch (err) {
         setError(describeApiError(err));
