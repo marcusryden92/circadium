@@ -19,7 +19,7 @@ import { alertError } from "./AuthForm.css";
 /** Microsoft's four-square mark, in its brand colors as its sign-in guidelines ask. */
 function MicrosoftLogo() {
   return (
-    <svg width={14} height={14} viewBox="0 0 21 21" aria-hidden="true">
+    <svg width={16} height={16} viewBox="0 0 21 21" aria-hidden="true">
       <rect x={1} y={1} width={9} height={9} fill="#f25022" />
       <rect x={11} y={1} width={9} height={9} fill="#7fba00" />
       <rect x={1} y={11} width={9} height={9} fill="#00a4ef" />
@@ -29,9 +29,9 @@ function MicrosoftLogo() {
 }
 
 const ICONS: Record<SignInProvider, ReactNode> = {
-  google: <FcGoogle size={16} />,
+  google: <FcGoogle size={18} />,
   microsoft: <MicrosoftLogo />,
-  apple: <FaApple size={16} />,
+  apple: <FaApple size={18} />,
 };
 
 export const Social = () => {
@@ -57,21 +57,28 @@ export const Social = () => {
 
   if (providers.length === 0) return null;
 
+  // One row of logo-only buttons: three "Continue with ..." labels do not fit
+  // side by side, and Apple allows a custom button only its fixed titles or
+  // the bare logo. The full name stays on each button for screen readers and
+  // as a hover tooltip.
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: space["1.5"] }}>
-      {providers.map((provider) => (
-        <Button
-          key={provider}
-          variant="glass"
-          size="md"
-          onClick={() => onClick(provider)}
-          disabled={starting !== undefined}
-          style={{ justifyContent: "flex-start", width: "100%" }}
-        >
-          {ICONS[provider]}
-          Continue with {PROVIDER_NAMES[provider]}
-        </Button>
-      ))}
+      <div style={{ display: "flex", gap: space["1.5"] }}>
+        {providers.map((provider) => (
+          <Button
+            key={provider}
+            variant="glass"
+            size="md"
+            onClick={() => onClick(provider)}
+            disabled={starting !== undefined}
+            aria-label={`Continue with ${PROVIDER_NAMES[provider]}`}
+            title={`Continue with ${PROVIDER_NAMES[provider]}`}
+            style={{ flex: "1 1 0", justifyContent: "center" }}
+          >
+            {ICONS[provider]}
+          </Button>
+        ))}
+      </div>
       {error && (
         <div className={alertError} role="alert">
           <AlertTriangle size={14} strokeWidth={2.2} />
