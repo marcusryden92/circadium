@@ -231,7 +231,7 @@
   ├── __tests__/
   │   ├── calendar-generation/          # Engine regression tests + fixtures/ (trimmed live-data snapshots)
   │   ├── calendar/                     # WeekStructureModal overnight window handling
-  │   ├── contracts/                    # captureBootstrapFixture: writes the Java bootstrap endpoint's golden fixture from fetchFreshState (skipped unless CAPTURE_BOOTSTRAP_FIXTURE; `pnpm fixture:bootstrap` with the dev DB up)
+  │   ├── contracts/                    # captureBootstrapFixture: writes the Java bootstrap endpoint's golden fixture from fetchFreshState (skipped unless CAPTURE_BOOTSTRAP_FIXTURE; `pnpm fixture:bootstrap` with the dev DB up). captureSyncCorpus: runs scripted edits through compareData + syncCalendarData on the same seed and records each diff, response and resulting rows as the Java sync endpoint's golden corpus (skipped unless CAPTURE_SYNC_CORPUS; `pnpm fixture:sync`). Recapture after changing a sync handler, compareData, or the seed
   │   ├── dashboard/                    # buildTodayAgenda (occurrence-tile completion resolution)
   │   ├── draft/                        # Assistant draft-domain unit tests (forest/templates/windows/precedence ops + applies + diffs + node-edge safety + the recurrence contract)
   │   ├── draggable/                    # Touch drop-target resolution (TOP_BAND/BOTTOM_BAND)

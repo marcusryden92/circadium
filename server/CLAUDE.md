@@ -65,6 +65,33 @@ default; `staging`, `prod`). Secrets never live in the repo.
   outside the transaction). Set isolation with `SET TRANSACTION ISOLATION LEVEL ...` as the
   transaction's first statement, as `calendar/CalendarBootstrapService` does.
 
+## Calendar data
+
+`GET /calendar/bootstrap` (`calendar/`) returns the whole calendar state; `POST /calendar/sync`
+(`sync/`) applies the client's create/update/destroy diff. Both speak the records in
+`calendar/CalendarContracts`, which mirror `client/shared/src/contracts` field for field.
+Jackson 3 refuses a `null` or missing value for a primitive, so a field the TS marks optional
+must be boxed there (the extended props' trespass flags are).
+
+- **Optimistic concurrency.** The account's `users.dataVersion` is the sync token. A sync bumps
+  it first (`WHERE dataVersion = clientKnownDataVersion`), then writes, in one transaction
+  (60-second timeout). Zero rows bumped means another session saved first: 409 ProblemDetail,
+  `code: "stale"`, with `freshState` (the bootstrap payload, read in a transaction of its own
+  after the rollback). An empty diff answers 200 without bumping.
+- **Writes** go through `sync/BulkStatements`: one statement per table and operation, rows passed
+  as one array per column through `unnest`, so the parameter count is fixed whatever the batch
+  size. Every write is scoped to the caller; an id that is missing or someone else's matches
+  nothing rather than failing. References read back through a parent (a window's category, a
+  member's queue) or holding a table-wide unique slot (a member's planner, a dependency's ends)
+  must point at the caller's own rows, or the row is skipped. `sync/CalendarChangeWriter` holds
+  the per-table column lists in foreign-key order.
+- **Golden corpus.** `src/test/resources/sync/corpus/*.json` are diffs the web's own
+  `syncCalendarData` applied to `calendar/bootstrap-seed.sql`, with the response and every row
+  afterwards (`sync/dump-state.sql`, run identically on both sides). `SyncCorpusIntegrationTest`
+  replays them with the clock frozen at the capture's instant. Recapture with `pnpm fixture:sync`
+  from `client/web` (dev database up) after changing the web's sync handlers, the shared diff, or
+  the seed; a Java change to the sync must keep the corpus green as it is.
+
 ## Security (current state)
 
 `config/SecurityConfig` has two filter chains. The API chain is a stateless token
