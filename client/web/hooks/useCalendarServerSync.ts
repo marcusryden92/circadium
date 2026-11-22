@@ -27,11 +27,16 @@ import {
   type SyncLoop,
   type SyncSnapshot,
 } from "@circadium/shared/sync/syncLoop";
+import { createRealtimeClient } from "@circadium/shared/sync/realtimeClient";
 import type { SyncTransport } from "@circadium/shared/sync/compareCalendarData";
 import type { BootstrapPayload } from "@circadium/shared/contracts";
 import { syncCalendarData } from "@/actions/calendar-actions/syncCalendarData";
-import { syncCalendarChanges } from "@/lib/api/calendar";
+import { syncCalendarChanges, fetchCalendarBootstrap } from "@/lib/api/calendar";
 import { calendarBackend } from "@/lib/calendarBackend";
+import {
+  calendarRealtimeEnabled,
+  calendarRealtimeUrl,
+} from "@/lib/calendarRealtime";
 import { ensureFreshSession } from "@/lib/session/refresh";
 
 // A server action cannot refresh the access cookie itself, and the first sync
@@ -338,6 +343,54 @@ const useCalendarServerSync = (
   ]);
 
   useEffect(() => () => loopRef.current?.dispose(), []);
+
+  // Realtime catch-up: when another session commits, the Java API pushes the
+  // new dataVersion over a WebSocket, and a tab that's behind fetches the fresh
+  // snapshot and adopts it — the same wholesale path a stale sync takes. Only
+  // on the Java backend, behind its own flag, and never while impersonating.
+  // Correctness never depends on the socket: the HTTP sync loop is unchanged,
+  // so a dropped or disabled channel just means a passive tab updates on its
+  // next edit instead of instantly.
+  useEffect(() => {
+    if (disabled || !isInitialized || !userId) return;
+    if (calendarBackend() !== "java" || !calendarRealtimeEnabled()) return;
+    const url = calendarRealtimeUrl();
+
+    const client = createRealtimeClient({
+      connect: ({ onOpen, onMessage, onClose }) => {
+        // The access cookie rides the handshake automatically (same-site), so
+        // no token is handled in script, as everywhere else.
+        const socket = new WebSocket(url);
+        socket.onopen = () => onOpen();
+        socket.onmessage = (event) => onMessage(String(event.data));
+        socket.onclose = () => onClose();
+        // An error is always followed by close; let close drive the reconnect.
+        socket.onerror = () => {};
+        return {
+          send: (data) => socket.send(data),
+          close: () => socket.close(),
+        };
+      },
+      getDataVersion: () => knownDataVersion.current,
+      isDisabled: () => disabledRef.current,
+      onBehind: () => {
+        void (async () => {
+          try {
+            const fresh = await fetchCalendarBootstrap();
+            adoptFreshServerState(fresh);
+          } catch (error) {
+            console.warn(
+              "Realtime catch-up fetch failed; the next signal or edit retries",
+              error,
+            );
+          }
+        })();
+      },
+    });
+    client.start();
+
+    return () => client.dispose();
+  }, [disabled, isInitialized, userId, adoptFreshServerState]);
 
   return { initializeState, markSynced };
 };

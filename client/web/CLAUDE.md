@@ -124,7 +124,7 @@
   ├── hooks/
   │   ├── useCurrentUser, useCurrentRole
   │   ├── useFetchCalendarData          # Initial Redux seed: Java's GET /calendar/bootstrap or the fetchCalendarData action, per lib/calendarBackend
-  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback; the transport is Java's POST /calendar/sync or the syncCalendarData action, per lib/calendarBackend
+  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback; the transport is Java's POST /calendar/sync or the syncCalendarData action, per lib/calendarBackend. Also owns the realtime catch-up (lib/calendarRealtime, java backend + NEXT_PUBLIC_CALENDAR_REALTIME): a WebSocket pushes dataVersion changes, and a behind tab fetches the bootstrap and adopts it (the stale-adoption path)
   │   ├── useCalendarStateActions       # updatePlannerArray / updateTemplateArray / updateAll
   │   ├── useManuallyRefreshCalendar    # User-triggered regen
   │   ├── useViewStatePersistence       # Load-once + debounced-save for a canvas page's UserViewState blob (graph/mindmap)
@@ -142,6 +142,7 @@
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
   │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401; ApiError.problem keeps the whole error body), auth.ts (account endpoints), calendar.ts (bootstrap + the sync transport: 200 → success, 409 stale → freshState, other answers → error/rollback, no answer or a 502/503/504 → throw/retry), errorMessage.ts (describeApiError)
   │   ├── calendarBackend.ts            # NEXT_PUBLIC_CALENDAR_BACKEND: "java" routes the calendar's load and sync to the Java API; unset keeps the server actions (build-time inlined — a change needs a redeploy)
+  │   ├── calendarRealtime.ts           # NEXT_PUBLIC_CALENDAR_REALTIME: "on" opens the realtime WebSocket (wss from the API origin) for cross-session catch-up; unset keeps HTTP sync as the only channel (java backend only; build-time inlined)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
@@ -966,6 +967,7 @@
   AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; staging __Secure-circadium_staging_access, prod __Secure-circadium_access; required in production builds)
   NEXT_PUBLIC_OAUTH_PROVIDERS=""      # Sign-in buttons, comma-separated (default google,microsoft,apple); must match the API's OAUTH_PROVIDERS
   NEXT_PUBLIC_CALENDAR_BACKEND=""     # "java": the calendar loads and syncs through the Java API; unset: the server actions (see lib/calendarBackend.ts)
+  NEXT_PUBLIC_CALENDAR_REALTIME=""    # "on": open a WebSocket to the Java API so a user's other sessions update live; unset: HTTP sync only (java backend only; see lib/calendarRealtime.ts)
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
   GOOGLE_CLIENT_ID=""                 # Google Calendar import (see note below); Google sign-in is configured on the Java API

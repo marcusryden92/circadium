@@ -101,6 +101,27 @@ must be boxed there (the extended props' trespass flags are).
   from `client/web` (dev database up) after changing the web's sync handlers, the shared diff, or
   the seed; a Java change to the sync must keep the corpus green as it is.
 
+## Realtime (`ws/`)
+
+`/ws` is a raw WebSocket (`config/WebSocketConfig`) that pushes one message, server to client:
+`{"type":"dataVersion","value":N}`. A connect gets a hello carrying the account's current version
+(so a reconnecting client re-checks for free), and every committed sync broadcasts the new version
+to all of the user's sessions. A client that hears a version past the one it knows fetches the
+bootstrap and adopts it — the stale-sync recovery, without having had to try a sync first.
+
+- **Auth is the handshake.** `/ws` is not public, so the API chain authenticates the upgrade GET
+  (bearer header for mobile, access cookie for web) before it reaches the handler;
+  `ws/AuthenticatedUserHandshakeInterceptor` copies the user id onto the session. Spring's own
+  `setAllowedOrigins` is set to the CORS origins — the handshake is cross-origin (web to API), and
+  this is the cross-site WebSocket hijacking defence.
+- **The registry is local; the broadcaster is the scale seam.** `ws/WebSocketSessionRegistry` holds
+  this instance's sockets (each wrapped in a `ConcurrentWebSocketSessionDecorator` so sends never
+  race). `ws/DataVersionBroadcaster` is the interface a multi-instance deployment reimplements over
+  Redis pub/sub; `LocalDataVersionBroadcaster` delivers straight to the registry for now.
+  `sync/CalendarSyncService` calls it after the commit, never inside the transaction.
+- `ws/CalendarRealtimeIntegrationTest` drives it over a real port: two sessions of one user both get
+  the hello and the post-sync broadcast, and a tokenless handshake is refused.
+
 ## Security (current state)
 
 `config/SecurityConfig` has two filter chains. The API chain is a stateless token
