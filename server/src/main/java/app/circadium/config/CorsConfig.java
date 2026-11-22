@@ -1,5 +1,7 @@
 package app.circadium.config;
 
+import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
+
 import app.circadium.web.CorrelationIdFilter;
 import java.time.Duration;
 import java.util.List;
@@ -9,7 +11,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
@@ -24,12 +28,18 @@ import org.springframework.web.filter.CorsFilter;
  * <p>It runs as a servlet filter after the correlation id and before the rate limiter and Spring Security, rather
  * than inside the security chain, so that every response the web app can receive, a 429 or a 401 included,
  * carries the headers it needs to read it.
+ *
+ * <p>The sign-in callbacks are left out. Apple returns the browser with a cross-site form POST, which carries
+ * {@code Origin: https://appleid.apple.com}; it is a top-level navigation, not a script reading a response, and
+ * {@code state} is what protects it.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(CorsProperties.class)
 class CorsConfig {
 
     static final int ORDER = Ordered.HIGHEST_PRECEDENCE + 5;
+
+    private static final RequestMatcher SIGN_IN_CALLBACKS = pathPattern("/login/oauth2/code/**");
 
     @Bean
     FilterRegistrationBean<CorsFilter> corsFilter(CorsProperties properties) {
@@ -43,7 +53,10 @@ class CorsConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
-        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(new CorsFilter(source));
+        CorsConfigurationSource exceptSignInCallbacks =
+                request -> SIGN_IN_CALLBACKS.matches(request) ? null : source.getCorsConfiguration(request);
+        FilterRegistrationBean<CorsFilter> registration =
+                new FilterRegistrationBean<>(new CorsFilter(exceptSignInCallbacks));
         registration.setOrder(ORDER);
         return registration;
     }

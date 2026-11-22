@@ -22,6 +22,11 @@ public class LoggingAccountMailer implements AccountMailer {
     }
 
     @Override
+    public void sendOAuthSignupConfirmation(String email, String token, String provider) {
+        logSecret(provider + " sign-up confirmation", email, token);
+    }
+
+    @Override
     public void sendTwoFactorCode(String email, String code) {
         logSecret("two-factor code", email, code);
     }

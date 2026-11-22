@@ -88,6 +88,7 @@ describe("getSession", () => {
         role: "ADMIN",
         isTwoFactorEnabled: true,
         isOAuth: false,
+        signInProviders: [],
       },
       accessTokenExpiresAt: new Date((ISSUED_AT + 900) * 1000).toISOString(),
       twoFactorVerified: false,
@@ -120,12 +121,14 @@ describe("getSession", () => {
     await expect(getSession()).resolves.toMatchObject({ twoFactorVerified: true });
   });
 
-  it("marks accounts with a provider link as OAuth", async () => {
+  it("marks accounts with a provider link as OAuth and names the providers", async () => {
     withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(userRow({ accounts: [{ id: "acc-1" }] }));
+    findUserMock.mockResolvedValue(
+      userRow({ accounts: [{ provider: "google" }, { provider: "apple" }] }),
+    );
 
     await expect(getSession()).resolves.toMatchObject({
-      user: { isOAuth: true },
+      user: { isOAuth: true, signInProviders: ["google", "apple"] },
     });
   });
 

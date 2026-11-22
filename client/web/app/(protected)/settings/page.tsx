@@ -13,6 +13,7 @@ export default async function SettingsPage() {
         role: user.role,
         isTwoFactorEnabled: user.isTwoFactorEnabled,
         isOAuth: user.isOAuth,
+        signInProviders: user.signInProviders,
       }}
     />
   );

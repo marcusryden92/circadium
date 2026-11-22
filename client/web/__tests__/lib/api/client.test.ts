@@ -101,12 +101,26 @@ describe("apiRequest", () => {
     });
   });
 
+  it("keeps the whole body for members beyond the standard ones", async () => {
+    const freshState = { dataVersion: 4, planner: [] };
+    fetchMock.mockResolvedValue(
+      json(409, { title: "Conflict", code: "stale", freshState }),
+    );
+
+    await expect(apiRequest("/calendar/sync", { body: {} })).rejects.toMatchObject({
+      status: 409,
+      code: "stale",
+      problem: { title: "Conflict", code: "stale", freshState },
+    });
+  });
+
   it("survives an error body that is not JSON", async () => {
     fetchMock.mockResolvedValue(new Response("<html>Bad gateway</html>", { status: 502 }));
 
     await expect(apiRequest("/auth/me")).rejects.toMatchObject({
       status: 502,
       code: undefined,
+      problem: {},
     });
   });
 

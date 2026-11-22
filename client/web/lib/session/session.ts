@@ -15,6 +15,8 @@ export type SessionUser = {
   isTwoFactorEnabled: boolean;
   /** Signed up through a provider; such accounts have no password to change. */
   isOAuth: boolean;
+  /** The providers this account signs in with (`google`, `microsoft`, `apple`). */
+  signInProviders: string[];
 };
 
 export type Session = {
@@ -72,7 +74,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
         role: true,
         isTwoFactorEnabled: true,
         passwordChangedAt: true,
-        accounts: { select: { id: true }, take: 1 },
+        accounts: { select: { provider: true } },
         sessions: {
           where: { familyId: claims.sessionId },
           select: { id: true },
@@ -94,6 +96,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
       role: user.role,
       isTwoFactorEnabled: user.isTwoFactorEnabled,
       isOAuth: user.accounts.length > 0,
+      signInProviders: user.accounts.map((account) => account.provider),
     },
     accessTokenExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
     twoFactorVerified: claims.twoFactorVerified,

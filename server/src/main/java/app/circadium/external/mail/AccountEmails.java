@@ -102,7 +102,7 @@ public class AccountEmails {
 
     public EmailMessage verification(String email, String token) {
         String link = link("/auth/new-verification", token);
-        return new EmailMessage("verification", properties.supportFrom(), email, "Confirm your email",
+        return new EmailMessage("verification", properties.accountFrom(), email, "Confirm your email",
                 render("Verify your email to finish signing up for Circadium", "Verify email", "Confirm your email",
                         PARAGRAPH.formatted("Welcome to Circadium. Confirm this email address to activate your account.")
                                 + FINE_PRINT.formatted("If you didn&rsquo;t create an account, you can ignore this email."),
@@ -114,6 +114,32 @@ public class AccountEmails {
 
                 If you didn't create an account, you can ignore this email.
                 """.formatted(link));
+    }
+
+    /** {@code provider} is a fixed display name from the server, escaped all the same. */
+    public EmailMessage oauthSignupConfirmation(String email, String token, String provider) {
+        String link = link("/auth/oauth/confirm", token);
+        String name = escape(provider);
+        return new EmailMessage("oauth_signup_confirmation", properties.accountFrom(), email,
+                "Confirm your email to finish signing up",
+                render("Confirm this email to finish signing up for Circadium with " + name, "Sign-up",
+                        "Confirm your email",
+                        PARAGRAPH.formatted("Someone, hopefully you, just signed in to Circadium with a " + name
+                                + " account that uses this email address. Confirm the address to create the account, "
+                                + "then sign in with " + name + " again.")
+                                + FINE_PRINT.formatted("If this wasn&rsquo;t you, ignore this email. No account is "
+                                        + "created unless the link is opened and confirmed, and the link expires in "
+                                        + "an hour."),
+                        "Confirm email", link),
+                """
+                Someone, hopefully you, just signed in to Circadium with a %s account that uses this email \
+                address. Confirm the address to create the account, then sign in with %s again:
+
+                %s
+
+                If this wasn't you, ignore this email. No account is created unless the link is opened and \
+                confirmed, and the link expires in an hour.
+                """.formatted(provider, provider, link));
     }
 
     public EmailMessage twoFactorCode(String email, String code) {
@@ -139,7 +165,7 @@ public class AccountEmails {
 
     public EmailMessage passwordReset(String email, String token) {
         String link = link("/auth/new-password", token);
-        return new EmailMessage("password_reset", properties.supportFrom(), email, "Reset your password",
+        return new EmailMessage("password_reset", properties.accountFrom(), email, "Reset your password",
                 render("Reset your Circadium password", "Security", "Reset your password",
                         PARAGRAPH.formatted("Click below to choose a new password for your Circadium account. "
                                 + "The link expires in 1 hour.")
@@ -284,8 +310,8 @@ public class AccountEmails {
         String resetLink = webBaseUrl + "/auth/reset";
         String howToSignIn = hasPassword
                 ? "Sign in with your password, or reset it if you&rsquo;ve forgotten it."
-                : "Sign in with the Google account you used to sign up.";
-        return new EmailMessage("existing_account", properties.supportFrom(), email,
+                : "Sign in with the Google, Microsoft or Apple account you signed up with.";
+        return new EmailMessage("existing_account", properties.accountFrom(), email,
                 "You already have a Circadium account",
                 render("You already have a Circadium account", "Account", "You already have an account",
                         PARAGRAPH.formatted("Someone, hopefully you, tried to create a Circadium account with this "
@@ -299,7 +325,7 @@ public class AccountEmails {
                 already an account for it.
 
                 Sign in: %s
-                """ + (hasPassword ? "Forgot your password? %s%n" : "Use the Google account you signed up with.%n")
+                """ + (hasPassword ? "Forgot your password? %s%n" : "Use the Google, Microsoft or Apple account you signed up with.%n")
                         + """
 
                 If this wasn't you, you can ignore this email. Nothing about your account has changed.

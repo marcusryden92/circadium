@@ -12,6 +12,14 @@ public interface AccountMailer {
 
     void sendVerificationEmail(String email, String token);
 
+    /**
+     * The link that creates an account for a first sign-in through a provider that does not vouch for the
+     * address.
+     *
+     * @param provider the provider's display name ("Microsoft")
+     */
+    void sendOAuthSignupConfirmation(String email, String token, String provider);
+
     void sendTwoFactorCode(String email, String code);
 
     void sendPasswordResetEmail(String email, String token);

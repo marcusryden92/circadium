@@ -10,7 +10,7 @@ public class RecordingAccountMailer implements AccountMailer {
 
     public enum Kind {
         VERIFICATION, TWO_FACTOR, PASSWORD_RESET, PASSWORD_CHANGED, ACCOUNT_DELETION, EXISTING_ACCOUNT,
-        EMAIL_CHANGE_VERIFICATION, EMAIL_CHANGE_REQUESTED, EMAIL_CHANGED, TWO_FACTOR_CHANGED
+        EMAIL_CHANGE_VERIFICATION, EMAIL_CHANGE_REQUESTED, EMAIL_CHANGED, TWO_FACTOR_CHANGED, OAUTH_SIGNUP
     }
 
     /** @param value the token or code, or for notices the detail they carry (the new email, the new setting) */
@@ -21,6 +21,12 @@ public class RecordingAccountMailer implements AccountMailer {
     @Override
     public void sendVerificationEmail(String email, String token) {
         sent.add(new Sent(Kind.VERIFICATION, email, token));
+    }
+
+    /** Records the token; the provider name is fixed per provider and not under test here. */
+    @Override
+    public void sendOAuthSignupConfirmation(String email, String token, String provider) {
+        sent.add(new Sent(Kind.OAUTH_SIGNUP, email, token));
     }
 
     @Override

@@ -20,7 +20,21 @@ import {
 import { SimpleEvent } from "@/types/prisma";
 import { EventTemplate } from "@/types/prisma";
 import { fetchCalendarData } from "@/actions/calendar-actions/fetchCalendarData";
+import { fetchCalendarBootstrap } from "@/lib/api/calendar";
+import { calendarBackend } from "@/lib/calendarBackend";
 import { retry } from "@/lib/retry";
+
+// Locations and travel times also come back from Java's bootstrap, but
+// UserProvider loads them with the rest of the scheduling settings, so only
+// the calendar's own groups are taken from it here.
+async function loadCalendarData() {
+  if (calendarBackend() === "java") return fetchCalendarBootstrap();
+  const result = await fetchCalendarData();
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+  return result.data;
+}
 
 interface Data {
   planner: Planner[];
@@ -65,13 +79,7 @@ export function useFetchCalendarData(
         // Retry through a cold-start window: a failed first call would
         // otherwise leave isLoaded false and strand the app on the loading
         // screen until a manual refresh.
-        const response = await retry(async () => {
-          const result = await fetchCalendarData();
-          if (!result.success) {
-            throw new Error(result.error);
-          }
-          return result;
-        });
+        const loaded = await retry(loadCalendarData);
 
         const {
           planner,
@@ -84,7 +92,7 @@ export function useFetchCalendarData(
           queues,
           dependencies,
           dataVersion,
-        } = response.data;
+        } = loaded;
         const newData = {
           planner,
           calendar,

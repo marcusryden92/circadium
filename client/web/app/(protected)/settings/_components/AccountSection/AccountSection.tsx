@@ -12,6 +12,7 @@ interface AccountSectionProps {
     role: UserRole;
     isTwoFactorEnabled: boolean;
     isOAuth?: boolean;
+    signInProviders?: string[];
   };
 }
 

@@ -59,14 +59,48 @@ default; `staging`, `prod`). Secrets never live in the repo.
 - Locally these fall back to the docker Postgres the web app brings up with
   `pnpm db:start` (from `client/web`): `jdbc:postgresql://localhost:5433/circadium_dev`,
   user/password `circadium`/`circadium`.
-- `staging`/`prod` supply the datasource vars with no defaults.
+- `staging`/`prod` supply the datasource vars with no defaults. Both connect through Neon's
+  pooled host (PgBouncer, transaction pooling), so nothing may change session state: no
+  `@Transactional(isolation = ...)` (PgJDBC applies it with `SET SESSION CHARACTERISTICS`,
+  outside the transaction). Set isolation with `SET TRANSACTION ISOLATION LEVEL ...` as the
+  transaction's first statement, as `calendar/CalendarBootstrapService` does.
+
+## Calendar data
+
+`GET /calendar/bootstrap` (`calendar/`) returns the whole calendar state; `POST /calendar/sync`
+(`sync/`) applies the client's create/update/destroy diff. Both speak the records in
+`calendar/CalendarContracts`, which mirror `client/shared/src/contracts` field for field.
+Jackson 3 refuses a `null` or missing value for a primitive, so a field the TS marks optional
+must be boxed there (the extended props' trespass flags are).
+
+- **Optimistic concurrency.** The account's `users.dataVersion` is the sync token. A sync bumps
+  it first (`WHERE dataVersion = clientKnownDataVersion`), then writes, in one transaction
+  (60-second timeout). Zero rows bumped means another session saved first: 409 ProblemDetail,
+  `code: "stale"`, with `freshState` (the bootstrap payload, read in a transaction of its own
+  after the rollback). An empty diff answers 200 without bumping.
+- **Writes** go through `sync/BulkStatements`: one statement per table and operation, rows passed
+  as one array per column through `unnest`, so the parameter count is fixed whatever the batch
+  size. Every write is scoped to the caller; an id that is missing or someone else's matches
+  nothing rather than failing. References read back through a parent (a window's category, a
+  member's queue) or holding a table-wide unique slot (a member's planner, a dependency's ends)
+  must point at the caller's own rows, or the row is skipped. `sync/CalendarChangeWriter` holds
+  the per-table column lists in foreign-key order.
+- **Compression.** Both payloads carry the whole calendar, so `server.compression` gzips JSON and
+  `application/problem+json` (the stale 409) over 2 KB. Tomcat does it, so MockMvc cannot see it:
+  `web/ResponseCompressionIntegrationTest` checks it over a real port.
+- **Golden corpus.** `src/test/resources/sync/corpus/*.json` are diffs the web's own
+  `syncCalendarData` applied to `calendar/bootstrap-seed.sql`, with the response and every row
+  afterwards (`sync/dump-state.sql`, run identically on both sides). `SyncCorpusIntegrationTest`
+  replays them with the clock frozen at the capture's instant. Recapture with `pnpm fixture:sync`
+  from `client/web` (dev database up) after changing the web's sync handlers, the shared diff, or
+  the seed; a Java change to the sync must keep the corpus green as it is.
 
 ## Security (current state)
 
 `config/SecurityConfig` has two filter chains. The API chain is a stateless token
 resource server: every request needs a valid RS256 access JWT except the endpoints in
 `SecurityConfig.PUBLIC_ENDPOINTS` (`/actuator/health/**`, `/actuator/info`,
-`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff}`,
+`GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff,oauth/confirm}`,
 `POST /auth/password-reset[/confirm]`, `/error`). New public endpoints go in that one list.
 Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
 `role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. Besides signature, `iss`, `aud` and `exp`,
@@ -84,7 +118,7 @@ Two clients, two token transports (`auth/ClientType`):
   take the refresh token in the body.
 - **Web** gets tokens as HttpOnly cookies from `auth/AuthCookies` and never sees them in a
   body (only the expiry times). Login/2FA opt in with `"client":"web"` (default `mobile`); a
-  handoff code remembers which client started the Google sign-in; refresh/logout with no
+  handoff code remembers which client started the provider sign-in; refresh/logout with no
   body read the refresh cookie. Access cookie: `Domain=${AUTH_COOKIE_DOMAIN}`, `Path=/`,
   SameSite=Lax, so the web server receives it too. Refresh cookie: host-only, `Path=/`,
   SameSite=Strict. Names and domain are `circadium.auth.cookies` (`AuthCookieProperties`);
@@ -108,19 +142,35 @@ browser's cookies. GET endpoints must stay free of side effects: browsers send n
 on plain GETs.
 
 The OAuth chain (ordered first) matches only `/oauth2/authorization/**` and
-`/login/oauth2/code/**`: Google sign-in (`auth/oauth`), run by Spring Security's OAuth 2.0
-client with PKCE forced on. It is the only place a session exists (cookie `circadium_oauth`,
-10 minutes), holding state/PKCE/nonce plus the caller's `client` + `challenge` for the round
-trip to Google; `OAuthLoginHandler` ends it on the callback and redirects to the configured
-web or mobile completion URL with `?code=` (a 60-second one-time handoff code, stored hashed
-in `oauth_handoff_codes`) or `?error=`. `POST /auth/handoff` trades the code plus the client's
-verifier for normal tokens. Google's own tokens are never stored. Accounts match on the
-NextAuth-era `accounts` row (provider + subject); an email that already has an account is
-refused, never auto-linked. Settings live under `circadium.oauth`: `GOOGLE_CLIENT_ID` /
-`GOOGLE_CLIENT_SECRET` are required outside `local` (startup fails otherwise; `local` without
-them disables Google sign-in), and the callback URI Google must have registered is
-`${AUTH_ISSUER}/login/oauth2/code/google`. The in-memory session is single-instance only, like
-the rate limiter.
+`/login/oauth2/code/**`: sign-in with Google, Microsoft and Apple (`auth/oauth`, one
+`SignInProvider` per provider), run by Spring Security's OAuth 2.0 client. PKCE is on for
+Google and Microsoft and off for Apple, which documents no PKCE parameters (Spring 7's default
+is on). It is the only place a session exists (cookie `circadium_oauth`, 10 minutes, SameSite=None
+outside `local` because Apple returns with a cross-site form POST, which browsers never send Lax
+cookies on), holding state/PKCE/nonce plus the caller's `client` + `challenge` for the round trip;
+`OAuthLoginHandler` ends it on the callback and redirects to the configured web or mobile
+completion URL with `?code=` (a 60-second one-time handoff code, stored hashed in
+`oauth_handoff_codes`), `?status=verification_sent`, or `?error=`. `POST /auth/handoff` trades the
+code plus the client's verifier for normal tokens. Accounts match on the NextAuth-era `accounts`
+row (provider + subject; Microsoft's subject is `oid`, because its `sub` is pairwise per app
+registration). An email the provider vouches for (Google's and Apple's `email_verified`) gets an
+account at once; any other (every Microsoft one) gets a row in `oauth_pending_signups` and an
+emailed link to `/auth/oauth/confirm`, and `POST /auth/oauth/confirm` creates the account without
+signing anyone in. An email that already has an account is refused, never auto-linked (for an
+unvouched email by a notice mailed to the owner, so the browser cannot probe addresses).
+Provider tokens are never stored, except Apple's refresh token on its `accounts` row, which account
+deletion uses to revoke the app at Apple (`AppleTokenRevoker`). Provider specifics: Microsoft uses
+the `common` endpoints and `MicrosoftIssuerValidator` (the issuer must be the template with the
+token's own `tid`); Apple's client secret is an ES256 JWT `AppleClientSecret` signs per request,
+its callback is a POST that `CorsConfig` lets through, and the name arrives only in the first
+callback's `user` form field. Settings live under `circadium.oauth`: `OAUTH_PROVIDERS` (default
+`google,microsoft,apple`) lists the providers offered, and each listed one must be configured
+outside `local` (startup fails otherwise; `local` switches unconfigured ones off):
+`GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET` (the calendar-import Entra app),
+`APPLE_CLIENT_ID` (the Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (the
+`.p8`). The web's `NEXT_PUBLIC_OAUTH_PROVIDERS` must list the same set. Each provider must have
+`${AUTH_ISSUER}/login/oauth2/code/<provider>` registered. The in-memory session is
+single-instance only, like the rate limiter.
 
 Abuse controls on the public auth endpoints, two layers:
 
@@ -142,7 +192,7 @@ Sensitive changes by a signed-in caller re-check the current password through
 `auth/CurrentPasswordCheck`, under the login lockout: password change, account deletion
 request, `POST /account/email` (emails a link to the new address and a notice to the current
 one; the account moves when the link is opened, and the old address is told again) and
-`POST /account/two-factor` (emails the account on every change). Google-only accounts get
+`POST /account/two-factor` (emails the account on every change). Provider-only accounts get
 `no_password` for the email and 2FA endpoints. A password change or reset also deletes the
 user's pending email-change tokens.
 

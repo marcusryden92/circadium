@@ -4,6 +4,7 @@ export const publicRoutes = [
   "/auth/new-verification",
   "/auth/confirm-deletion",
   "/auth/oauth/complete",
+  "/auth/oauth/confirm",
 ];
 
 export const authRoutes = [

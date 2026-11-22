@@ -36,11 +36,12 @@ import {
   alertSuccess,
   submit,
 } from "./AuthForm.css";
+import { SPAM_HINT } from "./spamHint";
 
 type LoginValues = z.infer<typeof LoginSchema>;
 type Step = "password" | "code";
 
-const CODE_SENT = "We emailed you a 6-digit code. It expires in 5 minutes.";
+const CODE_SENT = `We emailed you a 6-digit code. It expires in 5 minutes. ${SPAM_HINT}`;
 const RESUMING = "Signing you back in...";
 
 export const LoginForm = () => {
@@ -106,7 +107,7 @@ export const LoginForm = () => {
     } else {
       setStep("password");
       form.resetField("password");
-      setNotice("Confirm your email first: we sent you a new link.");
+      setNotice(`Confirm your email first: we sent you a new link. ${SPAM_HINT}`);
     }
   };
 

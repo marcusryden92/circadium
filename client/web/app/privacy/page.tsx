@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_EMAIL = "support@circadium.app";
-const LAST_UPDATED = "August 6, 2026";
+const LAST_UPDATED = "November 22, 2026";
 // The person or company legally responsible for the data (GDPR "controller").
 // Replace with your registered name / company before a public launch.
 const CONTROLLER_NAME = "[Your name or company]";
@@ -77,8 +77,12 @@ export default function PrivacyPage() {
             app: your tasks, goals, plans, categories, locations, weekly
             templates, and scheduling preferences. To sign you in we store your
             account details (email address and, if you register with a password,
-            a securely hashed password). If you sign in with Google, we receive
-            your basic profile information from Google.
+            a securely hashed password). If you sign in with Google, Microsoft
+            or Apple, we receive your name, email address and an account
+            identifier from that provider; with Apple, the address may be a
+            private relay address Apple forwards to you. For Apple we also keep
+            the sign-in token Apple issues, so that deleting your account also
+            ends Circadium&apos;s access under your Apple ID.
           </p>
         </section>
 
@@ -215,6 +219,11 @@ export default function PrivacyPage() {
             <li>
               Google, when you sign in with it or connect Google Calendar.
             </li>
+            <li>
+              Microsoft, when you sign in with it or connect a Microsoft
+              calendar.
+            </li>
+            <li>Apple, when you sign in with it.</li>
             <li>
               The AI assistant, which is optional and runs on your own API key:
               when you use it, the goals and tasks it works on are sent from your

@@ -18,8 +18,8 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Checks the start of a sign-in, {@code GET /oauth2/authorization/google?client=web&challenge=...}, before Spring
- * builds the redirect to Google, and remembers who asked.
+ * Checks the start of a sign-in, {@code GET /oauth2/authorization/{provider}?client=web&challenge=...}, before
+ * Spring builds the redirect to the provider, and remembers who asked.
  *
  * <p>{@code challenge} is the base64url SHA-256 of a random verifier the client keeps to itself. The handoff code
  * issued at the end can only be redeemed with that verifier, so a code that leaks (browser history, a log, another

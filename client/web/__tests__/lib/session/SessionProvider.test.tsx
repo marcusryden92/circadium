@@ -31,6 +31,7 @@ const SESSION: Session = {
     role: "USER",
     isTwoFactorEnabled: false,
     isOAuth: false,
+    signInProviders: [],
   },
   accessTokenExpiresAt: "2026-11-21T10:15:00.000Z",
   twoFactorVerified: false,

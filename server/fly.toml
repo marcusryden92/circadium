@@ -15,6 +15,9 @@ primary_region = "fra"
 [env]
   # Non-secret config. Database credentials are set separately via `fly secrets set`.
   SPRING_PROFILES_ACTIVE = "staging"
+  # The sign-in providers offered; each one listed needs its credentials as Fly secrets or startup fails.
+  # Must match NEXT_PUBLIC_OAUTH_PROVIDERS on the staging Vercel project.
+  OAUTH_PROVIDERS = "google,microsoft"
 
 [http_service]
   internal_port = 8080
@@ -22,7 +25,7 @@ primary_region = "fra"
   # Always on. A shared CPU runs at a 6.25% baseline once its burst balance is spent, and the
   # balance only accrues while the machine runs, so a JVM cold start after scale-to-zero takes
   # minutes and Fly's proxy gives up on the waking request long before that. Staying up also
-  # keeps the in-memory Google sign-in session alive between the start and the callback.
+  # keeps the in-memory sign-in session alive between the start and the callback.
   auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1

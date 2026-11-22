@@ -60,8 +60,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /**
      * Matched the way Spring Security and the handler mappings match, on the decoded path. Matching the raw
      * request URI instead would let {@code /auth/l%6Fgin} reach the login handler without touching its bucket.
-     * The Google sign-in start and callback are browser navigations (GET); each start creates a session and each
-     * callback calls Google's token endpoint, so both are bounded too.
+     * The provider sign-in start and callback are browser navigations; each start creates a session and each
+     * callback calls the provider's token endpoint, so both are bounded too, in one bucket for all providers.
+     * Apple's callback is a form POST, everyone else's a GET.
      */
     private static final List<Rule> RULES = List.of(
             new Rule(HttpMethod.POST, "/auth/login", Policy.LOGIN),
@@ -71,6 +72,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             new Rule(HttpMethod.POST, "/auth/password-reset", Policy.PASSWORD_RESET),
             new Rule(HttpMethod.POST, "/auth/password-reset/confirm", Policy.ACCOUNT_LINK),
             new Rule(HttpMethod.POST, "/auth/verify-email", Policy.ACCOUNT_LINK),
+            new Rule(HttpMethod.POST, "/auth/oauth/confirm", Policy.ACCOUNT_LINK),
             new Rule(HttpMethod.POST, "/account/password", Policy.ACCOUNT_LINK),
             new Rule(HttpMethod.POST, "/account/email", Policy.ACCOUNT_LINK),
             new Rule(HttpMethod.POST, "/account/two-factor", Policy.ACCOUNT_LINK),
@@ -78,8 +80,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             new Rule(HttpMethod.POST, "/account/deletion/confirm", Policy.ACCOUNT_LINK),
             new Rule(HttpMethod.POST, "/auth/refresh", Policy.TOKEN),
             new Rule(HttpMethod.POST, "/auth/logout", Policy.TOKEN),
-            new Rule(HttpMethod.GET, "/oauth2/authorization/google", Policy.OAUTH),
-            new Rule(HttpMethod.GET, "/login/oauth2/code/google", Policy.OAUTH));
+            new Rule(HttpMethod.GET, "/oauth2/authorization/{provider}", Policy.OAUTH),
+            new Rule(HttpMethod.GET, "/login/oauth2/code/{provider}", Policy.OAUTH),
+            new Rule(HttpMethod.POST, "/login/oauth2/code/{provider}", Policy.OAUTH));
 
     /** {@code path} is the canonical spelling, used in the 429 body instead of whatever encoding the caller sent. */
     private record Rule(RequestMatcher matcher, String path, Policy policy) {

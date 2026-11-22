@@ -1,0 +1,793 @@
+{
+  "description": "A template moved to another weekday, one deleted, one created on Saturday; a category window edited, one deleted, one created under another category.",
+  "writes": 6,
+  "clientKnownDataVersion": 7,
+  "changes": {
+    "planner": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "calendar": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "template": {
+      "create": [
+        {
+          "id": "sync-template-new",
+          "title": "Long run",
+          "startDay": 6,
+          "startTime": "08:00",
+          "userId": "bootstrap-user",
+          "duration": 90,
+          "color": null,
+          "locationId": "bootstrap-location-b",
+          "recurrenceExceptions": null,
+          "createdAt": "2026-03-01T20:00:00.000Z",
+          "updatedAt": "2026-03-01T20:00:00.000Z"
+        }
+      ],
+      "update": [
+        {
+          "id": "bootstrap-template-1",
+          "title": "Morning routine",
+          "startDay": 3,
+          "startTime": "06:30",
+          "userId": "bootstrap-user",
+          "duration": 30,
+          "color": "#ff8800",
+          "locationId": null,
+          "recurrenceExceptions": null,
+          "createdAt": "2026-01-04T09:00:00.000Z",
+          "updatedAt": "2026-01-04T09:00:00.000Z"
+        }
+      ],
+      "destroy": [
+        {
+          "id": "bootstrap-template-2",
+          "title": "Review",
+          "startDay": 6,
+          "startTime": "18:30",
+          "userId": "bootstrap-user",
+          "duration": 45,
+          "color": "#112233",
+          "locationId": null,
+          "recurrenceExceptions": "{\"2026-03-07\":{\"deleted\":true}}",
+          "createdAt": "2026-01-04T09:00:00.000Z",
+          "updatedAt": "2026-01-08T09:00:00.000Z"
+        }
+      ]
+    },
+    "extendedProps": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "category": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "categoryTimeWindow": {
+      "create": [
+        {
+          "id": "sync-window-new",
+          "day": 1,
+          "startTime": "14:00",
+          "endTime": "16:00",
+          "recurrenceExceptions": "{\"2026-03-09\":{\"deleted\":true}}",
+          "categoryId": "bootstrap-category-b",
+          "userId": "bootstrap-user"
+        }
+      ],
+      "update": [
+        {
+          "id": "bootstrap-window-1",
+          "day": 0,
+          "startTime": "09:00",
+          "endTime": "11:30",
+          "recurrenceExceptions": null,
+          "categoryId": "bootstrap-category-a",
+          "userId": "bootstrap-user"
+        }
+      ],
+      "destroy": [
+        {
+          "id": "bootstrap-window-2",
+          "day": 6,
+          "startTime": "13:00",
+          "endTime": "17:00",
+          "recurrenceExceptions": null,
+          "categoryId": "bootstrap-category-a",
+          "userId": "bootstrap-user"
+        }
+      ]
+    },
+    "categoryEvent": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "travelEvent": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "engineMessage": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "queue": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "queueMember": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "dependency": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "location": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    },
+    "travelTime": {
+      "create": [],
+      "update": [],
+      "destroy": []
+    }
+  },
+  "response": {
+    "success": true,
+    "newDataVersion": 8
+  },
+  "after": {
+    "users": [
+      {
+        "id": "bootstrap-other",
+        "dataVersion": 3
+      },
+      {
+        "id": "bootstrap-user",
+        "dataVersion": 8
+      }
+    ],
+    "Locations": [
+      {
+        "id": "bootstrap-location-a",
+        "name": "Office",
+        "address": "1 Main Street",
+        "placeId": "place-office",
+        "lat": 59.3293,
+        "lng": 18.0686,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-02T08:00:00",
+        "updatedAt": "2026-01-05T08:00:00"
+      },
+      {
+        "id": "bootstrap-location-b",
+        "name": "Home",
+        "address": "2 Side Street",
+        "placeId": "place-home",
+        "lat": 59.33,
+        "lng": 18.07,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-01T08:00:00",
+        "updatedAt": "2026-01-01T08:00:00"
+      },
+      {
+        "id": "bootstrap-other-location",
+        "name": "Elsewhere",
+        "address": "3 Far Road",
+        "placeId": "place-elsewhere",
+        "lat": 0,
+        "lng": 0,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-01-01T08:00:00",
+        "updatedAt": "2026-01-01T08:00:00"
+      }
+    ],
+    "TravelTimes": [
+      {
+        "id": "bootstrap-other-travel-time",
+        "fromLocationId": "bootstrap-other-location",
+        "toLocationId": "bootstrap-other-location",
+        "transportMode": "WALKING",
+        "googleRushHourMinutes": 1,
+        "googleRegularMinutes": 1,
+        "googleNightMinutes": 1,
+        "customRushHourMinutes": null,
+        "customRegularMinutes": null,
+        "customNightMinutes": null,
+        "unroutableAt": null,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-01-03T08:00:00",
+        "updatedAt": "2026-01-03T08:00:00"
+      },
+      {
+        "id": "bootstrap-travel-time-1",
+        "fromLocationId": "bootstrap-location-a",
+        "toLocationId": "bootstrap-location-b",
+        "transportMode": "DRIVING",
+        "googleRushHourMinutes": 20,
+        "googleRegularMinutes": 15,
+        "googleNightMinutes": 12,
+        "customRushHourMinutes": null,
+        "customRegularMinutes": null,
+        "customNightMinutes": null,
+        "unroutableAt": null,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-03T08:00:00",
+        "updatedAt": "2026-01-03T08:00:00"
+      },
+      {
+        "id": "bootstrap-travel-time-2",
+        "fromLocationId": "bootstrap-location-b",
+        "toLocationId": "bootstrap-location-a",
+        "transportMode": "TRANSIT",
+        "googleRushHourMinutes": 0,
+        "googleRegularMinutes": 0,
+        "googleNightMinutes": 0,
+        "customRushHourMinutes": 30,
+        "customRegularMinutes": null,
+        "customNightMinutes": 25,
+        "unroutableAt": "2026-02-01T00:00:00",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-03T08:00:00",
+        "updatedAt": "2026-02-01T00:00:00"
+      }
+    ],
+    "Categories": [
+      {
+        "id": "bootstrap-category-a",
+        "name": "Work",
+        "icon": "briefcase",
+        "color": "#336699",
+        "sortOrder": 1,
+        "useTimeWindows": true,
+        "isStrict": true,
+        "confineToOwnWindows": false,
+        "locationId": "bootstrap-location-a",
+        "parentId": null,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-04T09:00:00.000Z",
+        "updatedAt": "2026-01-04T09:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-category-b",
+        "name": "Deep work",
+        "icon": null,
+        "color": null,
+        "sortOrder": 0,
+        "useTimeWindows": false,
+        "isStrict": false,
+        "confineToOwnWindows": true,
+        "locationId": null,
+        "parentId": "bootstrap-category-a",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-04T09:05:00.000Z",
+        "updatedAt": "2026-01-06T09:05:00.000Z"
+      },
+      {
+        "id": "bootstrap-other-category",
+        "name": "Theirs",
+        "icon": null,
+        "color": null,
+        "sortOrder": 0,
+        "useTimeWindows": true,
+        "isStrict": false,
+        "confineToOwnWindows": false,
+        "locationId": null,
+        "parentId": null,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-01-04T09:00:00.000Z",
+        "updatedAt": "2026-01-04T09:00:00.000Z"
+      }
+    ],
+    "CategoryTimeWindows": [
+      {
+        "id": "bootstrap-other-window",
+        "day": 2,
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "recurrenceExceptions": null,
+        "categoryId": "bootstrap-other-category",
+        "userId": "bootstrap-other"
+      },
+      {
+        "id": "bootstrap-window-1",
+        "day": 0,
+        "startTime": "09:00",
+        "endTime": "11:30",
+        "recurrenceExceptions": null,
+        "categoryId": "bootstrap-category-a",
+        "userId": "bootstrap-user"
+      },
+      {
+        "id": "bootstrap-window-orphan",
+        "day": 3,
+        "startTime": "08:00",
+        "endTime": "09:00",
+        "recurrenceExceptions": null,
+        "categoryId": null,
+        "userId": "bootstrap-user"
+      },
+      {
+        "id": "sync-window-new",
+        "day": 1,
+        "startTime": "14:00",
+        "endTime": "16:00",
+        "recurrenceExceptions": "{\"2026-03-09\":{\"deleted\":true}}",
+        "categoryId": "bootstrap-category-b",
+        "userId": "bootstrap-user"
+      }
+    ],
+    "Planners": [
+      {
+        "id": "bootstrap-other-planner",
+        "title": "Not yours",
+        "parentId": null,
+        "plannerType": "task",
+        "isReady": true,
+        "isTriaged": true,
+        "duration": 30,
+        "deadline": null,
+        "starts": null,
+        "recurrence": null,
+        "recurrenceExceptions": null,
+        "splitting": null,
+        "completedSegments": null,
+        "maxMinutesPerDay": null,
+        "earliestStartDate": null,
+        "allowedTimes": null,
+        "linkedItemId": null,
+        "notes": null,
+        "sortOrder": 0,
+        "completedStartTime": null,
+        "completedEndTime": null,
+        "priority": 1,
+        "userId": "bootstrap-other",
+        "color": null,
+        "locationId": null,
+        "useParentLocation": false,
+        "categoryId": null,
+        "createdAt": "2026-01-10T10:00:00.000Z",
+        "updatedAt": "2026-01-10T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-planner-goal",
+        "title": "Learn Spanish",
+        "parentId": null,
+        "plannerType": "goal",
+        "isReady": true,
+        "isTriaged": true,
+        "duration": 0,
+        "deadline": "2026-06-30T00:00:00.000Z",
+        "starts": null,
+        "recurrence": null,
+        "recurrenceExceptions": null,
+        "splitting": null,
+        "completedSegments": null,
+        "maxMinutesPerDay": 90,
+        "earliestStartDate": "2026-01-05T00:00:00.000Z",
+        "allowedTimes": "{\"days\":[1,2,3],\"ranges\":[]}",
+        "linkedItemId": null,
+        "notes": "Notes with \"quotes\", a backslash \\ and unicode: café",
+        "sortOrder": 0,
+        "completedStartTime": null,
+        "completedEndTime": null,
+        "priority": 5,
+        "userId": "bootstrap-user",
+        "color": "#aa3355",
+        "locationId": null,
+        "useParentLocation": false,
+        "categoryId": "bootstrap-category-a",
+        "createdAt": "2026-01-10T10:00:00.000Z",
+        "updatedAt": "2026-01-11T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-planner-plan",
+        "title": "Weekly review",
+        "parentId": null,
+        "plannerType": "plan",
+        "isReady": true,
+        "isTriaged": true,
+        "duration": 60,
+        "deadline": null,
+        "starts": "2026-03-02T09:00:00.000Z",
+        "recurrence": "{\"freq\":\"weekly\",\"interval\":1}",
+        "recurrenceExceptions": "{}",
+        "splitting": null,
+        "completedSegments": null,
+        "maxMinutesPerDay": null,
+        "earliestStartDate": null,
+        "allowedTimes": null,
+        "linkedItemId": null,
+        "notes": null,
+        "sortOrder": 0,
+        "completedStartTime": null,
+        "completedEndTime": null,
+        "priority": 3,
+        "userId": "bootstrap-user",
+        "color": null,
+        "locationId": "bootstrap-location-b",
+        "useParentLocation": false,
+        "categoryId": null,
+        "createdAt": "2026-01-10T10:01:00.000Z",
+        "updatedAt": "2026-01-10T10:01:00.000Z"
+      },
+      {
+        "id": "bootstrap-planner-task",
+        "title": "Flashcards",
+        "parentId": "bootstrap-planner-goal",
+        "plannerType": "task",
+        "isReady": null,
+        "isTriaged": false,
+        "duration": 45,
+        "deadline": null,
+        "starts": null,
+        "recurrence": null,
+        "recurrenceExceptions": null,
+        "splitting": "{\"minMinutes\":15,\"maxMinutes\":45}",
+        "completedSegments": "[{\"start\":\"2026-03-03T08:00:00.000Z\",\"end\":\"2026-03-03T08:15:00.000Z\"}]",
+        "maxMinutesPerDay": null,
+        "earliestStartDate": null,
+        "allowedTimes": null,
+        "linkedItemId": "bootstrap-planner-plan",
+        "notes": null,
+        "sortOrder": 1.5,
+        "completedStartTime": "2026-03-03T08:00:00.000Z",
+        "completedEndTime": "2026-03-03T08:15:00.000Z",
+        "priority": 1,
+        "userId": "bootstrap-user",
+        "color": null,
+        "locationId": null,
+        "useParentLocation": true,
+        "categoryId": null,
+        "createdAt": "2026-01-10T10:02:00.000Z",
+        "updatedAt": "2026-01-10T10:02:00.000Z"
+      }
+    ],
+    "SimpleEvents": [
+      {
+        "id": "bootstrap-event-1",
+        "title": "Flashcards",
+        "start": "2026-03-03T08:00:00.000Z",
+        "end": "2026-03-03T08:45:00.000Z",
+        "duration": 45,
+        "userId": "bootstrap-user",
+        "rrule": null,
+        "backgroundColor": "#aa3355",
+        "borderColor": "#aa3355",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-event-2",
+        "title": "Weekly review",
+        "start": "2026-03-02T09:00:00.000Z",
+        "end": "2026-03-02T10:00:00.000Z",
+        "duration": null,
+        "userId": "bootstrap-user",
+        "rrule": "FREQ=WEEKLY;INTERVAL=1",
+        "backgroundColor": "#777777",
+        "borderColor": "#555555",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-event-3",
+        "title": "Morning routine",
+        "start": "2026-03-01T07:00:00.000Z",
+        "end": "2026-03-01T07:30:00.000Z",
+        "duration": 30,
+        "userId": "bootstrap-user",
+        "rrule": null,
+        "backgroundColor": "#888888",
+        "borderColor": "#888888",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-other-event",
+        "title": "Not yours",
+        "start": "2026-03-03T08:00:00.000Z",
+        "end": "2026-03-03T08:30:00.000Z",
+        "duration": 30,
+        "userId": "bootstrap-other",
+        "rrule": null,
+        "backgroundColor": "#000000",
+        "borderColor": "#000000",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      }
+    ],
+    "EventExtendedProps": [
+      {
+        "id": "bootstrap-other-props",
+        "plannerType": "task",
+        "eventType": "planner",
+        "completedStartTime": null,
+        "completedEndTime": null,
+        "parentId": null,
+        "trespassingStart": false,
+        "trespassingEnd": false,
+        "eventId": "bootstrap-other-event"
+      },
+      {
+        "id": "bootstrap-props-1",
+        "plannerType": "task",
+        "eventType": "planner",
+        "completedStartTime": "2026-03-03T08:00:00.000Z",
+        "completedEndTime": null,
+        "parentId": "bootstrap-planner-goal",
+        "trespassingStart": true,
+        "trespassingEnd": false,
+        "eventId": "bootstrap-event-1"
+      },
+      {
+        "id": "bootstrap-props-3",
+        "plannerType": null,
+        "eventType": "template",
+        "completedStartTime": null,
+        "completedEndTime": null,
+        "parentId": null,
+        "trespassingStart": false,
+        "trespassingEnd": false,
+        "eventId": "bootstrap-event-3"
+      }
+    ],
+    "EventTemplates": [
+      {
+        "id": "bootstrap-other-template",
+        "title": "Theirs",
+        "startDay": "wednesday",
+        "startTime": "12:00",
+        "userId": "bootstrap-other",
+        "duration": 15,
+        "color": null,
+        "locationId": null,
+        "recurrenceExceptions": null,
+        "createdAt": "2026-01-04T09:00:00.000Z",
+        "updatedAt": "2026-01-04T09:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-template-1",
+        "title": "Morning routine",
+        "startDay": "wednesday",
+        "startTime": "06:30",
+        "userId": "bootstrap-user",
+        "duration": 30,
+        "color": "#ff8800",
+        "locationId": null,
+        "recurrenceExceptions": null,
+        "createdAt": "2026-01-04T09:00:00.000Z",
+        "updatedAt": "2026-03-02T06:00:00.000Z"
+      },
+      {
+        "id": "sync-template-new",
+        "title": "Long run",
+        "startDay": "saturday",
+        "startTime": "08:00",
+        "userId": "bootstrap-user",
+        "duration": 90,
+        "color": null,
+        "locationId": "bootstrap-location-b",
+        "recurrenceExceptions": null,
+        "createdAt": "2026-03-01T20:00:00.000Z",
+        "updatedAt": "2026-03-01T20:00:00.000Z"
+      }
+    ],
+    "CategoryEvents": [
+      {
+        "id": "bootstrap-category-event-1",
+        "start": "2026-03-01T09:00:00.000Z",
+        "end": "2026-03-01T12:00:00.000Z",
+        "trespassingStart": false,
+        "trespassingEnd": true,
+        "categoryTimeWindowId": "bootstrap-window-1",
+        "categoryId": "bootstrap-category-a",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-other-category-event",
+        "start": "2026-03-03T10:00:00.000Z",
+        "end": "2026-03-03T11:00:00.000Z",
+        "trespassingStart": false,
+        "trespassingEnd": false,
+        "categoryTimeWindowId": "bootstrap-other-window",
+        "categoryId": "bootstrap-other-category",
+        "userId": "bootstrap-other",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      }
+    ],
+    "TravelEvents": [
+      {
+        "id": "bootstrap-other-travel-event",
+        "start": "2026-03-03T07:45:00.000Z",
+        "end": "2026-03-03T08:00:00.000Z",
+        "fromLocationId": null,
+        "toLocationId": null,
+        "travelMinutes": 5,
+        "requiredTravelMinutes": null,
+        "insufficientTravel": false,
+        "overconstrained": false,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-travel-event-1",
+        "start": "2026-03-02T08:40:00.000Z",
+        "end": "2026-03-02T09:00:00.000Z",
+        "fromLocationId": null,
+        "toLocationId": "bootstrap-location-b",
+        "travelMinutes": 20,
+        "requiredTravelMinutes": null,
+        "insufficientTravel": false,
+        "overconstrained": true,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-travel-event-2",
+        "start": "2026-03-03T07:45:00.000Z",
+        "end": "2026-03-03T08:00:00.000Z",
+        "fromLocationId": "bootstrap-location-b",
+        "toLocationId": "bootstrap-location-a",
+        "travelMinutes": 15,
+        "requiredTravelMinutes": 25,
+        "insufficientTravel": true,
+        "overconstrained": false,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      }
+    ],
+    "EngineMessages": [
+      {
+        "id": "bootstrap-message-1",
+        "type": "unscheduled",
+        "tone": "warning",
+        "payload": {
+          "reason": "NO_SLOTS",
+          "details": {
+            "note": "a \"quote\" and café",
+            "tried": [
+              1,
+              2.5,
+              "x",
+              null,
+              true
+            ]
+          },
+          "plannerId": "bootstrap-planner-task"
+        },
+        "dismissed": false,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-message-2",
+        "type": "info",
+        "tone": "neutral",
+        "payload": "just a string",
+        "dismissed": true,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-02T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-message-3",
+        "type": "info",
+        "tone": "neutral",
+        "payload": [
+          {
+            "leaf": "x"
+          },
+          2,
+          []
+        ],
+        "dismissed": false,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-other-message",
+        "type": "info",
+        "tone": "neutral",
+        "payload": {},
+        "dismissed": false,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-03-01T12:00:00.000Z",
+        "updatedAt": "2026-03-01T12:00:00.000Z"
+      }
+    ],
+    "Queues": [
+      {
+        "id": "bootstrap-other-queue",
+        "title": "Theirs",
+        "sortOrder": 0,
+        "color": null,
+        "categoryId": null,
+        "userId": "bootstrap-other",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-queue-1",
+        "title": "Reading",
+        "sortOrder": 0,
+        "color": "#445566",
+        "categoryId": "bootstrap-category-a",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-queue-2",
+        "title": "Empty",
+        "sortOrder": 1,
+        "color": null,
+        "categoryId": null,
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      }
+    ],
+    "QueueMembers": [
+      {
+        "id": "bootstrap-member-1",
+        "sortOrder": 0.25,
+        "queueId": "bootstrap-queue-1",
+        "plannerId": "bootstrap-planner-goal",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-member-2",
+        "sortOrder": 1,
+        "queueId": "bootstrap-queue-1",
+        "plannerId": "bootstrap-planner-plan",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      },
+      {
+        "id": "bootstrap-other-member",
+        "sortOrder": 0,
+        "queueId": "bootstrap-other-queue",
+        "plannerId": "bootstrap-other-planner",
+        "userId": "bootstrap-other",
+        "createdAt": "2026-01-12T10:00:00.000Z",
+        "updatedAt": "2026-01-12T10:00:00.000Z"
+      }
+    ],
+    "PlannerDependencies": [
+      {
+        "id": "bootstrap-dependency-1",
+        "predecessorId": "bootstrap-planner-plan",
+        "successorId": "bootstrap-planner-goal",
+        "userId": "bootstrap-user",
+        "createdAt": "2026-01-13T10:00:00.000Z",
+        "updatedAt": "2026-01-13T10:00:00.000Z"
+      }
+    ]
+  }
+}
