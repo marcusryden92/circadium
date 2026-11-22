@@ -45,8 +45,14 @@ Deploys run from `.github/workflows/server-ci.yml` after `verify`, on pushes tha
 Each secret is a deploy token for its own app only. Both apps run one always-on machine in
 `fra` and deploy blue-green: a release that fails its health check never takes over. If the
 schema check fails because the web's Vercel build had not yet applied a new Prisma
-migration, re-run the job once the Vercel deploy is done. A manual deploy from `server/` is
-`fly deploy --remote-only` (staging) or `fly deploy --remote-only -c fly.prod.toml` (prod).
+migration, re-run the job once the Vercel deploy is done. The failed release leaves its new
+machine behind, and the next deploy refuses while two images are present: destroy that machine
+first (`fly machine destroy <id> --force`). Do not restart it, because once healthy it takes
+traffic beside the old machine, and the sign-in session and rate limiter are per machine. A
+manual deploy from `server/` is `fly deploy --remote-only` (staging) or
+`fly deploy --remote-only -c fly.prod.toml` (prod); `--image <the job's registry.fly.io image>`
+in place of `--remote-only` reuses the image the job built. If Fly's Depot builder never starts
+(`Waiting for depot builder... deadline_exceeded`), add `--depot=false`.
 
 ## Configuration and database
 

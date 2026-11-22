@@ -15,7 +15,7 @@ primary_region = "fra"
   SPRING_PROFILES_ACTIVE = "prod"
   # The sign-in providers offered; each one listed needs its credentials as Fly secrets or startup fails.
   # Must match NEXT_PUBLIC_OAUTH_PROVIDERS on the prod Vercel project.
-  OAUTH_PROVIDERS = "google"
+  OAUTH_PROVIDERS = "google,microsoft"
 
 [http_service]
   internal_port = 8080
