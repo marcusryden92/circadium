@@ -3,8 +3,8 @@
 // re-run), the stale/error/transport-failure branches, and transport-level
 // retry with backoff. Everything host-specific — where the baseline lives, how
 // outcomes are applied to the store — is injected through SyncLoopPorts, and
-// the backend call is the injected SyncTransport (web wraps the server action,
-// the Java fetch is swapped in at item 1.13).
+// the backend call is the injected SyncTransport (on web, the Java API's sync
+// endpoint or the server action, chosen by an env flag).
 
 import {
   handleServerTransaction,

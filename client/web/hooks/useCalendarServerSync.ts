@@ -27,9 +27,23 @@ import {
   type SyncLoop,
   type SyncSnapshot,
 } from "@circadium/shared/sync/syncLoop";
+import type { SyncTransport } from "@circadium/shared/sync/compareCalendarData";
+import type { BootstrapPayload } from "@circadium/shared/contracts";
 import { syncCalendarData } from "@/actions/calendar-actions/syncCalendarData";
-import type { FreshState } from "@/actions/calendar-actions/fetchFreshState";
+import { syncCalendarChanges } from "@/lib/api/calendar";
+import { calendarBackend } from "@/lib/calendarBackend";
 import { ensureFreshSession } from "@/lib/session/refresh";
+
+// A server action cannot refresh the access cookie itself, and the first sync
+// after a tab wakes can run before the session keeper catches up. The Java
+// call refreshes the cookie on its own (apiRequest), and retries once on a 401.
+const actionTransport: SyncTransport = async (
+  changes,
+  clientKnownDataVersion,
+) => {
+  await ensureFreshSession();
+  return syncCalendarData(changes, clientKnownDataVersion);
+};
 
 const useCalendarServerSync = (
   userId: string | undefined,
@@ -175,7 +189,7 @@ const useCalendarServerSync = (
   // discarded because applying it on top of a divergent DAG would corrupt
   // state. Refs advance to the new dataVersion so the next sync starts clean.
   const adoptFreshServerState = useCallback(
-    (fresh: FreshState) => {
+    (fresh: BootstrapPayload) => {
       previousPlanner.current = fresh.planner;
       previousCalendar.current = fresh.calendar;
       previousTemplate.current = fresh.template;
@@ -227,17 +241,12 @@ const useCalendarServerSync = (
   // The host-agnostic sync loop (serialization guard, stale/error branches,
   // transport retry) lives in @circadium/shared; this hook wires it to the
   // refs + Redux dispatch and injects the web transport. Created once so its
-  // in-flight/retry state persists across renders. The transport is the single
-  // seam the Java migration (item 1.13) swaps.
+  // in-flight/retry state persists across renders.
   const loopRef = useRef<SyncLoop | null>(null);
   if (!loopRef.current) {
     loopRef.current = createSyncLoop({
-      // A server action cannot refresh the access cookie itself, and the first
-      // sync after a tab wakes can run before the session keeper catches up.
-      transport: async (changes, clientKnownDataVersion) => {
-        await ensureFreshSession();
-        return syncCalendarData(changes, clientKnownDataVersion);
-      },
+      transport:
+        calendarBackend() === "java" ? syncCalendarChanges : actionTransport,
       getSnapshot: () => latestStateRef.current,
       getBaseline: () => ({
         planner: previousPlanner.current,

@@ -20,6 +20,12 @@ export class ApiError extends Error {
   /** Bean Validation failures by field name. */
   readonly fieldErrors: Record<string, string>;
   readonly retryAfterSeconds: number | undefined;
+  /**
+   * The whole parsed body, for endpoints that put more than the standard
+   * members on it (a stale sync carries the account's current data). Empty
+   * when the body was not a JSON object.
+   */
+  readonly problem: Readonly<Record<string, unknown>>;
 
   constructor(init: {
     status: number;
@@ -27,6 +33,7 @@ export class ApiError extends Error {
     code?: string;
     fieldErrors?: Record<string, string>;
     retryAfterSeconds?: number;
+    problem?: Record<string, unknown>;
     cause?: unknown;
   }) {
     super(init.message, { cause: init.cause });
@@ -35,6 +42,7 @@ export class ApiError extends Error {
     this.code = init.code;
     this.fieldErrors = init.fieldErrors ?? {};
     this.retryAfterSeconds = init.retryAfterSeconds;
+    this.problem = init.problem ?? {};
   }
 }
 
@@ -104,9 +112,12 @@ async function send<T>(
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
-  let problem: ProblemDetail = {};
+  let problem: ProblemDetail & Record<string, unknown> = {};
   try {
-    problem = (await response.json()) as ProblemDetail;
+    const body: unknown = await response.json();
+    if (body !== null && typeof body === "object" && !Array.isArray(body)) {
+      problem = body as ProblemDetail & Record<string, unknown>;
+    }
   } catch {
     // Not JSON, e.g. an error page from the host's proxy.
   }
@@ -119,6 +130,7 @@ async function toApiError(response: Response): Promise<ApiError> {
     code: typeof problem.code === "string" ? problem.code : undefined,
     fieldErrors: problem.errors ?? {},
     retryAfterSeconds: parseRetryAfter(response.headers.get("Retry-After")),
+    problem,
   });
 }
 

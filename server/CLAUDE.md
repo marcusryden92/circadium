@@ -85,6 +85,9 @@ must be boxed there (the extended props' trespass flags are).
   member's queue) or holding a table-wide unique slot (a member's planner, a dependency's ends)
   must point at the caller's own rows, or the row is skipped. `sync/CalendarChangeWriter` holds
   the per-table column lists in foreign-key order.
+- **Compression.** Both payloads carry the whole calendar, so `server.compression` gzips JSON and
+  `application/problem+json` (the stale 409) over 2 KB. Tomcat does it, so MockMvc cannot see it:
+  `web/ResponseCompressionIntegrationTest` checks it over a real port.
 - **Golden corpus.** `src/test/resources/sync/corpus/*.json` are diffs the web's own
   `syncCalendarData` applied to `calendar/bootstrap-seed.sql`, with the response and every row
   afterwards (`sync/dump-state.sql`, run identically on both sides). `SyncCorpusIntegrationTest`

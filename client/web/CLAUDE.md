@@ -85,9 +85,9 @@
   │   ├── dataExport.ts                 # GDPR export — exportUserData() serializes the whole account to one JSON blob (secrets excluded)
   │   ├── dataImport.ts                 # GDPR import/restore — importUserData(payload, "replace"|"add"): replace preserves ids (DB-migration restore), add remaps every id
   │   └── calendar-actions/
-  │       ├── fetchCalendarData.ts      # Initial load — returns planner/calendar/template/categories/categoryEvents/travelEvents/engineMessages/queues/dependencies + dataVersion
-  │       ├── fetchFreshState.ts        # Used on stale-version recovery
-  │       ├── syncCalendarData.ts       # OCC-gated transactional diff sync
+  │       ├── fetchCalendarData.ts      # Initial load when NEXT_PUBLIC_CALENDAR_BACKEND is not "java" — returns planner/calendar/template/categories/categoryEvents/travelEvents/engineMessages/queues/dependencies + dataVersion
+  │       ├── fetchFreshState.ts        # Used on stale-version recovery (server-action path only)
+  │       ├── syncCalendarData.ts       # OCC-gated transactional diff sync (server-action path only; Java's POST /calendar/sync otherwise)
   │       └── sync-handlers/            # One handler per table (planner, calendar, extendedProps, template, category, timeWindow, categoryEvent, travelEvent, engineMessage, queue, queueMember, dependency, location, travelTime)
   │
   ├── components/
@@ -123,8 +123,8 @@
   │
   ├── hooks/
   │   ├── useCurrentUser, useCurrentRole
-  │   ├── useFetchCalendarData          # Initial Redux seed from server
-  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback
+  │   ├── useFetchCalendarData          # Initial Redux seed: Java's GET /calendar/bootstrap or the fetchCalendarData action, per lib/calendarBackend
+  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback; the transport is Java's POST /calendar/sync or the syncCalendarData action, per lib/calendarBackend
   │   ├── useCalendarStateActions       # updatePlannerArray / updateTemplateArray / updateAll
   │   ├── useManuallyRefreshCalendar    # User-triggered regen
   │   ├── useViewStatePersistence       # Load-once + debounced-save for a canvas page's UserViewState blob (graph/mindmap)
@@ -140,7 +140,8 @@
   │
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
-  │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401), auth.ts (account endpoints), errorMessage.ts (describeApiError)
+  │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401; ApiError.problem keeps the whole error body), auth.ts (account endpoints), calendar.ts (bootstrap + the sync transport: 200 → success, 409 stale → freshState, other answers → error/rollback, no answer or a 502/503/504 → throw/retry), errorMessage.ts (describeApiError)
+  │   ├── calendarBackend.ts            # NEXT_PUBLIC_CALENDAR_BACKEND: "java" routes the calendar's load and sync to the Java API; unset keeps the server actions (build-time inlined — a change needs a redeploy)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
@@ -728,7 +729,7 @@
   ## State & data flow
 
   ```
-                            fetchCalendarData (initial)
+              GET /calendar/bootstrap or fetchCalendarData (initial)
                                     │
                                     ▼
     server actions ◄──── Redux (calendarSourceSlice, engineOutputSlice, schedulingSettingsSlice, userSlice)
@@ -764,7 +765,7 @@
   - **Event identity is stable across regens** ([stabilizeEvent](utils/calendar-generation/helpers/EventAssembler/stabilizeEvent.ts)): builders reuse the previous emit's `extendedProps.id`/`createdAt` and return the previous object when nothing changed, so an idle regen produces an empty diff. Do not reintroduce per-regen uuids/timestamps in event builders — every non-empty sync bumps the OCC `dataVersion`, and constant churn makes a second open window's syncs permanently stale (its edits get discarded by `adoptFreshServerState`). Plans are never memoized from `previousCalendar` for the same reason a `starts` drag must always re-derive them.
   - **Planner tree walks are memoized per array** — `getTreeBottomLayer` / `getSortedTreeBottomLayer` in [utils/goalPageHandlers.ts](utils/goalPageHandlers.ts) share a `WeakMap` index keyed on the planner-array reference (children sorted by `sortOrder` at build time + bottom-layer cache). Safe because planner updates are immutable everywhere; never mutate a planner array in place or the cache serves stale trees.
   - **CalendarProvider** ([context/CalendarProvider.tsx](context/CalendarProvider.tsx)) — owns the data context, fires regen on `bufferTimeMinutes` change, fires a one-time "cold-load autoregen" when categories/locations exist but no engine output materialized yet (see the inline comment for the conditions). It exposes `isLoaded` (true once the initial snapshot has hydrated Redux): consumers that commit against prev-state — onboarding is the archetype — must gate on it, because an update dispatched before hydration is wholesale-replaced when the fetch lands.
-  - **Sync** uses **optimistic concurrency control** via `User.dataVersion`. The client sends the version it knows; if the DB has moved on, the transaction aborts and the client adopts a fresh snapshot wholesale. Partial application across a DAG-shaped dataset is unsafe.
+  - **Sync** uses **optimistic concurrency control** via `User.dataVersion`. The client sends the version it knows; if the DB has moved on, the transaction aborts and the client adopts a fresh snapshot wholesale. Partial application across a DAG-shaped dataset is unsafe. With `NEXT_PUBLIC_CALENDAR_BACKEND=java` both the initial load and the sync go to the Java API ([lib/api/calendar.ts](lib/api/calendar.ts)); the transport resolves with an outcome for every answer the API gives and throws only when there was none (network failure, or a 502/503/504 from the host's proxy), the one case the shared sync loop retries — a rejected diff fails the same way every time, and a replay of a sync that did commit comes back stale.
   - **CategoryEvent**, **TravelEvent**, and **EngineMessage** are all written by the engine on every regen but use **deterministic IDs**, so the diff lands as creates/deletes only when an actual placement shifted (or, for EngineMessage, only when the underlying situation changed or the user flipped `dismissed`). Don't switch them to autogenerated IDs.
   - The 60-second transaction timeout in `syncCalendarData` exists because the first regen after a fresh load runs hundreds of writes on top of the usual diff.
   - **Sync-handler update paths use bulk raw SQL** ([actions/calendar-actions/sync-handlers/bulkUpdate.ts](actions/calendar-actions/sync-handlers/bulkUpdate.ts)) — a single `UPDATE ... FROM (VALUES ...)` per table via `$executeRawUnsafe`, regardless of row count. Prisma's `updateMany` only supports "same values for all matched rows", so per-row updates would otherwise turn into N sequential round-trips inside the interactive transaction (multiplied out by the OCC guard that forces interactive form). ExtendedProps uses `INSERT ... ON CONFLICT (eventId) DO UPDATE`. CategoryEvent and TravelEvent are already collapsed to `deleteMany + createMany` because the rows are engine-derived — don't rework those to bulk update. Ghost-id safety (no P2025 on missing rows) is preserved by the WHERE join in the bulk statement.
@@ -964,6 +965,7 @@
   NEXT_PUBLIC_API_URL=""              # Java API origin, also the JWT issuer (local default http://localhost:8080; required in production builds)
   AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; staging __Secure-circadium_staging_access, prod __Secure-circadium_access; required in production builds)
   NEXT_PUBLIC_OAUTH_PROVIDERS=""      # Sign-in buttons, comma-separated (default google,microsoft,apple); must match the API's OAUTH_PROVIDERS
+  NEXT_PUBLIC_CALENDAR_BACKEND=""     # "java": the calendar loads and syncs through the Java API; unset: the server actions (see lib/calendarBackend.ts)
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
   GOOGLE_CLIENT_ID=""                 # Google Calendar import (see note below); Google sign-in is configured on the Java API

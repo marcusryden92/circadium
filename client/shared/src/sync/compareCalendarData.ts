@@ -1,8 +1,7 @@
 // The OCC diff. Pairs each current array with its last server-confirmed
 // snapshot and produces the create/update/destroy DatabaseChanges the backend
 // applies in one transaction. Pure and host-agnostic: handleServerTransaction
-// takes the backend call as an injected SyncTransport (web wraps the existing
-// server action; the Java fetch is swapped in at plan item 1.13).
+// takes the backend call as an injected SyncTransport.
 
 import type {
   Planner,
@@ -45,8 +44,8 @@ export type SyncInputs = {
   travelTimes?: SyncedGroup<SerializedTravelTime>;
 };
 
-// The backend seam. Web passes a thin wrapper around the syncCalendarData
-// server action; the Java fetch replaces it behind an env flag at item 1.13.
+// The backend seam. Resolves with the server's verdict on the diff; throws only
+// when no verdict arrived, which is the one failure the sync loop retries.
 export type SyncTransport = (
   changes: DatabaseChanges,
   clientKnownDataVersion: number,

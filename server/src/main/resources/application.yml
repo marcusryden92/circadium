@@ -27,6 +27,13 @@ spring:
 # with a cross-site form POST, and browsers send Lax cookies only on cross-site GETs. The cookie is read only by the
 # sign-in chain, where state, not SameSite, ties the callback to the browser that started it.
 server:
+  # The calendar bootstrap and a stale sync's 409 carry the whole calendar; the 409 is application/problem+json,
+  # which the default list leaves out. No response reflects request input next to a secret (tokens travel in
+  # cookies, and the mobile token pair answers a request carrying only credentials or a refresh token), so
+  # compression gives BREACH nothing to measure.
+  compression:
+    enabled: true
+    mime-types: application/json, application/problem+json
   servlet:
     session:
       timeout: 10m
