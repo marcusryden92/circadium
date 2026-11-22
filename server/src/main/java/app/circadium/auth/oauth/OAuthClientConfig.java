@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
@@ -26,10 +27,12 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Configuration(proxyBeanMethods = false)
@@ -183,11 +186,15 @@ public class OAuthClientConfig {
         return appleSecret.configured() ? AppleRevocationClient.create(appleSecret) : refreshToken -> {};
     }
 
-    /** Spring's token client, with Apple's signed secret put in place of the registration's placeholder. */
+    /**
+     * Spring's token client, with Apple's signed secret put in place of the registration's placeholder, and
+     * {@link TokenErrorResponseHandler} so a refused token request logs the provider's reason.
+     */
     @Bean
     OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> signInTokenClient(
             AppleClientSecret appleSecret) {
         RestClientAuthorizationCodeTokenResponseClient client = new RestClientAuthorizationCodeTokenResponseClient();
+        client.setRestClient(tokenRestClient(RestClient.builder()));
         client.setParametersCustomizer(parameters -> {
             if (appleSecret.configured()
                     && appleSecret.clientId().equals(parameters.getFirst(OAuth2ParameterNames.CLIENT_ID))) {
@@ -195,6 +202,19 @@ public class OAuthClientConfig {
             }
         });
         return client;
+    }
+
+    /**
+     * The same message converters as the client Spring builds by default (a form for the request, its token response
+     * reader for the answer); only the error handler differs. Takes the builder so tests can bind a mock server to it.
+     */
+    static RestClient tokenRestClient(RestClient.Builder builder) {
+        return builder
+                .configureMessageConverters(converters -> converters
+                        .addCustomConverter(new FormHttpMessageConverter())
+                        .addCustomConverter(new OAuth2AccessTokenResponseHttpMessageConverter()))
+                .defaultStatusHandler(new TokenErrorResponseHandler())
+                .build();
     }
 
     /**
