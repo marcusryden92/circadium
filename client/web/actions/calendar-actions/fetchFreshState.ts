@@ -68,7 +68,7 @@ export async function fetchFreshState(userId: string): Promise<FreshState> {
     db.eventTemplate.findMany({ where: { userId } }),
     db.category.findMany({
       where: { userId },
-      include: { timeSlots: true, location: true },
+      include: { timeSlots: true },
     }),
     db.categoryEvent.findMany({ where: { userId } }),
     db.travelEvent.findMany({ where: { userId } }),
@@ -94,13 +94,6 @@ export async function fetchFreshState(userId: string): Promise<FreshState> {
       ...ts,
       day: ts.day as WeekDayIntegers,
     })),
-    location: cat.location
-      ? {
-          ...cat.location,
-          createdAt: cat.location.createdAt.toISOString(),
-          updatedAt: cat.location.updatedAt.toISOString(),
-        }
-      : null,
   }));
 
   const allTravelTimes: SerializedTravelTime[] = travelTimes.map((tt) => ({

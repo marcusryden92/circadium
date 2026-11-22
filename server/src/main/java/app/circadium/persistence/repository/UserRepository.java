@@ -24,6 +24,10 @@ public interface UserRepository extends JpaRepository<User, String> {
      */
     Optional<User> findFirstByEmailIgnoreCase(String email);
 
+    /** The sync's optimistic-concurrency counter alone, without loading the user. */
+    @Query("select u.dataVersion from User u where u.id = :id")
+    Optional<Integer> findDataVersionById(@Param("id") String id);
+
     /**
      * The owner of a refresh token, share-locked until the transaction ends. Holding it makes a refresh and a
      * password change or reset (which update the user row) run one after the other.

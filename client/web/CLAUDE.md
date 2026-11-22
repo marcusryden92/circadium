@@ -231,6 +231,7 @@
   ├── __tests__/
   │   ├── calendar-generation/          # Engine regression tests + fixtures/ (trimmed live-data snapshots)
   │   ├── calendar/                     # WeekStructureModal overnight window handling
+  │   ├── contracts/                    # captureBootstrapFixture: writes the Java bootstrap endpoint's golden fixture from fetchFreshState (skipped unless CAPTURE_BOOTSTRAP_FIXTURE; `pnpm fixture:bootstrap` with the dev DB up)
   │   ├── dashboard/                    # buildTodayAgenda (occurrence-tile completion resolution)
   │   ├── draft/                        # Assistant draft-domain unit tests (forest/templates/windows/precedence ops + applies + diffs + node-edge safety + the recurrence contract)
   │   ├── draggable/                    # Touch drop-target resolution (TOP_BAND/BOTTOM_BAND)

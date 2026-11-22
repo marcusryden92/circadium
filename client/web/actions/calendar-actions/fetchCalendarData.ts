@@ -62,7 +62,7 @@ export async function fetchCalendarData() {
       where: {
         userId: userId,
       },
-      include: { timeSlots: true, location: true },
+      include: { timeSlots: true },
     });
 
     const categoryEvents: CategoryEvent[] = await db.categoryEvent.findMany({
@@ -87,21 +87,13 @@ export async function fetchCalendarData() {
         where: { userId },
       });
 
-    // Narrow timeSlots.day at the DB boundary and serialize location Dates
-    // to avoid Redux non-serializable warnings.
+    // Narrow timeSlots.day at the DB boundary.
     const categories: Category[] = categoriesRaw.map((cat) => ({
       ...cat,
       timeSlots: cat.timeSlots.map((ts) => ({
         ...ts,
         day: ts.day as WeekDayIntegers,
       })),
-      location: cat.location
-        ? {
-            ...cat.location,
-            createdAt: cat.location.createdAt.toISOString(),
-            updatedAt: cat.location.updatedAt.toISOString(),
-          }
-        : null,
     }));
 
     return {

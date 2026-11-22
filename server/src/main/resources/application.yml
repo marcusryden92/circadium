@@ -111,6 +111,10 @@ sentry:
   environment: ${SENTRY_ENVIRONMENT:local}
   traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}
 
+# Without it the docs list every response body as */*; every endpoint here answers JSON.
+springdoc:
+  default-produces-media-type: application/json
+
 ---
 spring:
   config:

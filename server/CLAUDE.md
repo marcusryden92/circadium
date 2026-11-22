@@ -59,7 +59,11 @@ default; `staging`, `prod`). Secrets never live in the repo.
 - Locally these fall back to the docker Postgres the web app brings up with
   `pnpm db:start` (from `client/web`): `jdbc:postgresql://localhost:5433/circadium_dev`,
   user/password `circadium`/`circadium`.
-- `staging`/`prod` supply the datasource vars with no defaults.
+- `staging`/`prod` supply the datasource vars with no defaults. Both connect through Neon's
+  pooled host (PgBouncer, transaction pooling), so nothing may change session state: no
+  `@Transactional(isolation = ...)` (PgJDBC applies it with `SET SESSION CHARACTERISTICS`,
+  outside the transaction). Set isolation with `SET TRANSACTION ISOLATION LEVEL ...` as the
+  transaction's first statement, as `calendar/CalendarBootstrapService` does.
 
 ## Security (current state)
 
