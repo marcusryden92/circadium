@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -52,6 +53,9 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
 
     private static final String CALLBACK_PATH_PREFIX = "/login/oauth2/code/";
 
+    private static final Pattern EMAIL_LIKE = Pattern.compile("[^\\s@'\"<>(),;]+@[^\\s@'\"<>(),;]+");
+    private static final int MAX_DESCRIPTION_LENGTH = 500;
+
     private final OAuthAccountService accountService;
     private final OAuthHandoffCodes handoffCodes;
     private final OAuthProperties properties;
@@ -87,7 +91,9 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
 
     /**
      * Spring's error codes ({@code authorization_request_not_found}, {@code invalid_id_token}, ...) go to the audit
-     * log; the client only learns whether the user cancelled.
+     * log; the client only learns whether the user cancelled. The description goes to the server log only: a
+     * provider's bare code ({@code server_error}) rarely says what to fix, its description ({@code AADSTS...})
+     * does.
      */
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
@@ -97,11 +103,27 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
         String reason = exception instanceof OAuth2AuthenticationException oauth
                 ? oauth.getError().getErrorCode()
                 : "authentication_failed";
+        String description = exception instanceof OAuth2AuthenticationException oauth
+                ? oauth.getError().getDescription()
+                : exception.getMessage();
         boolean cancelled = CANCELLED.contains(reason);
-        log.warn("Sign-in through {} failed: {}", providerSegment(request), reason);
+        log.warn("Sign-in through {} failed: {} ({})", providerSegment(request), reason,
+                loggableDescription(description));
         auditLogger.record(AuditEvent.OAUTH_FAILURE, null, null, ClientInfo.from(request),
                 cancelled ? ACCESS_DENIED : reason);
         redirect(response, client, "error", cancelled ? ACCESS_DENIED : OAUTH_FAILED);
+    }
+
+    /**
+     * Provider error descriptions can name the account ("User account 'a@b.example' ... does not exist"), and
+     * emails stay out of the logs, so anything shaped like one is masked. Capped, since it comes from outside.
+     */
+    static String loggableDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return "no description";
+        }
+        String masked = EMAIL_LIKE.matcher(description.replaceAll("\\p{Cntrl}", " ")).replaceAll("<email>");
+        return masked.length() > MAX_DESCRIPTION_LENGTH ? masked.substring(0, MAX_DESCRIPTION_LENGTH) + "..." : masked;
     }
 
     /** For the log line only; never echoed to the client. */
