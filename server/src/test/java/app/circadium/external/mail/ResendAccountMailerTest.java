@@ -26,7 +26,7 @@ import org.springframework.web.client.RestClient;
 class ResendAccountMailerTest {
 
     private static final MailProperties PROPERTIES = new MailProperties("re_test_key", "https://api.resend.test",
-            "https://app.example.com/", "Circadium <security@circadium.app>", "Circadium <support@circadium.app>",
+            "https://app.example.com/", "Circadium <security@circadium.app>", "Circadium <no-reply@circadium.app>",
             false);
 
     private MockRestServiceServer server;
@@ -47,7 +47,7 @@ class ResendAccountMailerTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", "Bearer re_test_key"))
                 .andExpect(request -> idempotencyKeys.add(request.getHeaders().getFirst("Idempotency-Key")))
-                .andExpect(jsonPath("$.from").value("Circadium <support@circadium.app>"))
+                .andExpect(jsonPath("$.from").value("Circadium <no-reply@circadium.app>"))
                 .andExpect(jsonPath("$.to[0]").value("user@example.com"))
                 .andExpect(jsonPath("$.subject").value("Reset your password"))
                 .andExpect(jsonPath("$.html").value(containsString(

@@ -102,7 +102,7 @@ public class AccountEmails {
 
     public EmailMessage verification(String email, String token) {
         String link = link("/auth/new-verification", token);
-        return new EmailMessage("verification", properties.supportFrom(), email, "Confirm your email",
+        return new EmailMessage("verification", properties.accountFrom(), email, "Confirm your email",
                 render("Verify your email to finish signing up for Circadium", "Verify email", "Confirm your email",
                         PARAGRAPH.formatted("Welcome to Circadium. Confirm this email address to activate your account.")
                                 + FINE_PRINT.formatted("If you didn&rsquo;t create an account, you can ignore this email."),
@@ -120,7 +120,7 @@ public class AccountEmails {
     public EmailMessage oauthSignupConfirmation(String email, String token, String provider) {
         String link = link("/auth/oauth/confirm", token);
         String name = escape(provider);
-        return new EmailMessage("oauth_signup_confirmation", properties.supportFrom(), email,
+        return new EmailMessage("oauth_signup_confirmation", properties.accountFrom(), email,
                 "Confirm your email to finish signing up",
                 render("Confirm this email to finish signing up for Circadium with " + name, "Sign-up",
                         "Confirm your email",
@@ -165,7 +165,7 @@ public class AccountEmails {
 
     public EmailMessage passwordReset(String email, String token) {
         String link = link("/auth/new-password", token);
-        return new EmailMessage("password_reset", properties.supportFrom(), email, "Reset your password",
+        return new EmailMessage("password_reset", properties.accountFrom(), email, "Reset your password",
                 render("Reset your Circadium password", "Security", "Reset your password",
                         PARAGRAPH.formatted("Click below to choose a new password for your Circadium account. "
                                 + "The link expires in 1 hour.")
@@ -311,7 +311,7 @@ public class AccountEmails {
         String howToSignIn = hasPassword
                 ? "Sign in with your password, or reset it if you&rsquo;ve forgotten it."
                 : "Sign in with the Google, Microsoft or Apple account you signed up with.";
-        return new EmailMessage("existing_account", properties.supportFrom(), email,
+        return new EmailMessage("existing_account", properties.accountFrom(), email,
                 "You already have a Circadium account",
                 render("You already have a Circadium account", "Account", "You already have an account",
                         PARAGRAPH.formatted("Someone, hopefully you, tried to create a Circadium account with this "

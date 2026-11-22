@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class AccountEmailsTest {
 
     private final AccountEmails emails = new AccountEmails(new MailProperties(null, "https://api.resend.test",
-            "https://app.example.com//", "security@circadium.app", "support@circadium.app", true));
+            "https://app.example.com//", "security@circadium.app", "no-reply@circadium.app", true));
 
     @Test
     void linksPointAtTheWebAppWithAnEncodedToken() {
