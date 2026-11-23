@@ -2,8 +2,11 @@ import { compareData } from "../../sync/compareCalendarData";
 import type {
   Planner,
   SimpleEvent,
+  EventTemplate,
   Category,
   CategoryTimeWindow,
+  Queue,
+  QueueMember,
   SerializedLocation,
   SerializedTravelTime,
 } from "../../contracts";
@@ -53,6 +56,29 @@ const travelTime = (
     customNightMinutes: null,
     unroutable: false,
   }) as unknown as SerializedTravelTime;
+
+const template = (
+  id: string,
+  extra: Record<string, unknown> = {},
+): EventTemplate =>
+  ({ id, title: id, startDay: 1, startTime: "09:00", duration: 60, ...extra }) as unknown as EventTemplate;
+
+const member = (id: string, updatedAt: string): QueueMember =>
+  ({
+    id,
+    sortOrder: 0,
+    queueId: "q1",
+    plannerId: id,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt,
+  }) as unknown as QueueMember;
+
+const queue = (
+  id: string,
+  members: QueueMember[] = [],
+  extra: Record<string, unknown> = {},
+): Queue =>
+  ({ id, title: id, sortOrder: 0, members, ...extra }) as unknown as Queue;
 
 const emptyPair = { current: [], previous: [] };
 
@@ -171,5 +197,86 @@ describe("compareData — server-authoritative create paths are skipped", () => 
     });
     expect(changes.travelTime.create).toEqual([]);
     expect(changes.travelTime.update.map((t) => t.id)).toEqual(["t1"]);
+  });
+});
+
+describe("compareData — createdAt/updatedAt never count as a content change", () => {
+  const stamps = (updatedAt: string) => ({
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt,
+  });
+  const OLD = "2026-01-01T00:00:00.000Z";
+  const NEW = "2026-02-01T00:00:00.000Z";
+
+  it("planner: a changed updatedAt alone is not an update", () => {
+    const changes = compareData({
+      planner: {
+        current: [planner("p1", stamps(NEW))],
+        previous: [planner("p1", stamps(OLD))],
+      },
+      calendar: emptyPair,
+    });
+    expect(changes.planner.update).toEqual([]);
+    expect(changes.planner.create).toEqual([]);
+  });
+
+  it("calendar: a changed updatedAt alone touches neither the event nor its props", () => {
+    const changes = compareData({
+      planner: emptyPair,
+      calendar: {
+        current: [event("e1", { ...stamps(NEW), extendedProps: { eventType: "planner" } })],
+        previous: [event("e1", { ...stamps(OLD), extendedProps: { eventType: "planner" } })],
+      },
+    });
+    expect(changes.calendar.update).toEqual([]);
+    expect(changes.extendedProps.update).toEqual([]);
+  });
+
+  it("template: a changed updatedAt alone is not an update", () => {
+    const changes = compareData({
+      planner: emptyPair,
+      calendar: emptyPair,
+      template: {
+        current: [template("t1", stamps(NEW))],
+        previous: [template("t1", stamps(OLD))],
+      },
+    });
+    expect(changes.template.update).toEqual([]);
+  });
+
+  it("category: a changed updatedAt alone is not an update", () => {
+    const changes = compareData({
+      planner: emptyPair,
+      calendar: emptyPair,
+      categories: {
+        current: [category("c1", [], stamps(NEW))],
+        previous: [category("c1", [], stamps(OLD))],
+      },
+    });
+    expect(changes.category.update).toEqual([]);
+  });
+
+  it("queue + member: a changed updatedAt alone is not an update on either", () => {
+    const changes = compareData({
+      planner: emptyPair,
+      calendar: emptyPair,
+      queues: {
+        current: [queue("q1", [member("m1", NEW)], stamps(NEW))],
+        previous: [queue("q1", [member("m1", OLD)], stamps(OLD))],
+      },
+    });
+    expect(changes.queue.update).toEqual([]);
+    expect(changes.queueMember.update).toEqual([]);
+  });
+
+  it("still flags a real content change that rides alongside a new updatedAt", () => {
+    const changes = compareData({
+      planner: {
+        current: [planner("p1", { title: "renamed", ...stamps(NEW) })],
+        previous: [planner("p1", stamps(OLD))],
+      },
+      calendar: emptyPair,
+    });
+    expect(changes.planner.update.map((p) => p.id)).toEqual(["p1"]);
   });
 });
