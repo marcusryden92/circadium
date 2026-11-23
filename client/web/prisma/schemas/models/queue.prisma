@@ -14,8 +14,8 @@ model Queue {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
-  updatedAt String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@index([userId])
   @@map("Queues")
@@ -37,8 +37,8 @@ model QueueMember {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
-  updatedAt String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@index([userId])
   @@map("QueueMembers")

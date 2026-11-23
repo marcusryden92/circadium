@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -46,8 +45,10 @@ import tools.jackson.databind.node.ObjectNode;
  * it left; the web capture was retired (plan 1.13) and the corpus is now a frozen Java resource. The Java sync must
  * answer the same way and leave the same rows, read back through the same {@code sync/dump-state.sql}.
  *
- * <p>The clock is frozen at the capture's instant, so the sync's own {@code updatedAt} stamps compare exactly; the
- * column default's {@code (now())::text} is replaced by a marker on both sides.
+ * <p>The clock is frozen at the capture's instant, so the writer's engine-output {@code createdAt} stamps compare
+ * exactly. {@code updatedAt} is DB-owned (column default on insert, trigger on update, plan 1.13b), so it is not
+ * deterministic under the frozen clock; {@code dumpState} replaces it with a marker and the corpus no longer asserts
+ * it (content, createdAt and the response/version are still asserted).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,9 +57,7 @@ class SyncCorpusIntegrationTest {
 
     private static final Instant FROZEN_NOW = Instant.parse("2026-03-02T06:00:00Z");
     private static final String USER_ID = "bootstrap-user";
-    private static final String COLUMN_DEFAULT = "<column default>";
-    private static final Pattern DB_TEXT_TIMESTAMP =
-            Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(\\.\\d+)?[+-]\\d{2}(:\\d{2})?$");
+    private static final String DB_OWNED = "<db-owned>";
     /** The DoD's load bound: the first-regen scenario must finish well inside the sync's 60-second limit. */
     private static final Duration WELL_INSIDE_TIMEOUT = Duration.ofSeconds(10);
     private static final JsonMapper JSON = JsonMapper.builder().build();
@@ -137,10 +136,8 @@ class SyncCorpusIntegrationTest {
         JsonNode state = JSON.readTree(jdbcTemplate.queryForObject(sql, String.class));
         for (JsonNode rows : state) {
             for (JsonNode row : rows) {
-                JsonNode createdAt = row.get("createdAt");
-                if (createdAt != null && createdAt.isString()
-                        && DB_TEXT_TIMESTAMP.matcher(createdAt.asString()).matches()) {
-                    ((ObjectNode) row).put("createdAt", COLUMN_DEFAULT);
+                if (row.has("updatedAt")) {
+                    ((ObjectNode) row).put("updatedAt", DB_OWNED);
                 }
             }
         }

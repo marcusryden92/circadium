@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,8 +62,8 @@ class HabitItemRepositoryTest {
         planner.setTitle("Meditate");
         planner.setPlannerType(PlannerType.task);
         planner.setUserId(userId);
-        planner.setCreatedAt("2026-11-16T08:00:00.000Z");
-        planner.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        planner.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        planner.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         plannerRepository.saveAndFlush(planner);
 
         String id = UUID.randomUUID().toString();

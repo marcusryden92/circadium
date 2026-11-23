@@ -21,6 +21,19 @@ function narrowTimeSlots<T extends RawTimeWindowRow>(
   }));
 }
 
+// createdAt/updatedAt are timestamp(3) at the DB (plan 1.13b) so Prisma returns
+// Date, but the app types them as ISO strings (types/prisma WithIsoTimestamps).
+// Serialize at the action return boundary; Phase 2 moves these reads to Java.
+function isoTimestamps<T extends { createdAt: Date; updatedAt: Date }>(
+  row: T,
+): Omit<T, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string } {
+  return {
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
 export async function fetchCategories(): Promise<Category[]> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
@@ -31,7 +44,7 @@ export async function fetchCategories(): Promise<Category[]> {
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
   return rows.map((row) => ({
-    ...row,
+    ...isoTimestamps(row),
     timeSlots: narrowTimeSlots(row.timeSlots),
   }));
 }
@@ -57,10 +70,10 @@ export async function fetchCategoryTree(): Promise<
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
   return rows.map((row) => ({
-    ...row,
+    ...isoTimestamps(row),
     timeSlots: narrowTimeSlots(row.timeSlots),
     children: row.children.map((c) => ({
-      ...c,
+      ...isoTimestamps(c),
       timeSlots: narrowTimeSlots(c.timeSlots),
     })),
   }));
@@ -77,7 +90,7 @@ export async function fetchCategory(
     include: { timeSlots: true },
   });
   if (!row) return null;
-  return { ...row, timeSlots: narrowTimeSlots(row.timeSlots) };
+  return { ...isoTimestamps(row), timeSlots: narrowTimeSlots(row.timeSlots) };
 }
 
 export async function fetchCategoryWithChildren(
@@ -98,10 +111,10 @@ export async function fetchCategoryWithChildren(
   });
   if (!row) return null;
   return {
-    ...row,
+    ...isoTimestamps(row),
     timeSlots: narrowTimeSlots(row.timeSlots),
     children: row.children.map((c) => ({
-      ...c,
+      ...isoTimestamps(c),
       timeSlots: narrowTimeSlots(c.timeSlots),
     })),
   };
@@ -159,7 +172,7 @@ export async function createCategory(data: {
     },
     include: { timeSlots: true },
   });
-  return { ...row, timeSlots: narrowTimeSlots(row.timeSlots) };
+  return { ...isoTimestamps(row), timeSlots: narrowTimeSlots(row.timeSlots) };
 }
 
 export async function updateCategory(
@@ -202,7 +215,7 @@ export async function updateCategory(
     },
     include: { timeSlots: true },
   });
-  return { ...row, timeSlots: narrowTimeSlots(row.timeSlots) };
+  return { ...isoTimestamps(row), timeSlots: narrowTimeSlots(row.timeSlots) };
 }
 
 export async function deleteCategory(
@@ -296,7 +309,7 @@ export async function moveCategory(
     },
     include: { timeSlots: true },
   });
-  return { ...row, timeSlots: narrowTimeSlots(row.timeSlots) };
+  return { ...isoTimestamps(row), timeSlots: narrowTimeSlots(row.timeSlots) };
 }
 
 export async function reorderCategories(orderedIds: string[]): Promise<void> {
@@ -363,7 +376,10 @@ export async function assignCategoryToPlanner(
     });
 
     const { getTaskTreeIds } = await import("@/utils/goalPageHandlers");
-    const descendantIds = getTaskTreeIds(allPlanners, plannerId);
+    const descendantIds = getTaskTreeIds(
+      allPlanners.map(isoTimestamps),
+      plannerId,
+    );
 
     if (descendantIds.length > 0) {
       await db.planner.updateMany({
@@ -443,7 +459,7 @@ export async function fetchCategoriesWithCounts(): Promise<
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
   return rows.map((row) => ({
-    ...row,
+    ...isoTimestamps(row),
     timeSlots: narrowTimeSlots(row.timeSlots),
   }));
 }

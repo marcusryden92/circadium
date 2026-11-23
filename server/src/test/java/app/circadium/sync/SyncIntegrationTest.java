@@ -182,7 +182,7 @@ class SyncIntegrationTest {
         insertQueue(me + "-queue", me);
         insertQueue(other + "-queue", other);
         jdbcTemplate.update("INSERT INTO \"QueueMembers\" (\"id\", \"sortOrder\", \"queueId\", \"plannerId\", "
-                + "\"userId\", \"createdAt\", \"updatedAt\") VALUES (?, 0, ?, ?, ?, ?, ?)",
+                + "\"userId\", \"createdAt\", \"updatedAt\") VALUES (?, 0, ?, ?, ?, ?::timestamp(3), ?::timestamp(3))",
                 me + "-member", me + "-queue", me + "-planner", me, CREATED, CREATED);
 
         ObjectNode changes = changes();
@@ -297,18 +297,20 @@ class SyncIntegrationTest {
     }
 
     private void insertCategory(String id, String userId) {
-        jdbcTemplate.update("INSERT INTO \"Categories\" (\"id\", \"name\", \"userId\", \"updatedAt\") VALUES (?, ?, ?, ?)",
+        jdbcTemplate.update(
+                "INSERT INTO \"Categories\" (\"id\", \"name\", \"userId\", \"updatedAt\") VALUES (?, ?, ?, ?::timestamp(3))",
                 id, id, userId, CREATED);
     }
 
     private void insertPlanner(String id, String userId) {
         jdbcTemplate.update("INSERT INTO \"Planners\" (\"id\", \"title\", \"plannerType\", \"duration\", \"priority\", "
-                + "\"userId\", \"createdAt\", \"updatedAt\") VALUES (?, ?, 'task', 30, 3, ?, ?, ?)",
+                + "\"userId\", \"createdAt\", \"updatedAt\") VALUES (?, ?, 'task', 30, 3, ?, ?::timestamp(3), ?::timestamp(3))",
                 id, id, userId, CREATED, CREATED);
     }
 
     private void insertQueue(String id, String userId) {
-        jdbcTemplate.update("INSERT INTO \"Queues\" (\"id\", \"title\", \"userId\", \"updatedAt\") VALUES (?, ?, ?, ?)",
+        jdbcTemplate.update(
+                "INSERT INTO \"Queues\" (\"id\", \"title\", \"userId\", \"updatedAt\") VALUES (?, ?, ?, ?::timestamp(3))",
                 id, id, userId, CREATED);
     }
 

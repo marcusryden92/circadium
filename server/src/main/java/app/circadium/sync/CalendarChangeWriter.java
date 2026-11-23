@@ -6,6 +6,7 @@ import static app.circadium.sync.BulkStatements.Column.int4;
 import static app.circadium.sync.BulkStatements.Column.jsonb;
 import static app.circadium.sync.BulkStatements.Column.label;
 import static app.circadium.sync.BulkStatements.Column.text;
+import static app.circadium.sync.BulkStatements.Column.timestamp;
 
 import app.circadium.calendar.CalendarContracts.CategoryEvent;
 import app.circadium.calendar.CalendarContracts.CategoryRow;
@@ -43,8 +44,9 @@ import org.springframework.stereotype.Component;
  * ride the same order and the schema's cascade and set-null rules. Creates skip a row whose id already exists,
  * except in the engine-output tables, where a duplicate means a broken diff and fails the sync.
  *
- * <p>{@code updatedAt} is the server's sync time on every update and on the engine-output creates; other creates
- * keep the client's timestamps. Engine-output {@code createdAt} is left to the column default.
+ * <p>{@code updatedAt} is DB-owned (plan 1.13b): a column default on insert and a {@code BEFORE UPDATE} trigger on
+ * update, so no writer stamps it. {@code createdAt} is the client's on the source tables and the sync {@code now} on
+ * the engine-output creates (deterministic under a frozen test clock), both cast to {@code timestamp(3)}.
  */
 @Component
 @RequiredArgsConstructor
@@ -67,7 +69,7 @@ class CalendarChangeWriter {
         travelEvents(userId, changes.travelEvent(), now);
         engineMessages(userId, changes.engineMessage(), now);
         queues(userId, changes.queue(), now);
-        queueMembers(userId, changes.queueMember(), now);
+        queueMembers(userId, changes.queueMember());
         dependencies(userId, changes.dependency());
         travelTimes(userId, changes.travelTime());
     }
@@ -75,7 +77,7 @@ class CalendarChangeWriter {
     /** Creating a location needs a Google Places lookup, so it is not a sync operation; only renames and deletes. */
     private void locations(String userId, ChangeGroup<SerializedLocation> group) {
         statements.updateOwned("Locations", group.update(), SerializedLocation::id,
-                List.of(text("name", SerializedLocation::name)), userId, null, List.of());
+                List.of(text("name", SerializedLocation::name)), userId, List.of());
         statements.deleteOwned("Locations", ids(group.destroy(), SerializedLocation::id), userId);
     }
 
@@ -91,9 +93,9 @@ class CalendarChangeWriter {
                 text("locationId", CategoryRow::locationId),
                 text("parentId", CategoryRow::parentId));
         statements.insertOwned("Categories", group.create(),
-                withTimestamps(text("id", CategoryRow::id), content, CategoryRow::createdAt, CategoryRow::updatedAt),
-                userId, null, List.of(), SKIP_DUPLICATES);
-        statements.updateOwned("Categories", group.update(), CategoryRow::id, content, userId, now, List.of());
+                withCreatedAt(text("id", CategoryRow::id), content, CategoryRow::createdAt, now),
+                userId, List.of(), SKIP_DUPLICATES);
+        statements.updateOwned("Categories", group.update(), CategoryRow::id, content, userId, List.of());
         statements.deleteOwned("Categories", ids(group.destroy(), CategoryRow::id), userId);
     }
 
@@ -125,9 +127,9 @@ class CalendarChangeWriter {
                 bool("useParentLocation", Planner::useParentLocation),
                 text("categoryId", Planner::categoryId));
         statements.insertOwned("Planners", group.create(),
-                withTimestamps(text("id", Planner::id), content, Planner::createdAt, Planner::updatedAt),
-                userId, null, List.of(), SKIP_DUPLICATES);
-        statements.updateOwned("Planners", group.update(), Planner::id, content, userId, now, List.of());
+                withCreatedAt(text("id", Planner::id), content, Planner::createdAt, now),
+                userId, List.of(), SKIP_DUPLICATES);
+        statements.updateOwned("Planners", group.update(), Planner::id, content, userId, List.of());
         statements.deleteOwned("Planners", ids(group.destroy(), Planner::id), userId);
     }
 
@@ -141,10 +143,9 @@ class CalendarChangeWriter {
                 text("backgroundColor", SimpleEventRow::backgroundColor),
                 text("borderColor", SimpleEventRow::borderColor));
         statements.insertOwned("SimpleEvents", group.create(),
-                withTimestamps(text("id", SimpleEventRow::id), content, SimpleEventRow::createdAt,
-                        SimpleEventRow::updatedAt),
-                userId, null, List.of(), SKIP_DUPLICATES);
-        statements.updateOwned("SimpleEvents", group.update(), SimpleEventRow::id, content, userId, now, List.of());
+                withCreatedAt(text("id", SimpleEventRow::id), content, SimpleEventRow::createdAt, now),
+                userId, List.of(), SKIP_DUPLICATES);
+        statements.updateOwned("SimpleEvents", group.update(), SimpleEventRow::id, content, userId, List.of());
         statements.deleteOwned("SimpleEvents", ids(group.destroy(), SimpleEventRow::id), userId);
     }
 
@@ -191,10 +192,9 @@ class CalendarChangeWriter {
                 text("locationId", EventTemplate::locationId),
                 text("recurrenceExceptions", EventTemplate::recurrenceExceptions));
         statements.insertOwned("EventTemplates", group.create(),
-                withTimestamps(text("id", EventTemplate::id), content, EventTemplate::createdAt,
-                        EventTemplate::updatedAt),
-                userId, null, List.of(), SKIP_DUPLICATES);
-        statements.updateOwned("EventTemplates", group.update(), EventTemplate::id, content, userId, now, List.of());
+                withCreatedAt(text("id", EventTemplate::id), content, EventTemplate::createdAt, now),
+                userId, List.of(), SKIP_DUPLICATES);
+        statements.updateOwned("EventTemplates", group.update(), EventTemplate::id, content, userId, List.of());
         statements.deleteOwned("EventTemplates", ids(group.destroy(), EventTemplate::id), userId);
     }
 
@@ -211,15 +211,15 @@ class CalendarChangeWriter {
                 text("categoryId", CategoryTimeWindow::categoryId));
         List<OwnedReference> references = List.of(new OwnedReference("categoryId", "Categories"));
         statements.insertOwned("CategoryTimeWindows", group.create(),
-                prepend(text("id", CategoryTimeWindow::id), content), userId, null, references, SKIP_DUPLICATES);
-        statements.updateOwned("CategoryTimeWindows", group.update(), CategoryTimeWindow::id, content, userId, null,
+                prepend(text("id", CategoryTimeWindow::id), content), userId, references, SKIP_DUPLICATES);
+        statements.updateOwned("CategoryTimeWindows", group.update(), CategoryTimeWindow::id, content, userId,
                 references);
         statements.deleteOwned("CategoryTimeWindows", ids(group.destroy(), CategoryTimeWindow::id), userId);
     }
 
     /**
      * Engine output, rewritten on every regen. An update is a delete and a re-insert at the same id, two statements
-     * however many rows changed.
+     * however many rows changed. {@code createdAt} is stamped to the sync {@code now} so it is deterministic.
      */
     private void categoryEvents(String userId, ChangeGroup<CategoryEvent> group, String now) {
         statements.deleteOwned("CategoryEvents",
@@ -231,8 +231,9 @@ class CalendarChangeWriter {
                         bool("trespassingStart", CategoryEvent::trespassingStart),
                         bool("trespassingEnd", CategoryEvent::trespassingEnd),
                         text("categoryTimeWindowId", CategoryEvent::categoryTimeWindowId),
-                        text("categoryId", CategoryEvent::categoryId)),
-                userId, now, List.of(), PLAIN);
+                        text("categoryId", CategoryEvent::categoryId),
+                        timestamp("createdAt", event -> now)),
+                userId, List.of(), PLAIN);
     }
 
     /** Engine output, rewritten the same way as {@link #categoryEvents}. */
@@ -247,8 +248,9 @@ class CalendarChangeWriter {
                         int4("travelMinutes", TravelEvent::travelMinutes),
                         int4("requiredTravelMinutes", TravelEvent::requiredTravelMinutes),
                         bool("insufficientTravel", TravelEvent::insufficientTravel),
-                        bool("overconstrained", TravelEvent::overconstrained)),
-                userId, now, List.of(), PLAIN);
+                        bool("overconstrained", TravelEvent::overconstrained),
+                        timestamp("createdAt", event -> now)),
+                userId, List.of(), PLAIN);
     }
 
     /**
@@ -262,9 +264,10 @@ class CalendarChangeWriter {
                 jsonb("payload", EngineMessage::payload),
                 bool("dismissed", EngineMessage::dismissed));
         statements.deleteOwned("EngineMessages", ids(group.destroy(), EngineMessage::id), userId);
-        statements.insertOwned("EngineMessages", group.create(), prepend(text("id", EngineMessage::id), content),
-                userId, now, List.of(), PLAIN);
-        statements.updateOwned("EngineMessages", group.update(), EngineMessage::id, content, userId, now, List.of());
+        statements.insertOwned("EngineMessages", group.create(),
+                withCreatedAt(text("id", EngineMessage::id), content, message -> now, now),
+                userId, List.of(), PLAIN);
+        statements.updateOwned("EngineMessages", group.update(), EngineMessage::id, content, userId, List.of());
     }
 
     private void queues(String userId, ChangeGroup<QueueRow> group, String now) {
@@ -274,9 +277,9 @@ class CalendarChangeWriter {
                 text("color", QueueRow::color),
                 text("categoryId", QueueRow::categoryId));
         statements.insertOwned("Queues", group.create(),
-                withTimestamps(text("id", QueueRow::id), content, QueueRow::createdAt, QueueRow::updatedAt),
-                userId, null, List.of(), SKIP_DUPLICATES);
-        statements.updateOwned("Queues", group.update(), QueueRow::id, content, userId, now, List.of());
+                withCreatedAt(text("id", QueueRow::id), content, QueueRow::createdAt, now),
+                userId, List.of(), SKIP_DUPLICATES);
+        statements.updateOwned("Queues", group.update(), QueueRow::id, content, userId, List.of());
         statements.deleteOwned("Queues", ids(group.destroy(), QueueRow::id), userId);
     }
 
@@ -285,7 +288,7 @@ class CalendarChangeWriter {
      * caller's own: otherwise a member could be planted in another account's queue, or take another account's
      * planner item out of reach of its own queues.
      */
-    private void queueMembers(String userId, ChangeGroup<QueueMember> group, String now) {
+    private void queueMembers(String userId, ChangeGroup<QueueMember> group) {
         List<OwnedReference> references = List.of(
                 new OwnedReference("queueId", "Queues"), new OwnedReference("plannerId", "Planners"));
         statements.insertOwned("QueueMembers", group.create(), List.of(
@@ -293,13 +296,12 @@ class CalendarChangeWriter {
                         float8("sortOrder", QueueMember::sortOrder),
                         text("queueId", QueueMember::queueId),
                         text("plannerId", QueueMember::plannerId),
-                        text("createdAt", QueueMember::createdAt),
-                        text("updatedAt", QueueMember::updatedAt)),
-                userId, null, references, SKIP_DUPLICATES);
+                        timestamp("createdAt", QueueMember::createdAt)),
+                userId, references, SKIP_DUPLICATES);
         statements.updateOwned("QueueMembers", group.update(), QueueMember::id, List.of(
                         float8("sortOrder", QueueMember::sortOrder),
                         text("queueId", QueueMember::queueId)),
-                userId, now, List.of(new OwnedReference("queueId", "Queues")));
+                userId, List.of(new OwnedReference("queueId", "Queues")));
         statements.deleteOwned("QueueMembers", ids(group.destroy(), QueueMember::id), userId);
     }
 
@@ -312,9 +314,8 @@ class CalendarChangeWriter {
                         text("id", PlannerDependency::id),
                         text("predecessorId", PlannerDependency::predecessorId),
                         text("successorId", PlannerDependency::successorId),
-                        text("createdAt", PlannerDependency::createdAt),
-                        text("updatedAt", PlannerDependency::updatedAt)),
-                userId, null,
+                        timestamp("createdAt", PlannerDependency::createdAt)),
+                userId,
                 List.of(new OwnedReference("predecessorId", "Planners"), new OwnedReference("successorId", "Planners")),
                 SKIP_DUPLICATES);
         statements.deleteOwned("PlannerDependencies", ids(group.destroy(), PlannerDependency::id), userId);
@@ -329,15 +330,23 @@ class CalendarChangeWriter {
                         int4("customRushHourMinutes", SerializedTravelTime::customRushHourMinutes),
                         int4("customRegularMinutes", SerializedTravelTime::customRegularMinutes),
                         int4("customNightMinutes", SerializedTravelTime::customNightMinutes)),
-                userId, null, List.of());
+                userId, List.of());
     }
 
-    private static <T> List<Column<T>> withTimestamps(Column<T> id, List<Column<T>> content,
-            Function<? super T, String> createdAt, Function<? super T, String> updatedAt) {
+    /**
+     * Prepends the id and appends {@code createdAt} as a {@code timestamp(3)}. A blank value (a brand-new engine-built
+     * SimpleEvent carries none) falls back to the sync {@code now} — its persist time — since the column is NOT NULL
+     * and {@code ''::timestamp(3)} is a cast error.
+     */
+    private static <T> List<Column<T>> withCreatedAt(Column<T> id, List<Column<T>> content,
+            Function<? super T, String> createdAt, String now) {
         List<Column<T>> columns = new ArrayList<>(prepend(id, content));
-        columns.add(text("createdAt", createdAt));
-        columns.add(text("updatedAt", updatedAt));
+        columns.add(timestamp("createdAt", row -> blankToNow(createdAt.apply(row), now)));
         return columns;
+    }
+
+    private static String blankToNow(String value, String now) {
+        return value == null || value.isBlank() ? now : value;
     }
 
     private static <T> List<Column<T>> prepend(Column<T> id, List<Column<T>> content) {

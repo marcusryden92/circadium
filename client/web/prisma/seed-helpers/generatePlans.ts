@@ -101,7 +101,7 @@ function calculatePlanStartTime(
  * so they always appear at the same relative times within the week.
  */
 export const generatePlans = (userId: string): Planner[] => {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date();
   const mondayDate = getDateOfThisWeeksMonday(new Date());
 
   return planSeedData.map((data) => {

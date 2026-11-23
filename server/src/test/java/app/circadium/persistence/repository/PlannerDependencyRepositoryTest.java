@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,8 +51,8 @@ class PlannerDependencyRepositoryTest {
         dependency.setPredecessorId(predecessorId);
         dependency.setSuccessorId(successorId);
         dependency.setUserId(userId);
-        dependency.setCreatedAt("2026-11-16T08:00:00.000Z");
-        dependency.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        dependency.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        dependency.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         plannerDependencyRepository.saveAndFlush(dependency);
         entityManager.clear();
@@ -68,8 +69,8 @@ class PlannerDependencyRepositoryTest {
         planner.setTitle(title);
         planner.setPlannerType(PlannerType.task);
         planner.setUserId(userId);
-        planner.setCreatedAt("2026-11-16T08:00:00.000Z");
-        planner.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        planner.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        planner.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         plannerRepository.saveAndFlush(planner);
         return id;
     }

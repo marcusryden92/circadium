@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,8 +51,8 @@ class QueueMemberRepositoryTest {
         queue.setId(queueId);
         queue.setTitle("Morning routine");
         queue.setUserId(userId);
-        queue.setCreatedAt("2026-11-16T08:00:00.000Z");
-        queue.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        queue.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        queue.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         queueRepository.saveAndFlush(queue);
 
         String plannerId = UUID.randomUUID().toString();
@@ -60,8 +61,8 @@ class QueueMemberRepositoryTest {
         planner.setTitle("Stretch");
         planner.setPlannerType(PlannerType.task);
         planner.setUserId(userId);
-        planner.setCreatedAt("2026-11-16T08:00:00.000Z");
-        planner.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        planner.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        planner.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         plannerRepository.saveAndFlush(planner);
 
         String id = UUID.randomUUID().toString();
@@ -71,8 +72,8 @@ class QueueMemberRepositoryTest {
         member.setQueueId(queueId);
         member.setPlannerId(plannerId);
         member.setUserId(userId);
-        member.setCreatedAt("2026-11-16T08:00:00.000Z");
-        member.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        member.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        member.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         queueMemberRepository.saveAndFlush(member);
         entityManager.clear();

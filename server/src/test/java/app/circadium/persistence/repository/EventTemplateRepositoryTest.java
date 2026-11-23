@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,8 +47,8 @@ class EventTemplateRepositoryTest {
         template.setStartTime("09:00");
         template.setUserId(userId);
         template.setDuration(480);
-        template.setCreatedAt("2026-11-16T08:00:00.000Z");
-        template.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        template.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        template.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         eventTemplateRepository.saveAndFlush(template);
         entityManager.clear();

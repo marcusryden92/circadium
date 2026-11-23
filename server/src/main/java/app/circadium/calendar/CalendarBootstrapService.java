@@ -39,6 +39,9 @@ import app.circadium.persistence.repository.SimpleEventRepository;
 import app.circadium.persistence.repository.TravelEventRepository;
 import app.circadium.persistence.repository.TravelTimeRepository;
 import app.circadium.persistence.repository.UserRepository;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -119,20 +122,29 @@ public class CalendarBootstrapService {
         return rows.stream().map(mapper).toList();
     }
 
+    /** JavaScript's toISOString() shape (the createdAt/updatedAt wire contract): three fractional digits + Z. */
+    private static final DateTimeFormatter ISO_MILLIS =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+
+    private static String iso(Instant instant) {
+        return instant == null ? null : ISO_MILLIS.format(instant);
+    }
+
     private static CalendarContracts.Planner toWire(Planner p) {
         return new CalendarContracts.Planner(p.getId(), p.getTitle(), p.getParentId(), p.getPlannerType(),
                 p.getIsReady(), p.isTriaged(), p.getDuration(), p.getDeadline(), p.getStarts(), p.getRecurrence(),
                 p.getRecurrenceExceptions(), p.getSplitting(), p.getCompletedSegments(), p.getMaxMinutesPerDay(),
                 p.getEarliestStartDate(), p.getAllowedTimes(), p.getLinkedItemId(), p.getNotes(), p.getSortOrder(),
                 p.getCompletedStartTime(), p.getCompletedEndTime(), p.getPriority(), p.getUserId(), p.getColor(),
-                p.getLocationId(), p.isUseParentLocation(), p.getCategoryId(), p.getCreatedAt(), p.getUpdatedAt());
+                p.getLocationId(), p.isUseParentLocation(), p.getCategoryId(), iso(p.getCreatedAt()),
+                iso(p.getUpdatedAt()));
     }
 
     private static CalendarContracts.SimpleEvent toWire(SimpleEvent e,
             CalendarContracts.EventExtendedProps extendedProps) {
         return new CalendarContracts.SimpleEvent(e.getId(), e.getTitle(), e.getStart(), e.getEnd(), e.getDuration(),
-                e.getUserId(), e.getRrule(), e.getBackgroundColor(), e.getBorderColor(), e.getCreatedAt(),
-                e.getUpdatedAt(), extendedProps);
+                e.getUserId(), e.getRrule(), e.getBackgroundColor(), e.getBorderColor(), iso(e.getCreatedAt()),
+                iso(e.getUpdatedAt()), extendedProps);
     }
 
     private static CalendarContracts.EventExtendedProps toWire(EventExtendedProps p) {
@@ -144,7 +156,7 @@ public class CalendarBootstrapService {
     private static CalendarContracts.EventTemplate toWire(EventTemplate t) {
         return new CalendarContracts.EventTemplate(t.getId(), t.getTitle(), weekdayNumber(t.getStartDay()),
                 t.getStartTime(), t.getUserId(), t.getDuration(), t.getColor(), t.getLocationId(),
-                t.getRecurrenceExceptions(), t.getCreatedAt(), t.getUpdatedAt());
+                t.getRecurrenceExceptions(), iso(t.getCreatedAt()), iso(t.getUpdatedAt()));
     }
 
     /** The web's {@code weekdayToInt}: templates store the day as a name, category windows as this number. */
@@ -163,7 +175,7 @@ public class CalendarBootstrapService {
     private static CalendarContracts.Category toWire(Category c, List<CalendarContracts.CategoryTimeWindow> timeSlots) {
         return new CalendarContracts.Category(c.getId(), c.getName(), c.getIcon(), c.getColor(), c.getSortOrder(),
                 c.isUseTimeWindows(), c.isStrict(), c.isConfineToOwnWindows(), c.getLocationId(), c.getParentId(),
-                c.getUserId(), c.getCreatedAt(), c.getUpdatedAt(), timeSlots);
+                c.getUserId(), iso(c.getCreatedAt()), iso(c.getUpdatedAt()), timeSlots);
     }
 
     private static CalendarContracts.CategoryTimeWindow toWire(CategoryTimeWindow w) {
@@ -174,33 +186,33 @@ public class CalendarBootstrapService {
     private static CalendarContracts.CategoryEvent toWire(CategoryEvent e) {
         return new CalendarContracts.CategoryEvent(e.getId(), e.getStart(), e.getEnd(), e.isTrespassingStart(),
                 e.isTrespassingEnd(), e.getCategoryTimeWindowId(), e.getCategoryId(), e.getUserId(),
-                e.getCreatedAt(), e.getUpdatedAt());
+                iso(e.getCreatedAt()), iso(e.getUpdatedAt()));
     }
 
     private static CalendarContracts.TravelEvent toWire(TravelEvent e) {
         return new CalendarContracts.TravelEvent(e.getId(), e.getStart(), e.getEnd(), e.getFromLocationId(),
                 e.getToLocationId(), e.getTravelMinutes(), e.getRequiredTravelMinutes(), e.isInsufficientTravel(),
-                e.isOverconstrained(), e.getUserId(), e.getCreatedAt(), e.getUpdatedAt());
+                e.isOverconstrained(), e.getUserId(), iso(e.getCreatedAt()), iso(e.getUpdatedAt()));
     }
 
     private static CalendarContracts.EngineMessage toWire(EngineMessage m) {
         return new CalendarContracts.EngineMessage(m.getId(), m.getType(), m.getTone(), m.getPayload(),
-                m.isDismissed(), m.getUserId(), m.getCreatedAt(), m.getUpdatedAt());
+                m.isDismissed(), m.getUserId(), iso(m.getCreatedAt()), iso(m.getUpdatedAt()));
     }
 
     private static CalendarContracts.Queue toWire(Queue q, List<CalendarContracts.QueueMember> members) {
         return new CalendarContracts.Queue(q.getId(), q.getTitle(), q.getSortOrder(), q.getColor(),
-                q.getCategoryId(), q.getUserId(), q.getCreatedAt(), q.getUpdatedAt(), members);
+                q.getCategoryId(), q.getUserId(), iso(q.getCreatedAt()), iso(q.getUpdatedAt()), members);
     }
 
     private static CalendarContracts.QueueMember toWire(QueueMember m) {
         return new CalendarContracts.QueueMember(m.getId(), m.getSortOrder(), m.getQueueId(), m.getPlannerId(),
-                m.getUserId(), m.getCreatedAt(), m.getUpdatedAt());
+                m.getUserId(), iso(m.getCreatedAt()), iso(m.getUpdatedAt()));
     }
 
     private static CalendarContracts.PlannerDependency toWire(PlannerDependency d) {
         return new CalendarContracts.PlannerDependency(d.getId(), d.getPredecessorId(), d.getSuccessorId(),
-                d.getUserId(), d.getCreatedAt(), d.getUpdatedAt());
+                d.getUserId(), iso(d.getCreatedAt()), iso(d.getUpdatedAt()));
     }
 
     private static SerializedLocation toWire(Location l) {

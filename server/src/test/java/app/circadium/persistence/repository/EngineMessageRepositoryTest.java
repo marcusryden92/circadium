@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,8 +46,8 @@ class EngineMessageRepositoryTest {
         message.setPayload("{\"reason\": \"NO_SLOTS\"}");
         message.setDismissed(true);
         message.setUserId(userId);
-        message.setCreatedAt("2026-11-16T08:00:00.000Z");
-        message.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        message.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        message.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         engineMessageRepository.saveAndFlush(message);
         entityManager.clear();

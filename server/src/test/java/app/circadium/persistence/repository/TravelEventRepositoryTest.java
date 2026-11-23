@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,8 +49,8 @@ class TravelEventRepositoryTest {
         event.setInsufficientTravel(true);
         event.setOverconstrained(false);
         event.setUserId(userId);
-        event.setCreatedAt("2026-11-16T08:00:00.000Z");
-        event.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        event.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        event.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         travelEventRepository.saveAndFlush(event);
         entityManager.clear();

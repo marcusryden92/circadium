@@ -564,7 +564,7 @@
         "lng": 18.0686,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-02T08:00:00",
-        "updatedAt": "2026-01-05T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-location-b",
@@ -575,7 +575,7 @@
         "lng": 18.07,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-01T08:00:00",
-        "updatedAt": "2026-01-01T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-location",
@@ -586,7 +586,7 @@
         "lng": 0,
         "userId": "bootstrap-other",
         "createdAt": "2026-01-01T08:00:00",
-        "updatedAt": "2026-01-01T08:00:00"
+        "updatedAt": "<db-owned>"
       }
     ],
     "TravelTimes": [
@@ -604,7 +604,7 @@
         "unroutableAt": null,
         "userId": "bootstrap-other",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-01-03T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-time-1",
@@ -620,7 +620,7 @@
         "unroutableAt": null,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-01-03T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-time-2",
@@ -636,7 +636,7 @@
         "unroutableAt": "2026-02-01T00:00:00",
         "userId": "bootstrap-user",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-02-01T00:00:00"
+        "updatedAt": "<db-owned>"
       }
     ],
     "Categories": [
@@ -652,8 +652,8 @@
         "locationId": "bootstrap-location-a",
         "parentId": null,
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-category-b",
@@ -667,8 +667,8 @@
         "locationId": null,
         "parentId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-04T09:05:00.000Z",
-        "updatedAt": "2026-01-06T09:05:00.000Z"
+        "createdAt": "2026-01-04T09:05:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-category",
@@ -682,8 +682,8 @@
         "locationId": null,
         "parentId": null,
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "CategoryTimeWindows": [
@@ -753,8 +753,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:00:00.000Z",
-        "updatedAt": "2026-01-10T10:00:00.000Z"
+        "createdAt": "2026-01-10T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-goal",
@@ -784,8 +784,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": "bootstrap-category-a",
-        "createdAt": "2026-01-10T10:00:00.000Z",
-        "updatedAt": "2026-01-11T10:00:00.000Z"
+        "createdAt": "2026-01-10T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan",
@@ -815,8 +815,8 @@
         "locationId": "bootstrap-location-b",
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:01:00.000Z",
-        "updatedAt": "2026-01-10T10:01:00.000Z"
+        "createdAt": "2026-01-10T10:01:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-task",
@@ -846,8 +846,8 @@
         "locationId": null,
         "useParentLocation": true,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:02:00.000Z",
-        "updatedAt": "2026-01-10T10:02:00.000Z"
+        "createdAt": "2026-01-10T10:02:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "SimpleEvents": [
@@ -861,8 +861,8 @@
         "rrule": null,
         "backgroundColor": "#aa3355",
         "borderColor": "#aa3355",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-event-2",
@@ -874,8 +874,8 @@
         "rrule": "FREQ=WEEKLY;INTERVAL=1",
         "backgroundColor": "#777777",
         "borderColor": "#555555",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-event-3",
@@ -887,8 +887,8 @@
         "rrule": null,
         "backgroundColor": "#888888",
         "borderColor": "#888888",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-event",
@@ -900,8 +900,8 @@
         "rrule": null,
         "backgroundColor": "#000000",
         "borderColor": "#000000",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "EventExtendedProps": [
@@ -950,8 +950,8 @@
         "color": null,
         "locationId": null,
         "recurrenceExceptions": null,
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-template-1",
@@ -963,8 +963,8 @@
         "color": null,
         "locationId": "bootstrap-location-a",
         "recurrenceExceptions": null,
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-template-2",
@@ -976,8 +976,8 @@
         "color": "#112233",
         "locationId": null,
         "recurrenceExceptions": "{\"2026-03-07\":{\"deleted\":true}}",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-08T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "CategoryEvents": [
@@ -990,8 +990,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-category-event",
@@ -1002,8 +1002,8 @@
         "categoryTimeWindowId": "bootstrap-other-window",
         "categoryId": "bootstrap-other-category",
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "TravelEvents": [
@@ -1018,8 +1018,8 @@
         "insufficientTravel": false,
         "overconstrained": false,
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-event-1",
@@ -1032,8 +1032,8 @@
         "insufficientTravel": false,
         "overconstrained": true,
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-event-2",
@@ -1046,8 +1046,8 @@
         "insufficientTravel": true,
         "overconstrained": false,
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "EngineMessages": [
@@ -1071,8 +1071,8 @@
         },
         "dismissed": false,
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-message-2",
@@ -1081,8 +1081,8 @@
         "payload": "just a string",
         "dismissed": true,
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-02T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-message-3",
@@ -1097,8 +1097,8 @@
         ],
         "dismissed": false,
         "userId": "bootstrap-user",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-message",
@@ -1107,8 +1107,8 @@
         "payload": {},
         "dismissed": false,
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "Queues": [
@@ -1119,8 +1119,8 @@
         "color": null,
         "categoryId": null,
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-queue-1",
@@ -1129,8 +1129,8 @@
         "color": "#445566",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-queue-2",
@@ -1139,8 +1139,8 @@
         "color": null,
         "categoryId": null,
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "QueueMembers": [
@@ -1150,8 +1150,8 @@
         "queueId": "bootstrap-queue-1",
         "plannerId": "bootstrap-planner-goal",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-member-2",
@@ -1159,8 +1159,8 @@
         "queueId": "bootstrap-queue-1",
         "plannerId": "bootstrap-planner-plan",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-member",
@@ -1168,8 +1168,8 @@
         "queueId": "bootstrap-other-queue",
         "plannerId": "bootstrap-other-planner",
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "PlannerDependencies": [
@@ -1178,8 +1178,8 @@
         "predecessorId": "bootstrap-planner-plan",
         "successorId": "bootstrap-planner-goal",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-13T10:00:00.000Z",
-        "updatedAt": "2026-01-13T10:00:00.000Z"
+        "createdAt": "2026-01-13T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ]
   }

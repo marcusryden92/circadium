@@ -45,8 +45,8 @@ CREATE TABLE "SimpleEvents" (
     "rrule" TEXT,
     "backgroundColor" TEXT NOT NULL,
     "borderColor" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SimpleEvents_pkey" PRIMARY KEY ("id")
 );
@@ -95,8 +95,8 @@ CREATE TABLE "Planners" (
     "locationId" TEXT,
     "useParentLocation" BOOLEAN NOT NULL DEFAULT false,
     "categoryId" TEXT,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Planners_pkey" PRIMARY KEY ("id")
 );
@@ -125,8 +125,8 @@ CREATE TABLE "EventTemplates" (
     "color" TEXT,
     "locationId" TEXT,
     "recurrenceExceptions" TEXT,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "EventTemplates_pkey" PRIMARY KEY ("id")
 );
@@ -144,8 +144,8 @@ CREATE TABLE "Categories" (
     "locationId" TEXT,
     "parentId" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Categories_pkey" PRIMARY KEY ("id")
 );
@@ -173,8 +173,8 @@ CREATE TABLE "CategoryEvents" (
     "categoryTimeWindowId" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CategoryEvents_pkey" PRIMARY KEY ("id")
 );
@@ -185,8 +185,8 @@ CREATE TABLE "PlannerDependencies" (
     "predecessorId" TEXT NOT NULL,
     "successorId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "PlannerDependencies_pkey" PRIMARY KEY ("id")
 );
@@ -211,8 +211,8 @@ CREATE TABLE "EngineMessages" (
     "payload" JSONB NOT NULL,
     "dismissed" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "EngineMessages_pkey" PRIMARY KEY ("id")
 );
@@ -404,8 +404,8 @@ CREATE TABLE "TravelEvents" (
     "insufficientTravel" BOOLEAN NOT NULL DEFAULT false,
     "overconstrained" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "TravelEvents_pkey" PRIMARY KEY ("id")
 );
@@ -418,8 +418,8 @@ CREATE TABLE "Queues" (
     "color" TEXT,
     "categoryId" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Queues_pkey" PRIMARY KEY ("id")
 );
@@ -431,8 +431,8 @@ CREATE TABLE "QueueMembers" (
     "queueId" TEXT NOT NULL,
     "plannerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "QueueMembers_pkey" PRIMARY KEY ("id")
 );
@@ -558,6 +558,55 @@ CREATE TABLE "sessions" (
     "twoFactorVerified" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "audit_log" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "event" TEXT NOT NULL,
+    "email" TEXT,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "detail" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "audit_log_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "auth_lockouts" (
+    "key" TEXT NOT NULL,
+    "failedAttempts" INTEGER NOT NULL DEFAULT 0,
+    "lastFailedAt" TIMESTAMP(3) NOT NULL,
+    "lockedUntil" TIMESTAMP(3),
+
+    CONSTRAINT "auth_lockouts_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateTable
+CREATE TABLE "oauth_handoff_codes" (
+    "codeHash" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "challenge" TEXT NOT NULL,
+    "client" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "oauth_handoff_codes_pkey" PRIMARY KEY ("codeHash")
+);
+
+-- CreateTable
+CREATE TABLE "oauth_pending_signups" (
+    "tokenHash" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT,
+    "image" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "oauth_pending_signups_pkey" PRIMARY KEY ("tokenHash")
 );
 
 -- CreateTable
@@ -727,6 +776,24 @@ CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
 
 -- CreateIndex
 CREATE INDEX "sessions_familyId_idx" ON "sessions"("familyId");
+
+-- CreateIndex
+CREATE INDEX "audit_log_userId_idx" ON "audit_log"("userId");
+
+-- CreateIndex
+CREATE INDEX "audit_log_createdAt_idx" ON "audit_log"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "oauth_handoff_codes_userId_idx" ON "oauth_handoff_codes"("userId");
+
+-- CreateIndex
+CREATE INDEX "oauth_handoff_codes_expiresAt_idx" ON "oauth_handoff_codes"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "oauth_pending_signups_expiresAt_idx" ON "oauth_pending_signups"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "oauth_pending_signups_provider_subject_key" ON "oauth_pending_signups"("provider", "subject");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AccountDeletionToken_userId_key" ON "AccountDeletionToken"("userId");
@@ -903,79 +970,14 @@ ALTER TABLE "TwoFactorConfirmation" ADD CONSTRAINT "TwoFactorConfirmation_userId
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AccountDeletionToken" ADD CONSTRAINT "AccountDeletionToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "UserViewStates" ADD CONSTRAINT "UserViewStates_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
--- CreateTable
-CREATE TABLE "audit_log" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT,
-    "event" TEXT NOT NULL,
-    "email" TEXT,
-    "ipAddress" TEXT,
-    "userAgent" TEXT,
-    "detail" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "audit_log_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "auth_lockouts" (
-    "key" TEXT NOT NULL,
-    "failedAttempts" INTEGER NOT NULL DEFAULT 0,
-    "lastFailedAt" TIMESTAMP(3) NOT NULL,
-    "lockedUntil" TIMESTAMP(3),
-
-    CONSTRAINT "auth_lockouts_pkey" PRIMARY KEY ("key")
-);
-
--- CreateIndex
-CREATE INDEX "audit_log_userId_idx" ON "audit_log"("userId");
-
--- CreateIndex
-CREATE INDEX "audit_log_createdAt_idx" ON "audit_log"("createdAt");
-
--- AddForeignKey
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
--- CreateTable
-CREATE TABLE "oauth_handoff_codes" (
-    "codeHash" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "challenge" TEXT NOT NULL,
-    "client" TEXT NOT NULL,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "oauth_handoff_codes_pkey" PRIMARY KEY ("codeHash")
-);
-
--- CreateIndex
-CREATE INDEX "oauth_handoff_codes_userId_idx" ON "oauth_handoff_codes"("userId");
-
--- CreateIndex
-CREATE INDEX "oauth_handoff_codes_expiresAt_idx" ON "oauth_handoff_codes"("expiresAt");
 
 -- AddForeignKey
 ALTER TABLE "oauth_handoff_codes" ADD CONSTRAINT "oauth_handoff_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "AccountDeletionToken" ADD CONSTRAINT "AccountDeletionToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- CreateTable
-CREATE TABLE "oauth_pending_signups" (
-    "tokenHash" TEXT NOT NULL,
-    "provider" TEXT NOT NULL,
-    "subject" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "name" TEXT,
-    "image" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
+-- AddForeignKey
+ALTER TABLE "UserViewStates" ADD CONSTRAINT "UserViewStates_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
-    CONSTRAINT "oauth_pending_signups_pkey" PRIMARY KEY ("tokenHash")
-);
-
--- CreateIndex
-CREATE INDEX "oauth_pending_signups_expiresAt_idx" ON "oauth_pending_signups"("expiresAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "oauth_pending_signups_provider_subject_key" ON "oauth_pending_signups"("provider", "subject");

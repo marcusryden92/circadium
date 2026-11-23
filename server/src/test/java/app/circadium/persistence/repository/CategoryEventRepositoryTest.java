@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,8 +52,8 @@ class CategoryEventRepositoryTest {
         category.setId(categoryId);
         category.setName("Professional");
         category.setUserId(userId);
-        category.setCreatedAt("2026-11-16T08:00:00.000Z");
-        category.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        category.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        category.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         categoryRepository.saveAndFlush(category);
 
         String windowId = UUID.randomUUID().toString();
@@ -75,8 +76,8 @@ class CategoryEventRepositoryTest {
         event.setCategoryTimeWindowId(windowId);
         event.setCategoryId(categoryId);
         event.setUserId(userId);
-        event.setCreatedAt("2026-11-16T08:00:00.000Z");
-        event.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        event.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        event.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         categoryEventRepository.saveAndFlush(event);
         entityManager.clear();
