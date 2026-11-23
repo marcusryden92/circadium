@@ -4,6 +4,7 @@ import app.circadium.calendar.CalendarBootstrapService;
 import app.circadium.calendar.CalendarContracts.DatabaseChanges;
 import app.circadium.calendar.CalendarContracts.SyncRequest;
 import app.circadium.calendar.CalendarContracts.SyncResult;
+import app.circadium.ws.DataVersionBroadcaster;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -35,14 +36,17 @@ public class CalendarSyncService {
     private final JdbcTemplate jdbcTemplate;
     private final CalendarChangeWriter writer;
     private final CalendarBootstrapService bootstrapService;
+    private final DataVersionBroadcaster broadcaster;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
 
     CalendarSyncService(JdbcTemplate jdbcTemplate, CalendarChangeWriter writer,
-            CalendarBootstrapService bootstrapService, PlatformTransactionManager transactionManager, Clock clock) {
+            CalendarBootstrapService bootstrapService, DataVersionBroadcaster broadcaster,
+            PlatformTransactionManager transactionManager, Clock clock) {
         this.jdbcTemplate = jdbcTemplate;
         this.writer = writer;
         this.bootstrapService = bootstrapService;
+        this.broadcaster = broadcaster;
         this.clock = clock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setTimeout(TIMEOUT_SECONDS);
@@ -79,7 +83,11 @@ public class CalendarSyncService {
             // account_not_found.
             throw new StaleSyncException(bootstrapService.load(userId));
         }
-        return new SyncResult(knownVersion + 1);
+        int newVersion = knownVersion + 1;
+        // After the commit, so the other sessions only ever hear of a durable version. The tab that synced receives
+        // this too and ignores it, its known version already being newVersion.
+        broadcaster.broadcast(userId, newVersion);
+        return new SyncResult(newVersion);
     }
 
     private static boolean isEmpty(DatabaseChanges changes) {
