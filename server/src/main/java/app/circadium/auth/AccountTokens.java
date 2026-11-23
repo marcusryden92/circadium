@@ -24,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The email-delivered one-time tokens, ported from the web app's {@code lib/tokens.ts}: one outstanding
  * token per email (or per user, for deletion), where a new one replaces the old. 6-digit 2FA codes last
- * 5 minutes, uuid verification and password-reset tokens 1 hour, account-deletion tokens 30 minutes. All
- * tables store the raw value because the web app reads and consumes these tables too.
+ * 5 minutes, uuid verification and password-reset tokens 1 hour, account-deletion tokens 30 minutes.
+ *
+ * <p>The uuid tokens are stored as SHA-256 hashes (the raw value exists only in the email), like refresh
+ * tokens and handoff codes. 2FA codes stay raw: a 6-digit space makes a stored hash no protection, and
+ * online guessing is already throttled by the login lockout.
  */
 @Component
 @RequiredArgsConstructor
@@ -94,14 +97,15 @@ public class AccountTokens {
     }
 
     private String saveVerificationToken(String email, String userId) {
+        String rawToken = UUID.randomUUID().toString();
         VerificationToken token = new VerificationToken();
         token.setId(UUID.randomUUID().toString());
         token.setEmail(email);
         token.setUserId(userId);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(TokenHashing.sha256Hex(rawToken));
         token.setExpires(DbTime.now(clock).plus(VERIFICATION_TTL));
         verificationTokenRepository.save(token);
-        return token.getToken();
+        return rawToken;
     }
 
     /**
@@ -120,25 +124,27 @@ public class AccountTokens {
             }
         }
         passwordResetTokenRepository.deleteAllByEmail(email);
+        String rawToken = UUID.randomUUID().toString();
         PasswordResetToken token = new PasswordResetToken();
         token.setId(UUID.randomUUID().toString());
         token.setEmail(email);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(TokenHashing.sha256Hex(rawToken));
         token.setExpires(now.plus(PASSWORD_RESET_TTL));
         passwordResetTokenRepository.save(token);
-        return Optional.of(token.getToken());
+        return Optional.of(rawToken);
     }
 
     @Transactional
     public String issueAccountDeletionToken(String userId) {
         accountDeletionTokenRepository.deleteAllByUserId(userId);
+        String rawToken = UUID.randomUUID().toString();
         AccountDeletionToken token = new AccountDeletionToken();
         token.setId(UUID.randomUUID().toString());
         token.setUserId(userId);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(TokenHashing.sha256Hex(rawToken));
         token.setExpires(DbTime.now(clock).plus(ACCOUNT_DELETION_TTL));
         accountDeletionTokenRepository.save(token);
-        return token.getToken();
+        return rawToken;
     }
 
     /**

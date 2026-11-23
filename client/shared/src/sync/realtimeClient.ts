@@ -70,6 +70,11 @@ export function createRealtimeClient(ports: RealtimeClientPorts): RealtimeClient
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let behindTimer: ReturnType<typeof setTimeout> | null = null;
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  // A ping went out and no frame has come back since. If it is still true at
+  // the next tick, the socket is half-open (the server answers every ping with
+  // a pong, and any message resets this), so we force a reconnect instead of
+  // sitting silently deaf to dataVersion broadcasts.
+  let awaitingResponse = false;
   // Highest version the server has advertised; checked against the sync loop's
   // known version once a burst of messages settles.
   let highestSeenVersion = -1;
@@ -79,17 +84,39 @@ export function createRealtimeClient(ports: RealtimeClientPorts): RealtimeClient
       clearInterval(heartbeatTimer);
       heartbeatTimer = null;
     }
+    awaitingResponse = false;
   }
 
   function startHeartbeat() {
     stopHeartbeat();
     heartbeatTimer = setInterval(() => {
+      if (awaitingResponse) {
+        // Last ping drew no response within a full interval: the pipe is dead.
+        forceReconnect();
+        return;
+      }
+      awaitingResponse = true;
       try {
         connection?.send(HEARTBEAT);
       } catch {
-        // A dead socket surfaces through onClose, which reconnects.
+        forceReconnect();
       }
     }, heartbeatMs);
+  }
+
+  // Tear the socket down and reconnect without waiting on an onClose a half-open
+  // connection may never deliver. Idempotent via the connection null-out: a
+  // later real onClose then no-ops.
+  function forceReconnect() {
+    if (!connection) return;
+    stopHeartbeat();
+    try {
+      connection.close();
+    } catch {
+      // Already gone.
+    }
+    connection = null;
+    scheduleReconnect();
   }
 
   function checkBehind() {
@@ -123,12 +150,16 @@ export function createRealtimeClient(ports: RealtimeClientPorts): RealtimeClient
         startHeartbeat();
       },
       onMessage: (data) => {
+        // Any inbound frame (a pong or a dataVersion push) proves the socket is
+        // alive for this interval.
+        awaitingResponse = false;
         const version = parseDataVersion(data);
         if (version === null) return;
         if (version > highestSeenVersion) highestSeenVersion = version;
         scheduleBehindCheck();
       },
       onClose: () => {
+        if (!connection) return;
         stopHeartbeat();
         connection = null;
         scheduleReconnect();

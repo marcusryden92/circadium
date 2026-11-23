@@ -3,6 +3,7 @@ package app.circadium.config;
 import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern;
 
 import app.circadium.web.CorrelationIdFilter;
+import app.circadium.web.ProblemDetailCorsProcessor;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -55,8 +56,9 @@ class CorsConfig {
         source.registerCorsConfiguration("/**", cors);
         CorsConfigurationSource exceptSignInCallbacks =
                 request -> SIGN_IN_CALLBACKS.matches(request) ? null : source.getCorsConfiguration(request);
-        FilterRegistrationBean<CorsFilter> registration =
-                new FilterRegistrationBean<>(new CorsFilter(exceptSignInCallbacks));
+        CorsFilter filter = new CorsFilter(exceptSignInCallbacks);
+        filter.setCorsProcessor(new ProblemDetailCorsProcessor());
+        FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setOrder(ORDER);
         return registration;
     }

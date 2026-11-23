@@ -2,6 +2,9 @@
 # App is co-located (fra) with the Circadium Neon project (eu-central-1) to minimize DB round-trip latency.
 app = "circadium-server-staging"
 primary_region = "fra"
+# Above spring.lifecycle.timeout-per-shutdown-phase (75s), so a deploy's SIGTERM lets graceful shutdown
+# drain an in-flight sync before the machine is killed.
+kill_timeout = "90s"
 
 [build]
   dockerfile = "Dockerfile"

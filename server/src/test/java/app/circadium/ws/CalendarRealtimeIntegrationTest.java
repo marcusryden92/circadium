@@ -87,6 +87,18 @@ class CalendarRealtimeIntegrationTest {
     }
 
     @Test
+    void aClientPingIsAnsweredWithAPong() throws Exception {
+        String token = accessToken("bootstrap-user");
+        BlockingQueue<String> inbox = new LinkedBlockingQueue<>();
+
+        try (WebSocketSession session = connect(token, inbox)) {
+            assertThat(inbox.poll(5, TimeUnit.SECONDS)).isEqualTo(dataVersionMessage(7)); // the hello
+            session.sendMessage(new TextMessage("{\"type\":\"ping\"}"));
+            assertThat(inbox.poll(5, TimeUnit.SECONDS)).isEqualTo("{\"type\":\"pong\"}");
+        }
+    }
+
+    @Test
     void aHandshakeWithoutATokenIsRejected() {
         assertThatThrownBy(() -> wsClient.execute(new TextWebSocketHandler() {}, new WebSocketHttpHeaders(),
                         URI.create("ws://localhost:" + port + "/ws"))

@@ -8,22 +8,30 @@ import app.circadium.auth.oauth.OAuthClientConfig;
 import app.circadium.auth.oauth.OAuthLoginHandler;
 import app.circadium.auth.oauth.OAuthStartFilter;
 import app.circadium.auth.oauth.SignInAuthorizedClients;
+import app.circadium.web.ProblemDetailAccessDeniedHandler;
+import app.circadium.web.ProblemDetailAuthenticationEntryPoint;
 import java.util.Arrays;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
@@ -116,6 +124,11 @@ class SecurityConfig {
         RequestMatcher apiDocs = new OrRequestMatcher(Arrays.stream(API_DOCS)
                 .map(PathPatternRequestMatcher::pathPattern)
                 .toArray(RequestMatcher[]::new));
+        // The default entry point and denied handler answer with an empty body; these add the ProblemDetail
+        // every other rejection carries (filters run before the DispatcherServlet, so GlobalExceptionHandler
+        // never sees them).
+        ProblemDetailAuthenticationEntryPoint entryPoint = new ProblemDetailAuthenticationEntryPoint();
+        ProblemDetailAccessDeniedHandler accessDenied = new ProblemDetailAccessDeniedHandler();
         http
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(basic -> basic.disable())
@@ -125,19 +138,44 @@ class SecurityConfig {
                         new NegatedRequestMatcher(apiDocs),
                         new StaticHeadersWriter("Content-Security-Policy", API_CONTENT_SECURITY_POLICY))))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(accessDenied))
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers(PUBLIC_ENDPOINTS).permitAll();
                     if (local) {
                         authorize.requestMatchers(API_DOCS).permitAll();
                     } else {
-                        authorize.requestMatchers(API_DOCS).hasRole("ADMIN");
+                        authorize.requestMatchers(API_DOCS).access(adminWithMfa());
                     }
                     authorize.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(accessDenied)
                         .bearerTokenResolver(new CookieBearerTokenResolver(authCookies, PUBLIC_ENDPOINTS))
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
+    }
+
+    /**
+     * The API docs follow the web's admin tools: ADMIN alone is not enough, the sign-in must also have
+     * passed the emailed 2FA code ({@code amr} contains {@code mfa}), so a stolen password-only admin token
+     * cannot read the API schema.
+     */
+    private static AuthorizationManager<RequestAuthorizationContext> adminWithMfa() {
+        return (authentication, context) -> {
+            Authentication auth = authentication.get();
+            boolean admin = auth != null && auth.getAuthorities().stream()
+                    .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+            boolean mfa = auth instanceof JwtAuthenticationToken jwt && hasMfa(jwt);
+            return new AuthorizationDecision(admin && mfa);
+        };
+    }
+
+    private static boolean hasMfa(JwtAuthenticationToken jwt) {
+        List<String> amr = jwt.getToken().getClaimAsStringList("amr");
+        return amr != null && amr.contains("mfa");
     }
 
     /** Maps the token's {@code role} claim (USER / ADMIN) onto Spring's {@code ROLE_} authorities. */

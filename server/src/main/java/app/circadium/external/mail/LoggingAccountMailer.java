@@ -38,7 +38,7 @@ public class LoggingAccountMailer implements AccountMailer {
 
     @Override
     public void sendPasswordChangedNotice(String email) {
-        log.info("[mail] password changed notice to {}", email);
+        log.info("[mail] password changed notice to {}", mask(email));
     }
 
     @Override
@@ -48,17 +48,17 @@ public class LoggingAccountMailer implements AccountMailer {
 
     @Override
     public void sendEmailChangeRequestedNotice(String currentEmail, String newEmail) {
-        log.info("[mail] email change requested notice to {}", currentEmail);
+        log.info("[mail] email change requested notice to {}", mask(currentEmail));
     }
 
     @Override
     public void sendEmailChangedNotice(String previousEmail, String newEmail) {
-        log.info("[mail] email changed notice to {}", previousEmail);
+        log.info("[mail] email changed notice to {}", mask(previousEmail));
     }
 
     @Override
     public void sendTwoFactorChangedNotice(String email, boolean enabled) {
-        log.info("[mail] two-factor changed notice to {} (enabled={})", email, enabled);
+        log.info("[mail] two-factor changed notice to {} (enabled={})", mask(email), enabled);
     }
 
     @Override
@@ -68,14 +68,27 @@ public class LoggingAccountMailer implements AccountMailer {
 
     @Override
     public void sendExistingAccountNotice(String email, boolean hasPassword) {
-        log.info("[mail] existing account notice to {} (hasPassword={})", email, hasPassword);
+        log.info("[mail] existing account notice to {} (hasPassword={})", mask(email), hasPassword);
     }
 
     private void logSecret(String kind, String email, String secret) {
         if (revealSecrets) {
+            // The local profile deliberately logs the raw address and token so a flow can be walked by hand.
             log.info("[mail] {} to {}: {}", kind, email, secret);
         } else {
-            log.warn("[mail] delivery not configured; {} to {} dropped", kind, email);
+            log.warn("[mail] delivery not configured; {} to {} dropped", kind, mask(email));
         }
+    }
+
+    /** First character plus the domain, so a non-local log can be correlated without carrying the address. */
+    private static String mask(String email) {
+        if (email == null) {
+            return "null";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        return email.charAt(0) + "***" + email.substring(at);
     }
 }

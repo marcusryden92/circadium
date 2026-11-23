@@ -13,8 +13,8 @@ model PlannerDependency {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  createdAt DateTime @default(dbgenerated("timezone('utc'::text, now())"))
+  updatedAt DateTime @default(dbgenerated("timezone('utc'::text, now())"))
 
   @@unique([predecessorId, successorId])
   @@index([userId])

@@ -281,7 +281,8 @@ class CredentialsAuthIntegrationTest {
         assertThat(created.getPassword()).startsWith("$2a$10$");
         assertThat(passwordEncoder.matches("a-good-password", created.getPassword())).isTrue();
         String mailedToken = mailer.latest(Kind.VERIFICATION, email).orElseThrow();
-        assertThat(verificationTokenRepository.findFirstByEmail(email).orElseThrow().getToken()).isEqualTo(mailedToken);
+        assertThat(verificationTokenRepository.findFirstByEmail(email).orElseThrow().getToken())
+                .isEqualTo(TokenHashing.sha256Hex(mailedToken));
 
         login(ip, email, "a-good-password")
                 .andExpect(status().isOk())
