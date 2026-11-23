@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	False-positive suppressions for the OWASP CVE gate (-Psecurity dependency-check:check).
+	Each entry suppresses one fuzzy CPE match, never a real finding on the artifact itself;
+	a new CVE against the actual artifact still surfaces.
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+	<suppress>
+		<notes><![CDATA[
+			angus-activation is the Jakarta Activation implementation, not Angus Mail; the CPE match
+			lands on eclipse:angus_mail. CVE-2025-7962 is an SMTP injection in the mail library, and
+			this service sends no SMTP at all (account mail goes through Resend's HTTP API).
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@.*$</packageUrl>
+		<cpe>cpe:/a:eclipse:angus_mail</cpe>
+	</suppress>
+	<suppress>
+		<notes><![CDATA[
+			micrometer-registry-prometheus is the client-side metrics exposition library; the CPE match
+			lands on prometheus:prometheus, the Prometheus SERVER (CVE-2026-42154 targets the server's
+			/api/v1/read endpoint, which this library neither contains nor exposes).
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer-registry-prometheus@.*$</packageUrl>
+		<cpe>cpe:/a:prometheus:prometheus</cpe>
+	</suppress>
+	<suppress>
+		<notes><![CDATA[
+			hibernate-validator (Jakarta Bean Validation) matches the generic validator:validator CPE,
+			which belongs to the Nu Html Checker (validator.nu) web service - a different product
+			(CVE-2025-15104 is an SSRF in that checker's URL fetching).
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/org\.hibernate\.validator/hibernate-validator@.*$</packageUrl>
+		<cpe>cpe:/a:validator:validator</cpe>
+	</suppress>
+</suppressions>
