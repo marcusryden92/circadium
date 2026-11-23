@@ -10,18 +10,18 @@
     "test": "jest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.109.0",
-    "@reduxjs/toolkit": "^2.8.2",
+    "@anthropic-ai/sdk": "^0.109.1",
+    "@reduxjs/toolkit": "^2.15.0",
     "date-fns": "^3.6.0",
     "partial-json": "^0.1.7",
     "rrule": "^2.8.1",
     "uuid": "^10.0.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@swc/jest": "^0.2.37",
+    "@swc/jest": "^0.2.39",
     "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.31",
+    "@types/node": "^20.19.43",
     "@types/uuid": "^10.0.0",
     "jest": "^29.7.0",
     "typescript": "^6.0.3"
