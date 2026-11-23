@@ -22,6 +22,7 @@ import schedulingSettingsSlice from "@/redux/slices/schedulingSettingsSlice";
 import { hydrateSource } from "@/redux/slices/calendarSourceSlice";
 import { hydrateEngineOutput } from "@/redux/slices/engineOutputSlice";
 import { markSaved } from "@/redux/slices/syncStatusSlice";
+import { pushToast } from "@/redux/slices/toastSlice";
 import {
   createSyncLoop,
   type SyncLoop,
@@ -189,12 +190,50 @@ const useCalendarServerSync = (
     );
   }, [dispatch]);
 
+  // Latest state mirrored into a ref so a queued re-sync reads fresh values
+  // instead of the (possibly stale) closure the timer was created with.
+  const latestStateRef = useRef(calendarState);
+  latestStateRef.current = calendarState;
+
+  // Which user-authored (source) domains differ from the last server-confirmed
+  // baseline. Engine output is derived and regenerates after an adopt, so it is
+  // deliberately excluded: a two-tab cold load whose only diff is a freshly
+  // regenerated calendar must not read as a discarded user edit.
+  const hasPendingSourceChanges = useCallback(
+    (s: SyncSnapshot) =>
+      !(
+        JSON.stringify(previousPlanner.current) === JSON.stringify(s.planner) &&
+        JSON.stringify(previousTemplate.current) ===
+          JSON.stringify(s.template) &&
+        JSON.stringify(previousCategories.current) ===
+          JSON.stringify(s.categories) &&
+        JSON.stringify(previousQueues.current) === JSON.stringify(s.queues) &&
+        JSON.stringify(previousDependencies.current) ===
+          JSON.stringify(s.dependencies) &&
+        JSON.stringify(previousLocations.current) ===
+          JSON.stringify(s.locations) &&
+        JSON.stringify(previousTravelTimes.current) ===
+          JSON.stringify(s.travelTimes)
+      ),
+    [],
+  );
+
   // Replace Redux + every ref with the server's fresh snapshot. Used when the
   // sync is rejected as stale (OCC mismatch) — the client's in-flight edit is
   // discarded because applying it on top of a divergent DAG would corrupt
   // state. Refs advance to the new dataVersion so the next sync starts clean.
   const adoptFreshServerState = useCallback(
     (fresh: BootstrapPayload) => {
+      // A wholesale adopt discards local state. When the tab held an unsaved
+      // source edit — a lost OCC race, or a realtime catch-up landing mid-edit
+      // — surface it rather than letting the change vanish silently.
+      if (hasPendingSourceChanges(latestStateRef.current)) {
+        dispatch(
+          pushToast(
+            "A newer change from another session replaced an unsaved edit here.",
+          ),
+        );
+      }
       previousPlanner.current = fresh.planner;
       previousCalendar.current = fresh.calendar;
       previousTemplate.current = fresh.template;
@@ -230,13 +269,8 @@ const useCalendarServerSync = (
         schedulingSettingsSlice.actions.setAllTravelTimes(fresh.travelTimes),
       );
     },
-    [dispatch],
+    [dispatch, hasPendingSourceChanges],
   );
-
-  // Latest state mirrored into a ref so a queued re-sync reads fresh values
-  // instead of the (possibly stale) closure the timer was created with.
-  const latestStateRef = useRef(calendarState);
-  latestStateRef.current = calendarState;
 
   // Live disabled flag for the loop, which is created once and would otherwise
   // close over the first render's value.

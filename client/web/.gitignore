@@ -13,3 +13,5 @@ coverage/
 
 # prisma generated client
 /generated
+
+.vercel
