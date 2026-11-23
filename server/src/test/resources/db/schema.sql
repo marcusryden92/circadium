@@ -46,7 +46,7 @@ CREATE TABLE "SimpleEvents" (
     "backgroundColor" TEXT NOT NULL,
     "borderColor" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "SimpleEvents_pkey" PRIMARY KEY ("id")
 );
@@ -96,7 +96,7 @@ CREATE TABLE "Planners" (
     "useParentLocation" BOOLEAN NOT NULL DEFAULT false,
     "categoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "Planners_pkey" PRIMARY KEY ("id")
 );
@@ -126,7 +126,7 @@ CREATE TABLE "EventTemplates" (
     "locationId" TEXT,
     "recurrenceExceptions" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "EventTemplates_pkey" PRIMARY KEY ("id")
 );
@@ -144,8 +144,8 @@ CREATE TABLE "Categories" (
     "locationId" TEXT,
     "parentId" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "Categories_pkey" PRIMARY KEY ("id")
 );
@@ -173,8 +173,8 @@ CREATE TABLE "CategoryEvents" (
     "categoryTimeWindowId" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "CategoryEvents_pkey" PRIMARY KEY ("id")
 );
@@ -185,8 +185,8 @@ CREATE TABLE "PlannerDependencies" (
     "predecessorId" TEXT NOT NULL,
     "successorId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "PlannerDependencies_pkey" PRIMARY KEY ("id")
 );
@@ -211,8 +211,8 @@ CREATE TABLE "EngineMessages" (
     "payload" JSONB NOT NULL,
     "dismissed" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "EngineMessages_pkey" PRIMARY KEY ("id")
 );
@@ -404,8 +404,8 @@ CREATE TABLE "TravelEvents" (
     "insufficientTravel" BOOLEAN NOT NULL DEFAULT false,
     "overconstrained" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "TravelEvents_pkey" PRIMARY KEY ("id")
 );
@@ -418,8 +418,8 @@ CREATE TABLE "Queues" (
     "color" TEXT,
     "categoryId" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "Queues_pkey" PRIMARY KEY ("id")
 );
@@ -431,8 +431,8 @@ CREATE TABLE "QueueMembers" (
     "queueId" TEXT NOT NULL,
     "plannerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT timezone('utc'::text, now()),
 
     CONSTRAINT "QueueMembers_pkey" PRIMARY KEY ("id")
 );

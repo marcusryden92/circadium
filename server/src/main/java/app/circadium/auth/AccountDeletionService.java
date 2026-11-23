@@ -80,7 +80,8 @@ public class AccountDeletionService {
      * revoked the same way; its refresh token is read before the {@code accounts} rows cascade away.
      */
     public void confirmDeletion(String userId, String rawToken, ClientInfo client) {
-        AccountDeletionToken token = accountDeletionTokenRepository.findByToken(rawToken)
+        String tokenHash = TokenHashing.sha256Hex(rawToken);
+        AccountDeletionToken token = accountDeletionTokenRepository.findByToken(tokenHash)
                 .orElseThrow(AccountFlowException::invalidLink);
         if (!token.getUserId().equals(userId)) {
             auditLogger.record(AuditEvent.ACCOUNT_DELETION_DENIED, userId, null, client, "wrong_account");
@@ -93,7 +94,7 @@ public class AccountDeletionService {
         User user = userRepository.findById(userId).orElseThrow(AccountDeletionService::accountGone);
 
         List<String> appleTokens = transactionTemplate.execute(status -> {
-            if (accountDeletionTokenRepository.deleteByToken(rawToken) != 1) {
+            if (accountDeletionTokenRepository.deleteByToken(tokenHash) != 1) {
                 throw AccountFlowException.invalidLink();
             }
             List<String> tokens = accountRepository

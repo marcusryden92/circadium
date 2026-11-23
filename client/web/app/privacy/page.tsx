@@ -210,7 +210,8 @@ export default function PrivacyPage() {
             law:
           </p>
           <ul className={list}>
-            <li>Hosting and application delivery (Vercel).</li>
+            <li>Web hosting and application delivery (Vercel).</li>
+            <li>API hosting (Fly.io).</li>
             <li>Database storage (Neon).</li>
             <li>Transactional email, e.g. sign-in and verification (Resend).</li>
             <li>

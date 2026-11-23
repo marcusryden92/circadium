@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -44,8 +45,16 @@ class WebSocketSessionRegistry {
             try {
                 session.sendMessage(message);
             } catch (IOException | RuntimeException e) {
-                // A socket closing under us is normal; the close callback prunes it.
-                log.debug("Dropped a realtime message to a closing session for user {}", userId, e);
+                // A send that throws means the socket is already broken. Drop it here rather than wait for a
+                // close callback that a half-open connection may never deliver, or the entry leaks and every
+                // future broadcast retries a dead socket.
+                log.debug("Dropping a realtime session for user {} after a failed send", userId, e);
+                remove(userId, session.getId());
+                try {
+                    session.close(CloseStatus.SERVER_ERROR);
+                } catch (IOException ignored) {
+                    // Already gone.
+                }
             }
         }
     }

@@ -30,6 +30,7 @@
 		<java.version>25</java.version>
 		<sentry.version>8.64.0</sentry.version>
 		<bucket4j.version>8.14.0</bucket4j.version>
+		<dependency-check.version>12.1.0</dependency-check.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -195,5 +196,40 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!--
+			The OWASP CVE scan. Kept out of the default build: it pulls the NVD feed, which is slow and rate
+			limited without an API key, so it would make every local `verify` painful. CI runs `-Psecurity
+			dependency-check:check` with NVD_API_KEY set; see server-ci.yml.
+		-->
+		<profile>
+			<id>security</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.owasp</groupId>
+						<artifactId>dependency-check-maven</artifactId>
+						<version>${dependency-check.version}</version>
+						<configuration>
+							<!-- Fail on a High or Critical finding (CVSS >= 7). -->
+							<failBuildOnCVSS>7</failBuildOnCVSS>
+							<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+							<!-- Irrelevant to a Java service; skipping them cuts scan time. -->
+							<assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
+							<nodeAnalyzerEnabled>false</nodeAnalyzerEnabled>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

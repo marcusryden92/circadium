@@ -7,6 +7,16 @@ spring:
     url: ${DATABASE_JDBC_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      # Deliberate ceiling against Neon's connection budget; single instance today, so this is also the
+      # global count. Session state must never be set here (connection-init-sql): staging/prod sit behind
+      # PgBouncer transaction pooling, where it would not stick to this pool's logical connections.
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+      minimum-idle: ${DATABASE_POOL_MIN_IDLE:2}
+  lifecycle:
+    # The drain window for graceful shutdown must outlast the sync transaction's 60s timeout, so a deploy's
+    # SIGTERM lets an in-flight sync commit instead of cutting it off. Fly's kill_timeout sits above this.
+    timeout-per-shutdown-phase: 75s
   jpa:
     open-in-view: false
     hibernate:
@@ -27,6 +37,8 @@ spring:
 # with a cross-site form POST, and browsers send Lax cookies only on cross-site GETs. The cookie is read only by the
 # sign-in chain, where state, not SameSite, ties the callback to the browser that started it.
 server:
+  # Boot's default since 3.4; stated because the lifecycle timeout above is tuned to it.
+  shutdown: graceful
   # The calendar bootstrap and a stale sync's 409 carry the whole calendar; the 409 is application/problem+json,
   # which the default list leaves out. No response reflects request input next to a secret (tokens travel in
   # cookies, and the mobile token pair answers a request carrying only credentials or a refresh token), so

@@ -137,9 +137,9 @@ class AccountFlowsIntegrationTest {
     void expiredVerificationLinkIsRejected() throws Exception {
         String email = uniqueEmail();
         saveUser(email, "password-1", false);
-        VerificationToken token = saveVerificationToken(email, null, Instant.now().minusSeconds(1));
+        String token = saveVerificationToken(email, null, Instant.now().minusSeconds(1));
 
-        perform(nextIp(), "/auth/verify-email", tokenBody(token.getToken()))
+        perform(nextIp(), "/auth/verify-email", tokenBody(token))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("expired_token"));
         assertThat(userRepository.findFirstByEmailIgnoreCase(email).orElseThrow().getEmailVerified()).isNull();
@@ -149,9 +149,9 @@ class AccountFlowsIntegrationTest {
     void emailChangeTokenMovesTheAccountToTheNewAddressAndTellsTheOldOne() throws Exception {
         User user = saveUser(uniqueEmail(), "password-1", true);
         String newEmail = uniqueEmail();
-        VerificationToken token = saveVerificationToken(newEmail, user.getId(), Instant.now().plusSeconds(600));
+        String token = saveVerificationToken(newEmail, user.getId(), Instant.now().plusSeconds(600));
 
-        perform(nextIp(), "/auth/verify-email", tokenBody(token.getToken())).andExpect(status().isOk());
+        perform(nextIp(), "/auth/verify-email", tokenBody(token)).andExpect(status().isOk());
 
         User updated = userRepository.findById(user.getId()).orElseThrow();
         assertThat(updated.getEmail()).isEqualTo(newEmail);
@@ -166,9 +166,9 @@ class AccountFlowsIntegrationTest {
     void emailChangeToAnAddressAnotherAccountOwnsConflicts() throws Exception {
         User user = saveUser(uniqueEmail(), "password-1", true);
         User other = saveUser(uniqueEmail(), "password-2", true);
-        VerificationToken token = saveVerificationToken(other.getEmail(), user.getId(), Instant.now().plusSeconds(600));
+        String token = saveVerificationToken(other.getEmail(), user.getId(), Instant.now().plusSeconds(600));
 
-        perform(nextIp(), "/auth/verify-email", tokenBody(token.getToken()))
+        perform(nextIp(), "/auth/verify-email", tokenBody(token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("email_in_use"));
         assertThat(userRepository.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(user.getEmail());
@@ -243,20 +243,21 @@ class AccountFlowsIntegrationTest {
     void expiredResetLinkAndWeakPasswordsAreRejected() throws Exception {
         String email = uniqueEmail();
         saveUser(email, "password-1", true);
+        String rawToken = UUID.randomUUID().toString();
         PasswordResetToken token = new PasswordResetToken();
         token.setId(UUID.randomUUID().toString());
         token.setEmail(email);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(TokenHashing.sha256Hex(rawToken));
         token.setExpires(Instant.now().minusSeconds(1));
         passwordResetTokenRepository.saveAndFlush(token);
         String ip = nextIp();
 
         perform(ip, "/auth/password-reset/confirm", """
-                {"token":"%s","password":"short"}""".formatted(token.getToken()))
+                {"token":"%s","password":"short"}""".formatted(rawToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.password").isNotEmpty());
         perform(ip, "/auth/password-reset/confirm", """
-                {"token":"%s","password":"long-enough-now"}""".formatted(token.getToken()))
+                {"token":"%s","password":"long-enough-now"}""".formatted(rawToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("expired_token"));
     }
@@ -291,7 +292,7 @@ class AccountFlowsIntegrationTest {
     void resetCancelsAPendingEmailChange() throws Exception {
         String email = uniqueEmail();
         User user = saveUser(email, "old-password", true);
-        VerificationToken pendingChange = saveVerificationToken(uniqueEmail(), user.getId(),
+        String pendingChange = saveVerificationToken(uniqueEmail(), user.getId(),
                 Instant.now().plusSeconds(600));
         String ip = nextIp();
         perform(ip, "/auth/password-reset", """
@@ -302,7 +303,7 @@ class AccountFlowsIntegrationTest {
                         mailer.latest(Kind.PASSWORD_RESET, email).orElseThrow()))
                 .andExpect(status().isOk());
 
-        perform(ip, "/auth/verify-email", tokenBody(pendingChange.getToken()))
+        perform(ip, "/auth/verify-email", tokenBody(pendingChange))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("invalid_token"));
         assertThat(userRepository.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(email);
@@ -335,7 +336,7 @@ class AccountFlowsIntegrationTest {
         assertThat(count("select count(*) from sessions where \"userId\" = ?", user.getId())).isZero();
         assertThat(count("select count(*) from audit_log where \"userId\" = ?", user.getId())).isZero();
         assertThat(count("select count(*) from auth_lockouts where \"key\" = ?", email)).isZero();
-        assertThat(accountDeletionTokenRepository.findByToken(token)).isEmpty();
+        assertThat(accountDeletionTokenRepository.findByToken(TokenHashing.sha256Hex(token))).isEmpty();
         assertThat(count("select count(*) from audit_log where event = 'ACCOUNT_DELETED' and detail = ?",
                 "user=" + user.getId())).isEqualTo(1);
         assertThat(analyticsEraser.erased()).contains(user.getId());
@@ -437,14 +438,17 @@ class AccountFlowsIntegrationTest {
         return userRepository.saveAndFlush(user);
     }
 
-    private VerificationToken saveVerificationToken(String email, String userId, Instant expires) {
+    /** Returns the raw token the emailed link would carry; the row stores only its hash. */
+    private String saveVerificationToken(String email, String userId, Instant expires) {
+        String rawToken = UUID.randomUUID().toString();
         VerificationToken token = new VerificationToken();
         token.setId(UUID.randomUUID().toString());
         token.setEmail(email);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(TokenHashing.sha256Hex(rawToken));
         token.setExpires(expires);
         token.setUserId(userId);
-        return verificationTokenRepository.saveAndFlush(token);
+        verificationTokenRepository.saveAndFlush(token);
+        return rawToken;
     }
 
     private static String uniqueEmail() {

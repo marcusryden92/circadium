@@ -168,6 +168,51 @@ describe("createRealtimeClient", () => {
     client.dispose();
   });
 
+  it("reconnects when a ping goes unanswered (a half-open socket)", () => {
+    const t = makeFakeTransport();
+    const client = createRealtimeClient({
+      connect: t.connect,
+      getDataVersion: () => 1,
+      onBehind: jest.fn(),
+      heartbeatMs: 1000,
+      reconnectDelaysMs: [500],
+    });
+    client.start();
+    t.open();
+    expect(t.connectCount).toBe(1);
+
+    jest.advanceTimersByTime(1000); // ping goes out, now awaiting a response
+    expect(t.sent).toContain('{"type":"ping"}');
+    jest.advanceTimersByTime(1000); // still nothing back: the socket is dead
+    expect(t.isClosed()).toBe(true);
+    jest.advanceTimersByTime(500); // backoff, then reconnect
+    expect(t.connectCount).toBe(2);
+
+    client.dispose();
+  });
+
+  it("keeps the connection when a pong answers the ping", () => {
+    const t = makeFakeTransport();
+    const client = createRealtimeClient({
+      connect: t.connect,
+      getDataVersion: () => 1,
+      onBehind: jest.fn(),
+      heartbeatMs: 1000,
+      reconnectDelaysMs: [500],
+    });
+    client.start();
+    t.open();
+
+    jest.advanceTimersByTime(1000); // ping out
+    t.message('{"type":"pong"}'); // answered: the socket is alive
+    jest.advanceTimersByTime(1000); // next ping, not a reconnect
+    jest.advanceTimersByTime(500);
+    expect(t.isClosed()).toBe(false);
+    expect(t.connectCount).toBe(1);
+
+    client.dispose();
+  });
+
   it("stays quiet while disabled", () => {
     const t = makeFakeTransport();
     const onBehind = jest.fn();

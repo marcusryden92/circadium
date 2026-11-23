@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { parse as parsePartial, Allow } from "partial-json";
 import { pruneDraftPrecedence } from "../../draft/draftPrecedence";
 import { pruneDraftHabits } from "../../draft/draftHabits";
+import { isDevEnvironment } from "../../platform/isDevEnvironment";
 import {
   type DraftTimeWindow,
   type DraftWindowsState,
@@ -339,7 +340,7 @@ export async function runAssistantTurn({
       usageTotals.cache_creation_input_tokens +=
         usage.cache_creation_input_tokens ?? 0;
       usageTotals.cache_read_input_tokens += usage.cache_read_input_tokens ?? 0;
-      if (process.env.NODE_ENV !== "production") {
+      if (isDevEnvironment()) {
         console.debug(
           `[assistant] iter ${turn}: in=${usage.input_tokens ?? 0} out=${
             usage.output_tokens ?? 0

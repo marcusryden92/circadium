@@ -37,7 +37,8 @@ public class EmailVerificationService {
     private final Clock clock;
 
     public void verify(String rawToken, ClientInfo client) {
-        VerificationToken token = verificationTokenRepository.findByToken(rawToken)
+        String tokenHash = TokenHashing.sha256Hex(rawToken);
+        VerificationToken token = verificationTokenRepository.findByToken(tokenHash)
                 .orElseThrow(AccountFlowException::invalidLink);
         Instant now = DbTime.now(clock);
         if (!token.getExpires().isAfter(now)) {
@@ -58,7 +59,7 @@ public class EmailVerificationService {
         String previousEmail = user.getEmail();
         try {
             transactionTemplate.executeWithoutResult(status -> {
-                if (verificationTokenRepository.deleteByToken(rawToken) != 1) {
+                if (verificationTokenRepository.deleteByToken(tokenHash) != 1) {
                     throw AccountFlowException.invalidLink();
                 }
                 userRepository.updateVerifiedEmail(user.getId(), token.getEmail(), now);

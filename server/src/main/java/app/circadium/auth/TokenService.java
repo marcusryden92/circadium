@@ -5,14 +5,10 @@ import app.circadium.persistence.entity.Session;
 import app.circadium.persistence.entity.User;
 import app.circadium.persistence.repository.SessionRepository;
 import app.circadium.persistence.repository.UserRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -151,13 +147,7 @@ public class TokenService {
     }
 
     static String hashRefreshToken(String rawRefreshToken) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(rawRefreshToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
+        return TokenHashing.sha256Hex(rawRefreshToken);
     }
 
     private IssuedTokens issue(User user, NewSession refresh, Instant now) {

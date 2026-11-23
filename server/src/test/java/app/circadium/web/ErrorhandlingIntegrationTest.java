@@ -76,6 +76,35 @@ class ErrorHandlingIntegrationTest {
         assertThat(CAPTURED).isEmpty();
     }
 
+    @Test
+    void missingTokenProducesProblemDetail401() throws Exception {
+        mockMvc.perform(get("/calendar/bootstrap"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.requestId").isNotEmpty());
+    }
+
+    @Test
+    void garbledBearerTokenProducesProblemDetail401WithWwwAuthenticate() throws Exception {
+        mockMvc.perform(get("/calendar/bootstrap")
+                        .header("Authorization", "Bearer not-a-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().exists("WWW-Authenticate"))
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void disallowedOriginProducesProblemDetail403() throws Exception {
+        mockMvc.perform(post("/calendar/sync")
+                        .with(jwt())
+                        .header("Origin", "https://attacker.example"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class RecordingSentryConfig {
         @Bean

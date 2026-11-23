@@ -1,4 +1,5 @@
 import { Category } from "../../../../contracts";
+import { isDevEnvironment } from "../../../../platform/isDevEnvironment";
 import { CategorySlot, Slot } from "../../../models/TimeSlot";
 import { TravelManager } from "../../../core/TravelManager";
 import { dropUnreachableCategoryVisits } from "../dropUnreachableCategoryVisits";
@@ -137,7 +138,7 @@ function isBoundaryInsideTravel(slots: Slot[], boundary: Date): boolean {
 // forward pass; the message goes to console in non-production builds so the
 // failure mode is visible to whoever is iterating on the cascade rules.
 export function logInconsistency(message: string): void {
-  if (process.env.NODE_ENV !== "production") {
+  if (isDevEnvironment()) {
     console.warn(`[staticEventTravelPass] ${message}`);
   }
 }

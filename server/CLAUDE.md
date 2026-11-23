@@ -69,7 +69,12 @@ default; `staging`, `prod`). Secrets never live in the repo.
   pooled host (PgBouncer, transaction pooling), so nothing may change session state: no
   `@Transactional(isolation = ...)` (PgJDBC applies it with `SET SESSION CHARACTERISTICS`,
   outside the transaction). Set isolation with `SET TRANSACTION ISOLATION LEVEL ...` as the
-  transaction's first statement, as `calendar/CalendarBootstrapService` does.
+  transaction's first statement, as `calendar/CalendarBootstrapService` does. For the same
+  reason the Hikari pool sets no connection-init session state; its ceiling is
+  `DATABASE_POOL_SIZE` (default 10), a deliberate bound against Neon's connection budget.
+- **Graceful shutdown** is on (`server.shutdown: graceful`, drain `75s`), above the 60s sync
+  timeout, and Fly's `kill_timeout = "90s"` sits above the drain — so a blue-green deploy's
+  SIGTERM lets an in-flight sync commit instead of being cut off.
 
 ## Calendar data
 
@@ -114,6 +119,11 @@ bootstrap and adopts it — the stale-sync recovery, without having had to try a
   `ws/AuthenticatedUserHandshakeInterceptor` copies the user id onto the session. Spring's own
   `setAllowedOrigins` is set to the CORS origins — the handshake is cross-origin (web to API), and
   this is the cross-site WebSocket hijacking defence.
+- **Liveness.** The one inbound frame is the client's keepalive ping, answered with
+  `{"type":"pong"}` (through the concurrency decorator) so the client can tell a live socket from
+  a half-open one and reconnect (no frame for a full ping interval -> reconnect, client side). The
+  registry drops a session whose send throws, and a transport error closes it, so a dead socket
+  does not leak.
 - **The registry is local; the broadcaster is the scale seam.** `ws/WebSocketSessionRegistry` holds
   this instance's sockets (each wrapped in a `ConcurrentWebSocketSessionDecorator` so sends never
   race). `ws/DataVersionBroadcaster` is the interface a multi-instance deployment reimplements over
@@ -129,8 +139,15 @@ resource server: every request needs a valid RS256 access JWT except the endpoin
 `SecurityConfig.PUBLIC_ENDPOINTS` (`/actuator/health/**`, `/actuator/info`,
 `GET /.well-known/jwks.json`, `POST /auth/{register,login,2fa,refresh,logout,verify-email,handoff,oauth/confirm}`,
 `POST /auth/password-reset[/confirm]`, `/error`). New public endpoints go in that one list.
-Swagger/OpenAPI is open under the `local` profile and `ROLE_ADMIN` elsewhere. The JWT's
-`role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. Besides signature, `iss`, `aud` and `exp`,
+Swagger/OpenAPI is open under the `local` profile and elsewhere requires `ROLE_ADMIN`
+**and** a 2FA-verified session (`amr` contains `mfa`, an `AuthorizationManager` in
+`SecurityConfig`), matching the web's other admin tools so a password-only admin token can't
+read the schema. The JWT's `role` claim maps to `ROLE_USER` / `ROLE_ADMIN`. The security
+chain's 401 and 403 answer with the same RFC 7807 ProblemDetail body as the rest of the API
+(`web/ProblemDetailAuthenticationEntryPoint` / `ProblemDetailAccessDeniedHandler`, wrapping
+Spring's bearer entry point so `WWW-Authenticate` survives); a CORS reject carries one too
+(`web/ProblemDetailCorsProcessor`). These run in the filter chain, before the
+DispatcherServlet, so `GlobalExceptionHandler` never sees them. Besides signature, `iss`, `aud` and `exp`,
 the decoder requires the token's `sid` family to still have a `sessions` row
 (`auth/SessionFamilyValidator`), so sign-out, reuse detection and a password change or reset
 end access tokens at once, not after 15 minutes. A sign-in that passed the emailed 2FA code
@@ -244,11 +261,16 @@ after the commit and on a background thread, retried on 429/5xx/network errors; 
 Sentry with the user id for a manual erasure. Optional in every profile: without both values startup
 logs a warning and deletion skips it. Tests swap in `RecordingAnalyticsEraser`.
 
-The token tables (`VerificationToken`, `PasswordResetToken`,
-`AccountDeletionToken`, `TwoFactorToken`) hold raw values because the NextAuth build on
-`main`, which a rollback would bring back, reads them raw; tokens are issued for the stored
-email casing, since that build looks them up exactly. This branch's web no longer touches
-these tables.
+The uuid token tables (`VerificationToken`, `PasswordResetToken`, `AccountDeletionToken`)
+store the **SHA-256 hash** of the token (`auth/TokenHashing`), like refresh tokens and handoff
+codes — the raw value exists only in the emailed link, so a database read yields nothing
+usable (plan 1.15). `TwoFactorToken` stays raw: a 6-digit code has too small a space for a
+stored hash to protect, and online guessing is already throttled by the login lockout. Tokens
+are issued for the stored email casing, since the consumer looks them up exactly. The web on
+this branch no longer touches these tables; a rollback to the retired NextAuth build on `main`
+would read raw — so after such a rollback, only tokens issued by the Java build in the window
+before it (≤1 h-lived) would not verify, and a reissue fixes them. This was the deliberate
+trade for hashing at rest.
 
 Existing users: change their columns with the targeted updates in `UserRepository`
 (`updatePassword`, `updateVerifiedEmail`), never by saving a `User` loaded earlier. Saving

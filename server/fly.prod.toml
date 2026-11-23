@@ -3,6 +3,7 @@
 # (staging); the reasons for each setting are given there.
 app = "circadium-server"
 primary_region = "fra"
+kill_timeout = "90s"
 
 [build]
   dockerfile = "Dockerfile"

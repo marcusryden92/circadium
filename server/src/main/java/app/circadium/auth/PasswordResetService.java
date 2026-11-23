@@ -69,7 +69,8 @@ public class PasswordResetService {
      */
     public void resetPassword(String rawToken, String newPassword, ClientInfo client) {
         passwordPolicy.requireValidNewPassword(newPassword);
-        PasswordResetToken token = passwordResetTokenRepository.findByToken(rawToken)
+        String tokenHash = TokenHashing.sha256Hex(rawToken);
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(tokenHash)
                 .orElseThrow(AccountFlowException::invalidLink);
         Instant now = DbTime.now(clock);
         if (!token.getExpires().isAfter(now)) {
@@ -80,7 +81,7 @@ public class PasswordResetService {
         String hash = passwordEncoder.encode(newPassword);
 
         transactionTemplate.executeWithoutResult(status -> {
-            if (passwordResetTokenRepository.deleteByToken(rawToken) != 1) {
+            if (passwordResetTokenRepository.deleteByToken(tokenHash) != 1) {
                 throw AccountFlowException.invalidLink();
             }
             passwordResetTokenRepository.deleteAllByEmail(token.getEmail());
