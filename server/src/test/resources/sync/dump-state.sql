@@ -1,9 +1,9 @@
 -- Every row the sync can write for the two accounts in calendar/bootstrap-seed.sql, as one JSON
--- document with each table's rows ordered by id. Both sides of the golden corpus run this same
--- query: the web's captureSyncCorpus test (recording the TS sync's effect) and
--- SyncCorpusIntegrationTest (comparing the Java sync's effect), so Postgres renders every value
--- identically on both. Ids sort bytewise, as collations differ between the Alpine dev image
--- and the Debian test image.
+-- document with each table's rows ordered by id. The golden corpus was captured from the web's
+-- original sync (the TS sync's effect) before it was retired (plan 1.13); SyncCorpusIntegrationTest
+-- now runs this same query to compare the Java sync's effect against the frozen corpus, so Postgres
+-- renders every value identically. Ids sort bytewise, as collations differ between the Alpine dev
+-- image and the Debian test image.
 SELECT json_build_object(
     'users', (SELECT json_agg(json_build_object('id', u."id", 'dataVersion', u."dataVersion") ORDER BY u."id" COLLATE "C")
         FROM "users" u WHERE u."id" IN ('bootstrap-user', 'bootstrap-other')),

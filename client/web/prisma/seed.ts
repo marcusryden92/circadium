@@ -66,7 +66,7 @@ async function main() {
 
   // Clear any existing calendar data so the reseed is a clean wholesale
   // replace. The admin is upserted rather than deleted, so every per-user
-  // table the app reads (see fetchCalendarData) must be cleared explicitly
+  // table the app reads (see the calendar bootstrap) must be cleared explicitly
   // here — a table that only cascades on User delete would otherwise survive
   // the reseed. Order matters for foreign keys.
   //

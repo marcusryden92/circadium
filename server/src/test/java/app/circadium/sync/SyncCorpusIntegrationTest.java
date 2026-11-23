@@ -43,8 +43,8 @@ import tools.jackson.databind.node.ObjectNode;
 /**
  * Replays the golden corpus ({@code sync/corpus/*.json}) against {@code POST /calendar/sync}. Each file is a diff the
  * web's own {@code syncCalendarData} applied to {@code calendar/bootstrap-seed.sql}, with its response and every row
- * it left (recaptured by the web's {@code fixture:sync} script). The Java sync must answer the same way and leave the
- * same rows, read back through the same {@code sync/dump-state.sql}.
+ * it left; the web capture was retired (plan 1.13) and the corpus is now a frozen Java resource. The Java sync must
+ * answer the same way and leave the same rows, read back through the same {@code sync/dump-state.sql}.
  *
  * <p>The clock is frozen at the capture's instant, so the sync's own {@code updatedAt} stamps compare exactly; the
  * column default's {@code (now())::text} is replaced by a marker on both sides.

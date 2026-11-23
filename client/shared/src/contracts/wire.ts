@@ -69,7 +69,7 @@ export interface DatabaseChanges {
 }
 
 // Everything the client needs to stand up (and to recover from a stale sync):
-// the fetchCalendarData payload plus locations + travelTimes.
+// the full calendar snapshot (the fields below) plus locations + travelTimes.
 export interface BootstrapPayload {
   dataVersion: number;
   planner: Planner[];

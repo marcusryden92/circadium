@@ -94,12 +94,12 @@ must be boxed there (the extended props' trespass flags are).
 - **Compression.** Both payloads carry the whole calendar, so `server.compression` gzips JSON and
   `application/problem+json` (the stale 409) over 2 KB. Tomcat does it, so MockMvc cannot see it:
   `web/ResponseCompressionIntegrationTest` checks it over a real port.
-- **Golden corpus.** `src/test/resources/sync/corpus/*.json` are diffs the web's own
-  `syncCalendarData` applied to `calendar/bootstrap-seed.sql`, with the response and every row
-  afterwards (`sync/dump-state.sql`, run identically on both sides). `SyncCorpusIntegrationTest`
-  replays them with the clock frozen at the capture's instant. Recapture with `pnpm fixture:sync`
-  from `client/web` (dev database up) after changing the web's sync handlers, the shared diff, or
-  the seed; a Java change to the sync must keep the corpus green as it is.
+- **Golden corpus.** `src/test/resources/sync/corpus/*.json` are diffs applied to
+  `calendar/bootstrap-seed.sql`, with the response and every row afterwards (`sync/dump-state.sql`).
+  They were captured from the web's own sync before it was retired (plan 1.13) and are now frozen
+  Java test resources. `SyncCorpusIntegrationTest` replays them with the clock frozen at the
+  capture's instant; a Java change to the sync must keep the corpus green. Regenerating it after a
+  seed or diff change is now done Java-side.
 
 ## Realtime (`ws/`)
 
