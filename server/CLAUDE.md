@@ -34,6 +34,10 @@ Tests use Testcontainers with the Postgres image pinned to `postgres:16` and the
 `@ServiceConnection` pattern, which auto-wires the datasource from a throwaway container
 — so `verify`/`test` require Docker Desktop to be running. `compile` does not.
 
+CI also runs an OWASP CVE gate on every server-touching push (`-Psecurity dependency-check:check`,
+fails on CVSS >= 7; needs the `NVD_API_KEY` repo secret). Fuzzy-CPE false positives are suppressed
+with per-entry justifications in `dependency-check-suppressions.xml`.
+
 Deploys run from `.github/workflows/server-ci.yml` after `verify`, on pushes that touch
 `server/`:
 
