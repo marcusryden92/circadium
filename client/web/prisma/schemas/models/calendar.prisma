@@ -8,8 +8,8 @@ model SimpleEvent {
   rrule           String?
   backgroundColor String
   borderColor     String
-  createdAt       String
-  updatedAt       String
+  createdAt       DateTime
+  updatedAt       DateTime            @default(now())
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   extendedProps   EventExtendedProps?
 
@@ -60,8 +60,8 @@ model Planner {
   locationId                String? // Optional FK to Location (null = "Anywhere")
   useParentLocation         Boolean                @default(false) // When true, use category location instead of item's own locationId
   categoryId                String? // Optional FK to Category for organization
-  createdAt                 String
-  updatedAt                 String
+  createdAt                 DateTime
+  updatedAt                 DateTime               @default(now())
   user                      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   location                  Location?              @relation(fields: [locationId], references: [id], onDelete: SetNull)
   category                  Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -113,8 +113,8 @@ model EventTemplate {
   color                String?
   locationId           String? // Optional FK to Location (null = "Anywhere")
   recurrenceExceptions String? // JSON PlanOccurrenceException[]; per-occurrence moved/deleted overrides keyed by the occurrence's original local start
-  createdAt            String
-  updatedAt            String
+  createdAt            DateTime
+  updatedAt            DateTime    @default(now())
   user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   location             Location?   @relation(fields: [locationId], references: [id], onDelete: SetNull)
 

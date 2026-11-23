@@ -1,11 +1,11 @@
 import { apiUrl } from "@/lib/session/config";
 
 // Realtime (WebSocket) catch-up for the calendar, gated separately from the
-// transport so it can ship dark and flip by env like NEXT_PUBLIC_CALENDAR_BACKEND.
+// sync transport so it can ship dark and flip by env on its own.
 // "on" opens a WebSocket to the Java API that pushes dataVersion changes to a
 // user's other sessions; unset keeps the HTTP sync loop as the only channel, so
 // removing it rolls back to exactly today. Inlined at build time — a change
-// needs a redeploy. Only meaningful with NEXT_PUBLIC_CALENDAR_BACKEND=java.
+// needs a redeploy.
 export function calendarRealtimeEnabled(): boolean {
   return process.env.NEXT_PUBLIC_CALENDAR_REALTIME === "on";
 }

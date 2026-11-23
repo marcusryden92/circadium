@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,8 +54,8 @@ class EventExtendedPropsRepositoryTest {
         event.setUserId(userId);
         event.setBackgroundColor("#111111");
         event.setBorderColor("#222222");
-        event.setCreatedAt("2026-11-16T08:00:00.000Z");
-        event.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        event.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        event.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         simpleEventRepository.saveAndFlush(event);
 
         String id = UUID.randomUUID().toString();

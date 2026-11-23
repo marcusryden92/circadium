@@ -13,8 +13,6 @@
     "type-check": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "fixture:bootstrap": "cross-env CAPTURE_BOOTSTRAP_FIXTURE=1 jest __tests__/contracts/captureBootstrapFixture.test.ts",
-    "fixture:sync": "cross-env CAPTURE_SYNC_CORPUS=1 jest __tests__/contracts/captureSyncCorpus.test.ts",
     "db:start": "docker compose -f docker-compose.dev.yml up -d",
     "db:stop": "docker compose -f docker-compose.dev.yml down",
     "db:reset:dev": "docker compose -f docker-compose.dev.yml down --volumes && docker compose -f docker-compose.dev.yml up -d && pnpm exec wait-on tcp:localhost:5433 && prisma migrate deploy && prisma db seed",

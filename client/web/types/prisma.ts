@@ -8,6 +8,17 @@ export {
   ExternalCalendarMode,
 } from "@/generated/client";
 
+// The 10 calendar tables migrated their createdAt/updatedAt from TEXT ISO
+// strings to timestamp(3) at the DB (plan 1.13b), so Prisma now types those
+// fields as Date. The app speaks ISO strings end-to-end — the Java wire
+// contract, the sync diff, the engine, Redux — so re-declare them as string
+// everywhere. The direct-Prisma seams convert at the edge: reads serialize
+// Date -> ISO at the action boundary (categories.ts), writes pass a Date.
+type WithIsoTimestamps<T> = Omit<T, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
 // Trespass flags are persisted columns but runtime-optional: event builders
 // never set them — stabilizeEvent carries them forward from the previous emit
 // and markTrespassingEvents owns the truth each regen (absent reads as false).
@@ -21,11 +32,13 @@ export type EventExtendedProps = Omit<
 };
 
 // SimpleEvent with runtime fields added to extendedProps
-export type SimpleEvent = Omit<
-  Prisma.SimpleEventGetPayload<{
-    include: { extendedProps: true };
-  }>,
-  "extendedProps"
+export type SimpleEvent = WithIsoTimestamps<
+  Omit<
+    Prisma.SimpleEventGetPayload<{
+      include: { extendedProps: true };
+    }>,
+    "extendedProps"
+  >
 > & {
   extendedProps:
     | (EventExtendedProps & {
@@ -44,14 +57,18 @@ export type SimpleEvent = Omit<
     | null;
 };
 
-export type Planner = Prisma.PlannerGetPayload<undefined>;
+export type Planner = WithIsoTimestamps<Prisma.PlannerGetPayload<undefined>>;
 
-export type PlannerWithLocation = Prisma.PlannerGetPayload<{
-  include: { location: true };
-}>;
+export type PlannerWithLocation = WithIsoTimestamps<
+  Prisma.PlannerGetPayload<{
+    include: { location: true };
+  }>
+>;
 
 type RawEventTemplate = Prisma.EventTemplateGetPayload<undefined>;
-export type EventTemplate = Omit<RawEventTemplate, "startDay"> & {
+export type EventTemplate = WithIsoTimestamps<
+  Omit<RawEventTemplate, "startDay">
+> & {
   startDay: WeekDayIntegers;
 };
 
@@ -69,40 +86,59 @@ export type CategoryTimeWindow = Omit<RawCategoryTimeWindow, "day"> & {
 };
 
 type RawCategory = Prisma.CategoryGetPayload<{ include: { timeSlots: true } }>;
-export type Category = Omit<RawCategory, "timeSlots"> & {
+export type Category = WithIsoTimestamps<Omit<RawCategory, "timeSlots">> & {
   timeSlots: CategoryTimeWindow[];
 };
 
 type RawCategoryWithChildren = Prisma.CategoryGetPayload<{
   include: { children: true; timeSlots: true };
 }>;
-export type CategoryWithChildren = Omit<
-  RawCategoryWithChildren,
-  "timeSlots" | "children"
+export type CategoryWithChildren = WithIsoTimestamps<
+  Omit<RawCategoryWithChildren, "timeSlots" | "children">
 > & {
   timeSlots: CategoryTimeWindow[];
   children: Category[];
 };
 
-export type PlannerWithCategory = Prisma.PlannerGetPayload<{
+type RawPlannerWithCategory = Prisma.PlannerGetPayload<{
   include: { category: true };
 }>;
+export type PlannerWithCategory = WithIsoTimestamps<
+  Omit<RawPlannerWithCategory, "category">
+> & {
+  category: WithIsoTimestamps<
+    NonNullable<RawPlannerWithCategory["category"]>
+  > | null;
+};
 
-export type CategoryEvent = Prisma.CategoryEventGetPayload<undefined>;
+export type CategoryEvent = WithIsoTimestamps<
+  Prisma.CategoryEventGetPayload<undefined>
+>;
 
-export type TravelEvent = Prisma.TravelEventGetPayload<undefined>;
+export type TravelEvent = WithIsoTimestamps<
+  Prisma.TravelEventGetPayload<undefined>
+>;
 
-export type EngineMessage = Prisma.EngineMessageGetPayload<undefined>;
+export type EngineMessage = WithIsoTimestamps<
+  Prisma.EngineMessageGetPayload<undefined>
+>;
 
 export type DraftConversation = Prisma.DraftConversationGetPayload<undefined>;
 
+export type QueueMember = WithIsoTimestamps<
+  Prisma.QueueMemberGetPayload<undefined>
+>;
+
 // Nested-members is the app/Redux shape (Category.timeSlots precedent);
 // the sync diff strips + flattens members into their own change group.
-export type Queue = Prisma.QueueGetPayload<{ include: { members: true } }>;
+type RawQueue = Prisma.QueueGetPayload<{ include: { members: true } }>;
+export type Queue = WithIsoTimestamps<Omit<RawQueue, "members">> & {
+  members: QueueMember[];
+};
 
-export type QueueMember = Prisma.QueueMemberGetPayload<undefined>;
-
-export type PlannerDependency = Prisma.PlannerDependencyGetPayload<undefined>;
+export type PlannerDependency = WithIsoTimestamps<
+  Prisma.PlannerDependencyGetPayload<undefined>
+>;
 
 // DateTime columns serialized to ISO strings at the action boundary
 // (Location precedent) so the rows are Redux-serializable.

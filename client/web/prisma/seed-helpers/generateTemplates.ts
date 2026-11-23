@@ -65,7 +65,7 @@ const TEMPLATE_SEEDS: TemplateSeed[] = [
  * Generates event templates for seeding the database.
  */
 export const generateTemplates = (userId: string): EventTemplate[] => {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date();
 
   return TEMPLATE_SEEDS.flatMap((seed) =>
     seed.days.map((day) => ({

@@ -67,6 +67,11 @@ class BulkStatements {
             return new Column<>(name, SqlType.TEXT, "jsonb", value);
         }
 
+        /** A {@code timestamp(3)} column: the value travels as the ISO text and is cast to the column type. */
+        static <T> Column<T> timestamp(String name, Function<? super T, String> value) {
+            return new Column<>(name, SqlType.TEXT, "timestamp(3)", value);
+        }
+
         /** A Postgres enum column, written from the Java constant's name (the database label). */
         static <T> Column<T> label(String name, String enumType, Function<? super T, ? extends Enum<?>> value) {
             return new Column<>(name, SqlType.TEXT, '"' + enumType + '"', row -> {
@@ -94,10 +99,11 @@ class BulkStatements {
     }
 
     /**
-     * Inserts {@code rows} with {@code userId} as their owner. {@code updatedAt}, when given, fills that column for
-     * every row. {@code onConflict} is appended as written: empty for a plain insert, which fails on a duplicate.
+     * Inserts {@code rows} with {@code userId} as their owner. {@code onConflict} is appended as written: empty for a
+     * plain insert, which fails on a duplicate. {@code updatedAt} is not written: it is DB-owned (column default on
+     * insert, trigger on update).
      */
-    <T> void insertOwned(String table, List<T> rows, List<Column<T>> columns, String userId, String updatedAt,
+    <T> void insertOwned(String table, List<T> rows, List<Column<T>> columns, String userId,
             List<OwnedReference> references, String onConflict) {
         if (rows.isEmpty()) {
             return;
@@ -109,11 +115,6 @@ class BulkStatements {
         targetColumns.add("\"userId\"");
         selected.add("?::text");
         params.add(userId);
-        if (updatedAt != null) {
-            targetColumns.add("\"updatedAt\"");
-            selected.add("?::text");
-            params.add(updatedAt);
-        }
 
         StringBuilder sql = new StringBuilder()
                 .append("INSERT INTO ").append(quote(table))
@@ -148,21 +149,17 @@ class BulkStatements {
     }
 
     /**
-     * Updates the caller's rows matching {@code rows} by id to the given column values. {@code updatedAt}, when
-     * given, is stamped on every matched row.
+     * Updates the caller's rows matching {@code rows} by id to the given column values. {@code updatedAt} is not
+     * written: a {@code BEFORE UPDATE} trigger owns it.
      */
     <T> void updateOwned(String table, List<T> rows, Function<? super T, String> id, List<Column<T>> columns,
-            String userId, String updatedAt, List<OwnedReference> references) {
+            String userId, List<OwnedReference> references) {
         if (rows.isEmpty()) {
             return;
         }
         List<Object> params = new ArrayList<>();
         List<String> assignments = new ArrayList<>(
                 columns.stream().map(c -> quote(c.name()) + " = " + c.selected()).toList());
-        if (updatedAt != null) {
-            assignments.add("\"updatedAt\" = ?::text");
-            params.add(updatedAt);
-        }
 
         List<Column<T>> withId = new ArrayList<>();
         withId.add(Column.text("id", id));

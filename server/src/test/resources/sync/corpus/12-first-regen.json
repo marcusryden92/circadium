@@ -5574,7 +5574,7 @@
         "lng": 18.0686,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-02T08:00:00",
-        "updatedAt": "2026-01-05T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-location-b",
@@ -5585,7 +5585,7 @@
         "lng": 18.07,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-01T08:00:00",
-        "updatedAt": "2026-01-01T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-location",
@@ -5596,7 +5596,7 @@
         "lng": 0,
         "userId": "bootstrap-other",
         "createdAt": "2026-01-01T08:00:00",
-        "updatedAt": "2026-01-01T08:00:00"
+        "updatedAt": "<db-owned>"
       }
     ],
     "TravelTimes": [
@@ -5614,7 +5614,7 @@
         "unroutableAt": null,
         "userId": "bootstrap-other",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-01-03T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-time-1",
@@ -5630,7 +5630,7 @@
         "unroutableAt": null,
         "userId": "bootstrap-user",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-01-03T08:00:00"
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-travel-time-2",
@@ -5646,7 +5646,7 @@
         "unroutableAt": "2026-02-01T00:00:00",
         "userId": "bootstrap-user",
         "createdAt": "2026-01-03T08:00:00",
-        "updatedAt": "2026-02-01T00:00:00"
+        "updatedAt": "<db-owned>"
       }
     ],
     "Categories": [
@@ -5662,8 +5662,8 @@
         "locationId": "bootstrap-location-a",
         "parentId": null,
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-category-b",
@@ -5677,8 +5677,8 @@
         "locationId": null,
         "parentId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-04T09:05:00.000Z",
-        "updatedAt": "2026-01-06T09:05:00.000Z"
+        "createdAt": "2026-01-04T09:05:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-category",
@@ -5692,8 +5692,8 @@
         "locationId": null,
         "parentId": null,
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "CategoryTimeWindows": [
@@ -5763,8 +5763,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:00:00.000Z",
-        "updatedAt": "2026-01-10T10:00:00.000Z"
+        "createdAt": "2026-01-10T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-goal",
@@ -5794,8 +5794,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": "bootstrap-category-a",
-        "createdAt": "2026-01-10T10:00:00.000Z",
-        "updatedAt": "2026-01-11T10:00:00.000Z"
+        "createdAt": "2026-01-10T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan",
@@ -5825,8 +5825,8 @@
         "locationId": "bootstrap-location-b",
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:01:00.000Z",
-        "updatedAt": "2026-01-10T10:01:00.000Z"
+        "createdAt": "2026-01-10T10:01:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-task",
@@ -5856,8 +5856,8 @@
         "locationId": null,
         "useParentLocation": true,
         "categoryId": null,
-        "createdAt": "2026-01-10T10:02:00.000Z",
-        "updatedAt": "2026-01-10T10:02:00.000Z"
+        "createdAt": "2026-01-10T10:02:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-goal",
@@ -5887,8 +5887,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": "bootstrap-category-a",
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-00",
@@ -5918,8 +5918,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-01",
@@ -5949,8 +5949,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-02",
@@ -5980,8 +5980,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-03",
@@ -6011,8 +6011,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-04",
@@ -6042,8 +6042,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-05",
@@ -6073,8 +6073,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-06",
@@ -6104,8 +6104,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-07",
@@ -6135,8 +6135,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-08",
@@ -6166,8 +6166,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-09",
@@ -6197,8 +6197,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-10",
@@ -6228,8 +6228,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-11",
@@ -6259,8 +6259,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-12",
@@ -6290,8 +6290,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-13",
@@ -6321,8 +6321,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-14",
@@ -6352,8 +6352,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-15",
@@ -6383,8 +6383,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-16",
@@ -6414,8 +6414,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-17",
@@ -6445,8 +6445,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-18",
@@ -6476,8 +6476,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-19",
@@ -6507,8 +6507,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-20",
@@ -6538,8 +6538,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-21",
@@ -6569,8 +6569,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-22",
@@ -6600,8 +6600,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-23",
@@ -6631,8 +6631,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-24",
@@ -6662,8 +6662,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-25",
@@ -6693,8 +6693,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-26",
@@ -6724,8 +6724,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-27",
@@ -6755,8 +6755,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-28",
@@ -6786,8 +6786,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-29",
@@ -6817,8 +6817,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-30",
@@ -6848,8 +6848,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-31",
@@ -6879,8 +6879,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-32",
@@ -6910,8 +6910,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-33",
@@ -6941,8 +6941,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-34",
@@ -6972,8 +6972,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-35",
@@ -7003,8 +7003,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-36",
@@ -7034,8 +7034,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-37",
@@ -7065,8 +7065,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-38",
@@ -7096,8 +7096,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-39",
@@ -7127,8 +7127,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-40",
@@ -7158,8 +7158,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-41",
@@ -7189,8 +7189,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-42",
@@ -7220,8 +7220,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-43",
@@ -7251,8 +7251,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-44",
@@ -7282,8 +7282,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-45",
@@ -7313,8 +7313,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-46",
@@ -7344,8 +7344,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-47",
@@ -7375,8 +7375,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-48",
@@ -7406,8 +7406,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-49",
@@ -7437,8 +7437,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-50",
@@ -7468,8 +7468,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-51",
@@ -7499,8 +7499,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-52",
@@ -7530,8 +7530,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-53",
@@ -7561,8 +7561,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-54",
@@ -7592,8 +7592,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-55",
@@ -7623,8 +7623,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-56",
@@ -7654,8 +7654,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-57",
@@ -7685,8 +7685,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-58",
@@ -7716,8 +7716,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-59",
@@ -7747,8 +7747,8 @@
         "locationId": null,
         "useParentLocation": false,
         "categoryId": null,
-        "createdAt": "2026-03-01T20:00:00.000Z",
-        "updatedAt": "2026-03-01T20:00:00.000Z"
+        "createdAt": "2026-03-01T20:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "SimpleEvents": [
@@ -7762,8 +7762,8 @@
         "rrule": null,
         "backgroundColor": "#000000",
         "borderColor": "#000000",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-03-02T10:00",
@@ -7775,8 +7775,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-03-09T10:00",
@@ -7788,8 +7788,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-03-16T10:00",
@@ -7801,8 +7801,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-03-23T10:00",
@@ -7814,8 +7814,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-03-30T10:00",
@@ -7827,8 +7827,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-04-06T10:00",
@@ -7840,8 +7840,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-04-13T10:00",
@@ -7853,8 +7853,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-04-20T10:00",
@@ -7866,8 +7866,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-04-27T10:00",
@@ -7879,8 +7879,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-05-04T10:00",
@@ -7892,8 +7892,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-05-11T10:00",
@@ -7905,8 +7905,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-05-18T10:00",
@@ -7918,8 +7918,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-05-25T10:00",
@@ -7931,8 +7931,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-06-01T10:00",
@@ -7944,8 +7944,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-06-08T10:00",
@@ -7957,8 +7957,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-06-15T10:00",
@@ -7970,8 +7970,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-06-22T10:00",
@@ -7983,8 +7983,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-06-29T10:00",
@@ -7996,8 +7996,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-07-06T10:00",
@@ -8009,8 +8009,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-07-13T10:00",
@@ -8022,8 +8022,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-07-20T10:00",
@@ -8035,8 +8035,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-07-27T10:00",
@@ -8048,8 +8048,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-08-03T10:00",
@@ -8061,8 +8061,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-08-10T10:00",
@@ -8074,8 +8074,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-08-17T10:00",
@@ -8087,8 +8087,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-08-24T10:00",
@@ -8100,8 +8100,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-08-31T10:00",
@@ -8113,8 +8113,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-09-07T10:00",
@@ -8126,8 +8126,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-09-14T10:00",
@@ -8139,8 +8139,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-09-21T10:00",
@@ -8152,8 +8152,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-09-28T10:00",
@@ -8165,8 +8165,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-10-05T10:00",
@@ -8178,8 +8178,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-10-12T10:00",
@@ -8191,8 +8191,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-10-19T10:00",
@@ -8204,8 +8204,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-10-26T10:00",
@@ -8217,8 +8217,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-11-02T10:00",
@@ -8230,8 +8230,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-11-09T10:00",
@@ -8243,8 +8243,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-11-16T10:00",
@@ -8256,8 +8256,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-11-23T10:00",
@@ -8269,8 +8269,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-11-30T10:00",
@@ -8282,8 +8282,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-12-07T10:00",
@@ -8295,8 +8295,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-12-14T10:00",
@@ -8308,8 +8308,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-12-21T10:00",
@@ -8321,8 +8321,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2026-12-28T10:00",
@@ -8334,8 +8334,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-01-04T10:00",
@@ -8347,8 +8347,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-01-11T10:00",
@@ -8360,8 +8360,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-01-18T10:00",
@@ -8373,8 +8373,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-01-25T10:00",
@@ -8386,8 +8386,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-02-01T10:00",
@@ -8399,8 +8399,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-02-08T10:00",
@@ -8412,8 +8412,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-02-15T10:00",
@@ -8425,8 +8425,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-02-22T10:00",
@@ -8438,8 +8438,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-planner-plan|2027-03-01T10:00",
@@ -8451,8 +8451,8 @@
         "rrule": null,
         "backgroundColor": "black",
         "borderColor": "black",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-00",
@@ -8464,8 +8464,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-01",
@@ -8477,8 +8477,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-02",
@@ -8490,8 +8490,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-03",
@@ -8503,8 +8503,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-04",
@@ -8516,8 +8516,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-05",
@@ -8529,8 +8529,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-06",
@@ -8542,8 +8542,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-07",
@@ -8555,8 +8555,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-08",
@@ -8568,8 +8568,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-09",
@@ -8581,8 +8581,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-10",
@@ -8594,8 +8594,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-11",
@@ -8607,8 +8607,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-12",
@@ -8620,8 +8620,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-13",
@@ -8633,8 +8633,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-14",
@@ -8646,8 +8646,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-15",
@@ -8659,8 +8659,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-16",
@@ -8672,8 +8672,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-17",
@@ -8685,8 +8685,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-18",
@@ -8698,8 +8698,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-19",
@@ -8711,8 +8711,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-20",
@@ -8724,8 +8724,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-21",
@@ -8737,8 +8737,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-22",
@@ -8750,8 +8750,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-23",
@@ -8763,8 +8763,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-24",
@@ -8776,8 +8776,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-25",
@@ -8789,8 +8789,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-26",
@@ -8802,8 +8802,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-27",
@@ -8815,8 +8815,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-28",
@@ -8828,8 +8828,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-29",
@@ -8841,8 +8841,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-30",
@@ -8854,8 +8854,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-31",
@@ -8867,8 +8867,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-32",
@@ -8880,8 +8880,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-33",
@@ -8893,8 +8893,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-34",
@@ -8906,8 +8906,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-35",
@@ -8919,8 +8919,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-36",
@@ -8932,8 +8932,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-37",
@@ -8945,8 +8945,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-38",
@@ -8958,8 +8958,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-39",
@@ -8971,8 +8971,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-40",
@@ -8984,8 +8984,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-41",
@@ -8997,8 +8997,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-42",
@@ -9010,8 +9010,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-43",
@@ -9023,8 +9023,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-44",
@@ -9036,8 +9036,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-45",
@@ -9049,8 +9049,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-46",
@@ -9062,8 +9062,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-47",
@@ -9075,8 +9075,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-48",
@@ -9088,8 +9088,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-49",
@@ -9101,8 +9101,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-50",
@@ -9114,8 +9114,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-51",
@@ -9127,8 +9127,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-52",
@@ -9140,8 +9140,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-53",
@@ -9153,8 +9153,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-54",
@@ -9166,8 +9166,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-55",
@@ -9179,8 +9179,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-56",
@@ -9192,8 +9192,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-57",
@@ -9205,8 +9205,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-58",
@@ -9218,8 +9218,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "sync-regen-task-59",
@@ -9231,8 +9231,8 @@
         "rrule": null,
         "backgroundColor": "#FCA5A5",
         "borderColor": "transparent",
-        "createdAt": "2026-03-02T06:00:00.000Z",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "EventExtendedProps": [
@@ -10502,8 +10502,8 @@
         "color": null,
         "locationId": null,
         "recurrenceExceptions": null,
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-template-1",
@@ -10515,8 +10515,8 @@
         "color": null,
         "locationId": "bootstrap-location-a",
         "recurrenceExceptions": null,
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-04T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-template-2",
@@ -10528,8 +10528,8 @@
         "color": "#112233",
         "locationId": null,
         "recurrenceExceptions": "{\"2026-03-07\":{\"deleted\":true}}",
-        "createdAt": "2026-01-04T09:00:00.000Z",
-        "updatedAt": "2026-01-08T09:00:00.000Z"
+        "createdAt": "2026-01-04T09:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "CategoryEvents": [
@@ -10542,8 +10542,8 @@
         "categoryTimeWindowId": "bootstrap-other-window",
         "categoryId": "bootstrap-other-category",
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-03-08",
@@ -10554,8 +10554,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-03-15",
@@ -10566,8 +10566,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-03-22",
@@ -10578,8 +10578,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-03-29",
@@ -10590,8 +10590,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-04-05",
@@ -10602,8 +10602,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-04-12",
@@ -10614,8 +10614,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-04-19",
@@ -10626,8 +10626,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-04-26",
@@ -10638,8 +10638,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-05-03",
@@ -10650,8 +10650,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-05-10",
@@ -10662,8 +10662,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-05-17",
@@ -10674,8 +10674,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-05-24",
@@ -10686,8 +10686,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-05-31",
@@ -10698,8 +10698,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-06-07",
@@ -10710,8 +10710,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-06-14",
@@ -10722,8 +10722,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-06-21",
@@ -10734,8 +10734,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-06-28",
@@ -10746,8 +10746,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-07-05",
@@ -10758,8 +10758,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-07-12",
@@ -10770,8 +10770,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-07-19",
@@ -10782,8 +10782,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-07-26",
@@ -10794,8 +10794,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-08-02",
@@ -10806,8 +10806,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-08-09",
@@ -10818,8 +10818,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-08-16",
@@ -10830,8 +10830,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-08-23",
@@ -10842,8 +10842,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-08-30",
@@ -10854,8 +10854,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-1|2026-09-06",
@@ -10866,8 +10866,8 @@
         "categoryTimeWindowId": "bootstrap-window-1",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-03-07",
@@ -10878,8 +10878,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-03-14",
@@ -10890,8 +10890,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-03-21",
@@ -10902,8 +10902,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-03-28",
@@ -10914,8 +10914,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-04-04",
@@ -10926,8 +10926,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-04-11",
@@ -10938,8 +10938,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-04-18",
@@ -10950,8 +10950,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-04-25",
@@ -10962,8 +10962,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-05-02",
@@ -10974,8 +10974,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-05-09",
@@ -10986,8 +10986,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-05-16",
@@ -10998,8 +10998,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-05-23",
@@ -11010,8 +11010,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-05-30",
@@ -11022,8 +11022,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-06-06",
@@ -11034,8 +11034,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-06-13",
@@ -11046,8 +11046,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-06-20",
@@ -11058,8 +11058,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-06-27",
@@ -11070,8 +11070,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-07-04",
@@ -11082,8 +11082,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-07-11",
@@ -11094,8 +11094,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-07-18",
@@ -11106,8 +11106,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-07-25",
@@ -11118,8 +11118,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-08-01",
@@ -11130,8 +11130,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-08-08",
@@ -11142,8 +11142,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-08-15",
@@ -11154,8 +11154,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-08-22",
@@ -11166,8 +11166,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-08-29",
@@ -11178,8 +11178,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-window-2|2026-09-05",
@@ -11190,8 +11190,8 @@
         "categoryTimeWindowId": "bootstrap-window-2",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "TravelEvents": [
@@ -11206,8 +11206,8 @@
         "insufficientTravel": false,
         "overconstrained": false,
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "EngineMessages": [
@@ -11221,8 +11221,8 @@
         },
         "dismissed": false,
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "TASK_UNSCHEDULABLE::bootstrap-planner-goal|INVALID_TASK",
@@ -11235,8 +11235,8 @@
         },
         "dismissed": false,
         "userId": "bootstrap-user",
-        "createdAt": "<column default>",
-        "updatedAt": "2026-03-02T06:00:00.000Z"
+        "createdAt": "2026-03-02T06:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-message",
@@ -11245,8 +11245,8 @@
         "payload": {},
         "dismissed": false,
         "userId": "bootstrap-other",
-        "createdAt": "2026-03-01T12:00:00.000Z",
-        "updatedAt": "2026-03-01T12:00:00.000Z"
+        "createdAt": "2026-03-01T12:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "Queues": [
@@ -11257,8 +11257,8 @@
         "color": null,
         "categoryId": null,
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-queue-1",
@@ -11267,8 +11267,8 @@
         "color": "#445566",
         "categoryId": "bootstrap-category-a",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-queue-2",
@@ -11277,8 +11277,8 @@
         "color": null,
         "categoryId": null,
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "QueueMembers": [
@@ -11288,8 +11288,8 @@
         "queueId": "bootstrap-queue-1",
         "plannerId": "bootstrap-planner-goal",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-member-2",
@@ -11297,8 +11297,8 @@
         "queueId": "bootstrap-queue-1",
         "plannerId": "bootstrap-planner-plan",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       },
       {
         "id": "bootstrap-other-member",
@@ -11306,8 +11306,8 @@
         "queueId": "bootstrap-other-queue",
         "plannerId": "bootstrap-other-planner",
         "userId": "bootstrap-other",
-        "createdAt": "2026-01-12T10:00:00.000Z",
-        "updatedAt": "2026-01-12T10:00:00.000Z"
+        "createdAt": "2026-01-12T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ],
     "PlannerDependencies": [
@@ -11316,8 +11316,8 @@
         "predecessorId": "bootstrap-planner-plan",
         "successorId": "bootstrap-planner-goal",
         "userId": "bootstrap-user",
-        "createdAt": "2026-01-13T10:00:00.000Z",
-        "updatedAt": "2026-01-13T10:00:00.000Z"
+        "createdAt": "2026-01-13T10:00:00",
+        "updatedAt": "<db-owned>"
       }
     ]
   }

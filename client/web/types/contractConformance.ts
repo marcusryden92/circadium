@@ -1,6 +1,6 @@
 // Type-only conformance: proves the hand-declared @circadium/shared contracts
-// stay faithful to the generated Prisma payloads (and the live action/diff
-// signatures) while both systems coexist. Nothing here emits runtime code — it
+// stay faithful to the generated Prisma payloads (and the live diff signature)
+// while both systems coexist. Nothing here emits runtime code — it
 // exists purely so `tsc --noEmit` fails the moment the two drift (e.g. renaming
 // a Prisma enum member, or adding a column without updating the contract).
 //
@@ -24,8 +24,6 @@ import type {
   SerializedLocation,
   SerializedTravelTime,
 } from "@/redux/slices/schedulingSettingsSlice";
-import type { FreshState } from "@/actions/calendar-actions/fetchFreshState";
-import type { SyncResponse } from "@/actions/calendar-actions/syncCalendarData";
 
 // Enums — a renamed Prisma member changes its union and fails these.
 type _PlannerType = Expect<Equal<c.PlannerType, PrismaPlannerType>>;
@@ -91,7 +89,7 @@ type _FeedbackReport = Expect<Conforms<c.FeedbackReport, web.FeedbackReport>>;
 type _Suggestion = Expect<Conforms<c.Suggestion, web.Suggestion>>;
 type _SuggestionVote = Expect<Conforms<c.SuggestionVote, web.SuggestionVote>>;
 
-// Wire types — conform against the live diff + action signatures.
+// Wire types — conform against the live diff and Redux-serialized shapes.
 type _SerializedLocation = Expect<
   Conforms<c.SerializedLocation, SerializedLocation>
 >;
@@ -99,5 +97,3 @@ type _SerializedTravelTime = Expect<
   Conforms<c.SerializedTravelTime, SerializedTravelTime>
 >;
 type _DatabaseChanges = Expect<Conforms<c.DatabaseChanges, DatabaseChanges>>;
-type _BootstrapPayload = Expect<Conforms<c.BootstrapPayload, FreshState>>;
-type _SyncResponse = Expect<Conforms<c.SyncResponse, SyncResponse>>;

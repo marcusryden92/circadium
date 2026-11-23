@@ -29,8 +29,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /**
  * {@code GET /calendar/bootstrap} against the golden fixture: {@code bootstrap-expected.json} is what the web's own
- * {@code fetchFreshState} returned for {@code bootstrap-seed.sql} (recaptured by the web's
- * {@code fixture:bootstrap} script whenever the seed changes).
+ * {@code fetchFreshState} returned for {@code bootstrap-seed.sql}; the web capture was retired (plan 1.13) and the
+ * fixture is now a frozen Java resource, regenerated Java-side when the seed changes.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

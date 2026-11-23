@@ -83,12 +83,7 @@
   │   ├── feedback.ts                   # Support messages (FeedbackReport rows + Resend notification to support@circadium.app; optional exportUserData snapshot stored ON the row, never emailed) + suggestion wall list/create/vote/delete — direct actions, outside the OCC diff sync
   │   ├── adminFeedback.ts              # ADMIN-gated report surface: list (snapshot presence via an id-only second query — blobs never ride the list), get snapshot blob, clear snapshot, delete report
   │   ├── dataExport.ts                 # GDPR export — exportUserData() serializes the whole account to one JSON blob (secrets excluded)
-  │   ├── dataImport.ts                 # GDPR import/restore — importUserData(payload, "replace"|"add"): replace preserves ids (DB-migration restore), add remaps every id
-  │   └── calendar-actions/
-  │       ├── fetchCalendarData.ts      # Initial load when NEXT_PUBLIC_CALENDAR_BACKEND is not "java" — returns planner/calendar/template/categories/categoryEvents/travelEvents/engineMessages/queues/dependencies + dataVersion
-  │       ├── fetchFreshState.ts        # Used on stale-version recovery (server-action path only)
-  │       ├── syncCalendarData.ts       # OCC-gated transactional diff sync (server-action path only; Java's POST /calendar/sync otherwise)
-  │       └── sync-handlers/            # One handler per table (planner, calendar, extendedProps, template, category, timeWindow, categoryEvent, travelEvent, engineMessage, queue, queueMember, dependency, location, travelTime)
+  │   └── dataImport.ts                 # GDPR import/restore — importUserData(payload, "replace"|"add"): replace preserves ids (DB-migration restore), add remaps every id
   │
   ├── components/
   │   ├── auth/                         # AuthCard, the auth forms (post to Java via lib/api/auth), Social (the provider buttons from NEXT_PUBLIC_OAUTH_PROVIDERS; starts a sign-in with a PKCE verifier), OAuthComplete (redeems the handoff code, or shows the "check your email" step), OAuthConfirm (the emailed link after a first Microsoft sign-in: creates the account on a button press, then offers the provider sign-in), LoginButton
@@ -123,8 +118,8 @@
   │
   ├── hooks/
   │   ├── useCurrentUser, useCurrentRole
-  │   ├── useFetchCalendarData          # Initial Redux seed: Java's GET /calendar/bootstrap or the fetchCalendarData action, per lib/calendarBackend
-  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback; the transport is Java's POST /calendar/sync or the syncCalendarData action, per lib/calendarBackend. Also owns the realtime catch-up (lib/calendarRealtime, java backend + NEXT_PUBLIC_CALENDAR_REALTIME): a WebSocket pushes dataVersion changes, and a behind tab fetches the bootstrap and adopts it (the stale-adoption path)
+  │   ├── useFetchCalendarData          # Initial Redux seed from Java's GET /calendar/bootstrap
+  │   ├── useCalendarServerSync         # Diff-based sync to DB with OCC, stale recovery, rollback; the transport is Java's POST /calendar/sync. Also owns the realtime catch-up (lib/calendarRealtime, NEXT_PUBLIC_CALENDAR_REALTIME): a WebSocket pushes dataVersion changes, and a behind tab fetches the bootstrap and adopts it (the stale-adoption path)
   │   ├── useCalendarStateActions       # updatePlannerArray / updateTemplateArray / updateAll
   │   ├── useManuallyRefreshCalendar    # User-triggered regen
   │   ├── useViewStatePersistence       # Load-once + debounced-save for a canvas page's UserViewState blob (graph/mindmap)
@@ -141,7 +136,6 @@
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
   │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401; ApiError.problem keeps the whole error body), auth.ts (account endpoints), calendar.ts (bootstrap + the sync transport: 200 → success, 409 stale → freshState, other answers → error/rollback, no answer or a 502/503/504 → throw/retry), errorMessage.ts (describeApiError)
-  │   ├── calendarBackend.ts            # NEXT_PUBLIC_CALENDAR_BACKEND: "java" routes the calendar's load and sync to the Java API; unset keeps the server actions (build-time inlined — a change needs a redeploy)
   │   ├── calendarRealtime.ts           # NEXT_PUBLIC_CALENDAR_REALTIME: "on" opens the realtime WebSocket (wss from the API origin) for cross-session catch-up; unset keeps HTTP sync as the only channel (java backend only; build-time inlined)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
@@ -208,7 +202,7 @@
   ├── utils/
   │   ├── calendar-generation/          # The scheduling engine — see deep-dive doc
   │   ├── calendar-rendering/           # categoryEventsToEventInput, templatesToEventInput, travelEventsToEventInput, externalEventsToEventInput (DB rows → FullCalendar input; external is a read-only overlay, all-day rows skipped, busy-ness resolved via isExternalEventBusy)
-  │   ├── server-handlers/              # compareCalendarData (the diff that feeds syncCalendarData)
+  │   ├── server-handlers/              # compareCalendarData (the diff that feeds POST /calendar/sync)
   │   ├── template-handlers/, datetime/, locations/, goal-handlers/
   │   ├── assert/                       # assert.ts (+ assert.js in tsconfig include)
   │   ├── renderEngineMessage.ts        # Maps persisted EngineMessage rows into console-friendly {tag, tone, title, body, goToDate}
@@ -233,7 +227,6 @@
   ├── __tests__/
   │   ├── calendar-generation/          # Engine regression tests + fixtures/ (trimmed live-data snapshots)
   │   ├── calendar/                     # WeekStructureModal overnight window handling
-  │   ├── contracts/                    # captureBootstrapFixture: writes the Java bootstrap endpoint's golden fixture from fetchFreshState (skipped unless CAPTURE_BOOTSTRAP_FIXTURE; `pnpm fixture:bootstrap` with the dev DB up). captureSyncCorpus: runs scripted edits through compareData + syncCalendarData on the same seed and records each diff, response and resulting rows as the Java sync endpoint's golden corpus (skipped unless CAPTURE_SYNC_CORPUS; `pnpm fixture:sync`). Recapture after changing a sync handler, compareData, or the seed
   │   ├── dashboard/                    # buildTodayAgenda (occurrence-tile completion resolution)
   │   ├── draft/                        # Assistant draft-domain unit tests (forest/templates/windows/precedence ops + applies + diffs + node-edge safety + the recurrence contract)
   │   ├── draggable/                    # Touch drop-target resolution (TOP_BAND/BOTTOM_BAND)
@@ -327,7 +320,7 @@
 
   ### Detour (goal-as-subtask link)
 
-  A **detour** splices one goal/task's work *inside* another goal's sequence (interleaving, unlike a plain dependency). Data model: one nullable column `Planner.linkedItemId` (self-FK, `onDelete: SetNull`) on a **placeholder subtask** — a normal subtask that, once linked, becomes a **redirect**: the engine splices the linked *target* root's leaves in at that position and ignores the placeholder's own duration (children added under a placeholder still schedule, after the splice). The scalar is the whole model; the columns ride the existing planner sync/diff/spread-preserve machinery ([plannerHandlers.ts](actions/calendar-actions/sync-handlers/plannerHandlers.ts) bulk-update column list) with no new plumbing.
+  A **detour** splices one goal/task's work *inside* another goal's sequence (interleaving, unlike a plain dependency). Data model: one nullable column `Planner.linkedItemId` (self-FK, `onDelete: SetNull`) on a **placeholder subtask** — a normal subtask that, once linked, becomes a **redirect**: the engine splices the linked *target* root's leaves in at that position and ignores the placeholder's own duration (children added under a placeholder still schedule, after the splice). The scalar is the whole model; the columns ride the existing planner sync/diff/spread-preserve machinery (the shared planner diff carried by `POST /calendar/sync`) with no new plumbing.
 
   - **Engine.** The scheduler is flat-order (see the engine summary): candidate roots are flattened to a single leaf pool. [getScheduledLeafSequence](utils/goalPageHandlers.ts) is the detour-aware DFS enumerator (a `linkedItemId` node redirects into the target's sequence, deduped + cycle-guarded; a TASK entry — walk root or redirect target — stands for its own block, its children being independent candidates); the SCHEDULER uses it, structural walks (`getTreeBottomLayer` / deletion / counts) never follow links. The splice is **transparent for unready or completed targets** (readiness is the universal gate; completed work never reschedules) — the host chain flows through the placeholder, and an unready target that is also a dependency predecessor still surfaces the loud `DEPENDENCY_BROKEN(unready)` fallback. [buildLeafGraph](utils/calendar-generation/helpers/Scheduler/buildLeafGraph.ts) turns each candidate's spliced sequence into consecutive-pair chain edges — one construct that encodes goal-internal chaining, detour splices, AND **multi-reference** (a target referenced from several placeholders lives once in the pool with chain predecessors from all of them). Targets spliced by an ACTIVE candidate are excluded from independent candidacy ([prepareCandidates](utils/calendar-generation/helpers/CalendarGenerator/prepareCandidates.ts) collects the followed set from the enumerator walks) — a target whose every host is completed/unready/inactive schedules independently; an actively spliced target's own root-level outcome is still tracked (it may be a queue/dependency endpoint). Day caps apply per capped root the leaf belongs to (host + target): budgets compose pointwise-min over the caps the block FITS, every placement charges every ledger, and a block bigger than one goal's cap is `oversizedLeaf` for that goal only while the others keep steering. Leaf-level priority inheritance means a host's *before*-leaves inherit the spliced target's score while *after*-leaves don't. Deliberate v1 semantics: the host's `earliestStartDate`/`allowedTimes` do NOT reach spliced leaves (constraints resolve over the structural parent chain; the target's own constraints bind) — the day cap is the one host property that composes across the link.
   - **Validation + pruning.** Authoring rules in [utils/precedence/detourLinks.ts](utils/precedence/detourLinks.ts) (`canLinkAsDetour` / `wouldCreateDetourCycle` / `isValidDetourTarget`): target must be a triaged root task/goal, not self, no detour cycle, and no queue/dependency path connecting host and target in either direction (the splice makes them mutually ordered — such a pair would deadlock at runtime). Detour links join the queue/dependency cycle validators via **component contraction** ([validationEdges.ts](utils/precedence/validationEdges.ts) `detourComponentMap` + `contractPrecedenceEdges`): host and spliced target are one node for legality, so dependency adds, queue member adds/reorders ([findCycle.ts](utils/precedence/findCycle.ts) wrappers take the planner array), and the assistant's save-time defense ([applyDraftPrecedence](utils/draft/applyDraftPrecedence.ts)) all refuse edges that connect a detour component to itself. The engine additionally force-fails deadlocked gates from stale contradictory data instead of burning its expansion budget. Central pruning `prunePlannerDetours` ([prunePrecedenceInputs.ts](utils/precedence/prunePrecedenceInputs.ts), run in the thunk) clears a stale `linkedItemId` (deleted/nested/untriaged target) so the sync transaction never writes a link to an about-to-be-deleted row.
@@ -730,10 +723,10 @@
   ## State & data flow
 
   ```
-              GET /calendar/bootstrap or fetchCalendarData (initial)
+                    GET /calendar/bootstrap (initial)
                                     │
                                     ▼
-    server actions ◄──── Redux (calendarSourceSlice, engineOutputSlice, schedulingSettingsSlice, userSlice)
+    POST /calendar/sync ◄──── Redux (calendarSourceSlice, engineOutputSlice, schedulingSettingsSlice, userSlice)
                                     ▲
                                     │ dispatch
                                     │
@@ -766,10 +759,9 @@
   - **Event identity is stable across regens** ([stabilizeEvent](utils/calendar-generation/helpers/EventAssembler/stabilizeEvent.ts)): builders reuse the previous emit's `extendedProps.id`/`createdAt` and return the previous object when nothing changed, so an idle regen produces an empty diff. Do not reintroduce per-regen uuids/timestamps in event builders — every non-empty sync bumps the OCC `dataVersion`, and constant churn makes a second open window's syncs permanently stale (its edits get discarded by `adoptFreshServerState`). Plans are never memoized from `previousCalendar` for the same reason a `starts` drag must always re-derive them.
   - **Planner tree walks are memoized per array** — `getTreeBottomLayer` / `getSortedTreeBottomLayer` in [utils/goalPageHandlers.ts](utils/goalPageHandlers.ts) share a `WeakMap` index keyed on the planner-array reference (children sorted by `sortOrder` at build time + bottom-layer cache). Safe because planner updates are immutable everywhere; never mutate a planner array in place or the cache serves stale trees.
   - **CalendarProvider** ([context/CalendarProvider.tsx](context/CalendarProvider.tsx)) — owns the data context, fires regen on `bufferTimeMinutes` change, fires a one-time "cold-load autoregen" when categories/locations exist but no engine output materialized yet (see the inline comment for the conditions). It exposes `isLoaded` (true once the initial snapshot has hydrated Redux): consumers that commit against prev-state — onboarding is the archetype — must gate on it, because an update dispatched before hydration is wholesale-replaced when the fetch lands.
-  - **Sync** uses **optimistic concurrency control** via `User.dataVersion`. The client sends the version it knows; if the DB has moved on, the transaction aborts and the client adopts a fresh snapshot wholesale. Partial application across a DAG-shaped dataset is unsafe. With `NEXT_PUBLIC_CALENDAR_BACKEND=java` both the initial load and the sync go to the Java API ([lib/api/calendar.ts](lib/api/calendar.ts)); the transport resolves with an outcome for every answer the API gives and throws only when there was none (network failure, or a 502/503/504 from the host's proxy), the one case the shared sync loop retries — a rejected diff fails the same way every time, and a replay of a sync that did commit comes back stale.
+  - **Sync** uses **optimistic concurrency control** via `User.dataVersion`. The client sends the version it knows; if the DB has moved on, the transaction aborts and the client adopts a fresh snapshot wholesale. Partial application across a DAG-shaped dataset is unsafe. Both the initial load and the sync go to the Java API ([lib/api/calendar.ts](lib/api/calendar.ts)); the transport resolves with an outcome for every answer the API gives and throws only when there was none (network failure, or a 502/503/504 from the host's proxy), the one case the shared sync loop retries — a rejected diff fails the same way every time, and a replay of a sync that did commit comes back stale.
   - **CategoryEvent**, **TravelEvent**, and **EngineMessage** are all written by the engine on every regen but use **deterministic IDs**, so the diff lands as creates/deletes only when an actual placement shifted (or, for EngineMessage, only when the underlying situation changed or the user flipped `dismissed`). Don't switch them to autogenerated IDs.
-  - The 60-second transaction timeout in `syncCalendarData` exists because the first regen after a fresh load runs hundreds of writes on top of the usual diff.
-  - **Sync-handler update paths use bulk raw SQL** ([actions/calendar-actions/sync-handlers/bulkUpdate.ts](actions/calendar-actions/sync-handlers/bulkUpdate.ts)) — a single `UPDATE ... FROM (VALUES ...)` per table via `$executeRawUnsafe`, regardless of row count. Prisma's `updateMany` only supports "same values for all matched rows", so per-row updates would otherwise turn into N sequential round-trips inside the interactive transaction (multiplied out by the OCC guard that forces interactive form). ExtendedProps uses `INSERT ... ON CONFLICT (eventId) DO UPDATE`. CategoryEvent and TravelEvent are already collapsed to `deleteMany + createMany` because the rows are engine-derived — don't rework those to bulk update. Ghost-id safety (no P2025 on missing rows) is preserved by the WHERE join in the bulk statement.
+  - The first regen after a fresh load runs hundreds of writes on top of the usual diff, which is why the Java sync (`POST /calendar/sync`) applies the whole batch in one transaction.
 
   ---
 
@@ -874,7 +866,7 @@
 
   - Every server action verifies the session first and scopes queries by `userId`.
   - Direct mutations (Location create, travel-time refresh) that bypass the diff path must call `markSynced(kind, current)` on the sync hook afterward, or the next diff will treat them as missing-on-server.
-  - Mutations that need to touch many tables go through `syncCalendarData` (transactional, OCC-gated). Single-row direct edits (categories, locations) live in their own action files.
+  - Mutations that need to touch many tables go through the Java sync (`POST /calendar/sync`, transactional, OCC-gated). Single-row direct edits (categories, locations) live in their own action files.
   - **External-calendar** actions ([actions/externalCalendars.ts](actions/externalCalendars.ts), [actions/googleCalendar.ts](actions/googleCalendar.ts)) are a third direct-mutation variant: they mutate directly and mirror results into the `externalCalendar` Redux slice rather than calling `markSynced` — they live entirely outside the OCC diff sync (never bump `dataVersion`).
 
   ### Data export / import (GDPR)
@@ -966,7 +958,6 @@
   NEXT_PUBLIC_API_URL=""              # Java API origin, also the JWT issuer (local default http://localhost:8080; required in production builds)
   AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; staging __Secure-circadium_staging_access, prod __Secure-circadium_access; required in production builds)
   NEXT_PUBLIC_OAUTH_PROVIDERS=""      # Sign-in buttons, comma-separated (default google,microsoft,apple); must match the API's OAUTH_PROVIDERS
-  NEXT_PUBLIC_CALENDAR_BACKEND=""     # "java": the calendar loads and syncs through the Java API; unset: the server actions (see lib/calendarBackend.ts)
   NEXT_PUBLIC_CALENDAR_REALTIME=""    # "on": open a WebSocket to the Java API so a user's other sessions update live; unset: HTTP sync only (java backend only; see lib/calendarRealtime.ts)
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes

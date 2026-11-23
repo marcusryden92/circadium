@@ -29,27 +29,12 @@ import {
   type SyncSnapshot,
 } from "@circadium/shared/sync/syncLoop";
 import { createRealtimeClient } from "@circadium/shared/sync/realtimeClient";
-import type { SyncTransport } from "@circadium/shared/sync/compareCalendarData";
 import type { BootstrapPayload } from "@circadium/shared/contracts";
-import { syncCalendarData } from "@/actions/calendar-actions/syncCalendarData";
 import { syncCalendarChanges, fetchCalendarBootstrap } from "@/lib/api/calendar";
-import { calendarBackend } from "@/lib/calendarBackend";
 import {
   calendarRealtimeEnabled,
   calendarRealtimeUrl,
 } from "@/lib/calendarRealtime";
-import { ensureFreshSession } from "@/lib/session/refresh";
-
-// A server action cannot refresh the access cookie itself, and the first sync
-// after a tab wakes can run before the session keeper catches up. The Java
-// call refreshes the cookie on its own (apiRequest), and retries once on a 401.
-const actionTransport: SyncTransport = async (
-  changes,
-  clientKnownDataVersion,
-) => {
-  await ensureFreshSession();
-  return syncCalendarData(changes, clientKnownDataVersion);
-};
 
 const useCalendarServerSync = (
   userId: string | undefined,
@@ -74,7 +59,7 @@ const useCalendarServerSync = (
   const previousTravelTimes = useRef<SerializedTravelTime[]>([]);
   // OCC token. Every successful sync bumps the server-side User.dataVersion
   // by 1; we send the version we think is current and the server rejects the
-  // sync if it has moved on. Seeded by initializeState from fetchCalendarData.
+  // sync if it has moved on. Seeded by initializeState from the bootstrap.
   const knownDataVersion = useRef<number>(0);
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -284,8 +269,7 @@ const useCalendarServerSync = (
   const loopRef = useRef<SyncLoop | null>(null);
   if (!loopRef.current) {
     loopRef.current = createSyncLoop({
-      transport:
-        calendarBackend() === "java" ? syncCalendarChanges : actionTransport,
+      transport: syncCalendarChanges,
       getSnapshot: () => latestStateRef.current,
       getBaseline: () => ({
         planner: previousPlanner.current,
@@ -380,14 +364,14 @@ const useCalendarServerSync = (
 
   // Realtime catch-up: when another session commits, the Java API pushes the
   // new dataVersion over a WebSocket, and a tab that's behind fetches the fresh
-  // snapshot and adopts it — the same wholesale path a stale sync takes. Only
-  // on the Java backend, behind its own flag, and never while impersonating.
+  // snapshot and adopts it — the same wholesale path a stale sync takes.
+  // Behind its own flag, and never while impersonating.
   // Correctness never depends on the socket: the HTTP sync loop is unchanged,
   // so a dropped or disabled channel just means a passive tab updates on its
   // next edit instead of instantly.
   useEffect(() => {
     if (disabled || !isInitialized || !userId) return;
-    if (calendarBackend() !== "java" || !calendarRealtimeEnabled()) return;
+    if (!calendarRealtimeEnabled()) return;
     const url = calendarRealtimeUrl();
 
     const client = createRealtimeClient({

@@ -293,7 +293,7 @@ interface BuildContext {
   siblingIndex: number;
   color: string;
   userId: string;
-  timestamp: string;
+  timestamp: Date;
   out: Planner[];
 }
 
@@ -365,7 +365,7 @@ const buildNode = (node: SeedNode, ctx: BuildContext): number => {
  * top-level sortOrder is 0 (root order is non-semantic).
  */
 export const generatePlanners = (userId: string): Planner[] => {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date();
   const now = Date.now();
   const out: Planner[] = [];
 

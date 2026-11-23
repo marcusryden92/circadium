@@ -44,8 +44,8 @@ model Category {
   // Queues inheriting this category as their members' default (back-reference)
   queues Queue[]
 
-  createdAt String @default(dbgenerated("(now())::text"))
-  updatedAt String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@index([userId])
   @@map("Categories")
@@ -108,8 +108,8 @@ model CategoryEvent {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
-  updatedAt String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@index([userId])
   @@map("CategoryEvents")

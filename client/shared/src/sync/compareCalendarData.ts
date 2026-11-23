@@ -125,6 +125,18 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
     travelTime: { create: [], update: [], destroy: [] },
   };
 
+  // createdAt/updatedAt are never a content change: createdAt is a write-once
+  // anchor and updatedAt is DB-owned audit. Strip both before every content
+  // compare so a timestamp-only delta never reads as an edit and dataVersion
+  // stays the sole sync token. The full row (timestamps included) is still what
+  // gets pushed; only the equality check ignores them.
+  const stripDbMetadata = <T extends { createdAt?: string; updatedAt?: string }>(
+    e: T,
+  ) => {
+    const { createdAt: _c, updatedAt: _u, ...rest } = e;
+    return rest;
+  };
+
   // Check planner changes
   const plannerMap = new Map(
     plannerGroup.current.map((planner) => [planner.id, planner]),
@@ -138,7 +150,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
     const prevItem = prevPlanMap.get(item.id);
     if (!prevItem) {
       databaseChanges.planner.create.push(item);
-    } else if (!objectsAreEqual(prevItem, item)) {
+    } else if (!objectsAreEqual(stripDbMetadata(prevItem), stripDbMetadata(item))) {
       databaseChanges.planner.update.push(item);
     }
   });
@@ -178,7 +190,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       return;
     }
 
-    if (!objectsAreEqual(prevEvent, event)) {
+    if (!objectsAreEqual(stripDbMetadata(prevEvent), stripDbMetadata(event))) {
       const { extendedProps: _extendedProps, ...eventCore } = event;
       databaseChanges.calendar.update.push(eventCore as CalendarChange);
     }
@@ -218,7 +230,9 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       const prevTemplate = prevTempMap.get(template.id);
       if (!prevTemplate) {
         databaseChanges.template.create.push(template);
-      } else if (!objectsAreEqual(prevTemplate, template)) {
+      } else if (
+        !objectsAreEqual(stripDbMetadata(prevTemplate), stripDbMetadata(template))
+      ) {
         databaseChanges.template.update.push(template);
       }
     });
@@ -248,7 +262,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       const prev = prevByCategory.get(id);
       if (!prev) {
         databaseChanges.category.create.push(cat);
-      } else if (!objectsAreEqual(prev, cat)) {
+      } else if (!objectsAreEqual(stripDbMetadata(prev), stripDbMetadata(cat))) {
         databaseChanges.category.update.push(cat);
       }
     });
@@ -302,7 +316,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       const prev = prevByQueue.get(id);
       if (!prev) {
         databaseChanges.queue.create.push(queue);
-      } else if (!objectsAreEqual(prev, queue)) {
+      } else if (!objectsAreEqual(stripDbMetadata(prev), stripDbMetadata(queue))) {
         databaseChanges.queue.update.push(queue);
       }
     });
@@ -320,7 +334,9 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       const prev = prevMemberMap.get(id);
       if (!prev) {
         databaseChanges.queueMember.create.push(member);
-      } else if (!objectsAreEqual(prev, member)) {
+      } else if (
+        !objectsAreEqual(stripDbMetadata(prev), stripDbMetadata(member))
+      ) {
         databaseChanges.queueMember.update.push(member);
       }
     });
@@ -351,17 +367,6 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       }
     });
   }
-
-  // Engine emits empty createdAt/updatedAt; DB owns those fields. Strip on
-  // both sides so engine output and DB-loaded rows compare cleanly.
-  const stripDbMetadata = <
-    T extends { createdAt?: string; updatedAt?: string },
-  >(
-    e: T,
-  ) => {
-    const { createdAt: _c, updatedAt: _u, ...rest } = e;
-    return rest;
-  };
 
   if (categoryEventsGroup) {
     const currByEvent = new Map(

@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,8 +44,8 @@ class QueueRepositoryTest {
         queue.setTitle("Morning routine");
         queue.setSortOrder(2);
         queue.setUserId(userId);
-        queue.setCreatedAt("2026-11-16T08:00:00.000Z");
-        queue.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        queue.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        queue.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         queueRepository.saveAndFlush(queue);
         entityManager.clear();

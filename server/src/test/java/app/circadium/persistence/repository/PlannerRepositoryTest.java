@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,8 +51,8 @@ class PlannerRepositoryTest {
         planner.setPriority(4);
         planner.setUserId(userId);
         planner.setUseParentLocation(false);
-        planner.setCreatedAt("2026-11-16T10:00:00.000Z");
-        planner.setUpdatedAt("2026-11-16T10:00:00.000Z");
+        planner.setCreatedAt(Instant.parse("2026-11-16T10:00:00.000Z"));
+        planner.setUpdatedAt(Instant.parse("2026-11-16T10:00:00.000Z"));
 
         plannerRepository.saveAndFlush(planner);
         entityManager.clear();

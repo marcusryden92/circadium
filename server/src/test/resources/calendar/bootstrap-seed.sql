@@ -1,8 +1,7 @@
--- The calendar state behind bootstrap-expected.json. Both sides read it: the web's
--- captureBootstrapFixture test (which writes the expected JSON from the TS fetcher) and
--- CalendarBootstrapIntegrationTest (which compares the Java endpoint against it). Change this
--- file, then recapture: `pnpm --filter web fixture:bootstrap` from client/ with the dev
--- database running.
+-- The calendar state behind bootstrap-expected.json. The expected JSON was captured from the web's
+-- original fetcher before it was retired (plan 1.13); CalendarBootstrapIntegrationTest now compares
+-- the Java endpoint against it. Regenerating the fixture after changing this file is now done
+-- Java-side.
 --
 -- Rows cover the shapes that could drift: nulls next to values, a fractional sortOrder, an
 -- event without extendedProps and one whose plannerType is null, both ends of the weekday
