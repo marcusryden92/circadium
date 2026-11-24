@@ -5,8 +5,11 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
+import static app.circadium.calendar.CalendarContracts.iso;
+
 import app.circadium.auth.AccountFlowException;
 import app.circadium.calendar.CalendarContracts.BootstrapPayload;
+import app.circadium.calendar.CalendarContracts.SchedulingPreferences;
 import app.circadium.calendar.CalendarContracts.SerializedLocation;
 import app.circadium.calendar.CalendarContracts.SerializedTravelTime;
 import app.circadium.persistence.entity.Category;
@@ -23,6 +26,7 @@ import app.circadium.persistence.entity.QueueMember;
 import app.circadium.persistence.entity.SimpleEvent;
 import app.circadium.persistence.entity.TravelEvent;
 import app.circadium.persistence.entity.TravelTime;
+import app.circadium.persistence.entity.UserSchedulingPreferences;
 import app.circadium.persistence.enums.WeekDayType;
 import app.circadium.persistence.repository.CategoryEventRepository;
 import app.circadium.persistence.repository.CategoryRepository;
@@ -39,9 +43,7 @@ import app.circadium.persistence.repository.SimpleEventRepository;
 import app.circadium.persistence.repository.TravelEventRepository;
 import app.circadium.persistence.repository.TravelTimeRepository;
 import app.circadium.persistence.repository.UserRepository;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import app.circadium.persistence.repository.UserSchedulingPreferencesRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -72,6 +74,7 @@ public class CalendarBootstrapService {
     private final PlannerDependencyRepository dependencyRepository;
     private final LocationRepository locationRepository;
     private final TravelTimeRepository travelTimeRepository;
+    private final UserSchedulingPreferencesRepository schedulingPreferencesRepository;
 
     /**
      * Every query runs in one repeatable-read snapshot, so {@code dataVersion} describes exactly the rows returned.
@@ -115,19 +118,18 @@ public class CalendarBootstrapService {
                         queue -> toWire(queue, membersByQueue.getOrDefault(queue.getId(), List.of()))),
                 map(dependencyRepository.findByUserIdOrderById(userId), CalendarBootstrapService::toWire),
                 map(locationRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId), CalendarBootstrapService::toWire),
-                map(travelTimeRepository.findByUserIdOrderById(userId), CalendarBootstrapService::toWire));
+                map(travelTimeRepository.findByUserIdOrderById(userId), CalendarBootstrapService::toWire),
+                schedulingPreferencesRepository.findByUserId(userId)
+                        .map(CalendarBootstrapService::toWire)
+                        .orElse(SchedulingPreferencesService.MISSING_ROW_DEFAULTS));
     }
 
     private static <T, R> List<R> map(List<T> rows, Function<T, R> mapper) {
         return rows.stream().map(mapper).toList();
     }
 
-    /** JavaScript's toISOString() shape (the createdAt/updatedAt wire contract): three fractional digits + Z. */
-    private static final DateTimeFormatter ISO_MILLIS =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
-
-    private static String iso(Instant instant) {
-        return instant == null ? null : ISO_MILLIS.format(instant);
+    static SchedulingPreferences toWire(UserSchedulingPreferences p) {
+        return new SchedulingPreferences(p.getBufferTimeMinutes(), p.getDefaultTransportMode(), p.getWeekStartDay());
     }
 
     private static CalendarContracts.Planner toWire(Planner p) {

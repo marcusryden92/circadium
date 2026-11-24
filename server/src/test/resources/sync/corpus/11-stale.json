@@ -110,6 +110,11 @@
     "success": false,
     "reason": "stale",
     "freshState": {
+      "schedulingPreferences": {
+        "bufferTimeMinutes": 15,
+        "defaultTransportMode": "TRANSIT",
+        "weekStartDay": 0
+      },
       "dataVersion": 7,
       "planner": [
         {

@@ -109,7 +109,7 @@ CREATE TABLE "HabitCompletions" (
     "occurrenceKey" TEXT NOT NULL,
     "start" TEXT NOT NULL,
     "end" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HabitCompletions_pkey" PRIMARY KEY ("id")
 );

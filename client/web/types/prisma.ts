@@ -155,8 +155,12 @@ export type ExternalCalendarSource = Omit<
 
 export type ExternalEvent = Prisma.ExternalEventGetPayload<undefined>;
 
-export type OccurrenceCompletion =
-  Prisma.OccurrenceCompletionGetPayload<undefined>;
+// createdAt migrated TEXT -> timestamp(3) when its writes moved to Java (plan
+// 2.1); the app speaks the ISO string end-to-end, like the calendar tables.
+export type OccurrenceCompletion = Omit<
+  Prisma.OccurrenceCompletionGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
 export type HabitBucket = Prisma.HabitBucketGetPayload<undefined>;
 

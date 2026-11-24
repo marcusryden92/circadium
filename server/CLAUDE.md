@@ -108,7 +108,32 @@ must be boxed there (the extended props' trespass flags are).
   They were captured from the web's own sync before it was retired (plan 1.13) and are now frozen
   Java test resources. `SyncCorpusIntegrationTest` replays them with the clock frozen at the
   capture's instant; a Java change to the sync must keep the corpus green. Regenerating it after a
-  seed or diff change is now done Java-side.
+  seed or diff change is now done Java-side. The stale case's recorded `freshState` is a full
+  bootstrap payload, so a `BootstrapPayload` field addition must be reflected in `11-stale.json`
+  and `bootstrap-expected.json` by hand (both compare NON_EXTENSIBLE).
+
+### Direct-action endpoints (plan 2.1 Group A)
+
+Per-domain writes that deliberately live OUTSIDE the sync diff — none of them ever moves
+`users.dataVersion` (asserted in their integration tests). All follow the retired Prisma server
+actions' semantics exactly; the parity evidence is the integration tests pinning column-level DB
+effects and response shapes.
+
+- `GET/PUT/DELETE /calendar/occurrence-completions` (`calendar/OccurrenceCompletionController`) —
+  the occurrence-completion log, one row per (plannerId, occurrenceKey). PUT upserts (update
+  branch moves only start/end, keeping id + createdAt), 404 `item_not_found` unless the planner is
+  the caller's; DELETE takes query params and is a no-op for a missing row. `HabitCompletions.createdAt`
+  is `timestamp(3)` since this step (the last 1.13b straggler); `start`/`end` stay TEXT until the
+  2.5 domain-datetime decision.
+- `GET/PUT /view-state` (`calendar/ViewStateController`) — the graph/mindmap canvas blobs, one row
+  per user; PUT patches only the named canvas's column (`kind: graph|mindmap`), stamping
+  `updatedAt` itself (that table has no DB trigger).
+- `PATCH /scheduling/preferences` (`calendar/SchedulingPreferencesController`) — partial update of
+  `bufferTimeMinutes`/`weekStartDay` (at least one required; weekday 0-6); the first write creates
+  the row with column defaults for the rest. Reads ride the bootstrap: `BootstrapPayload` carries
+  `schedulingPreferences`, answering `{5, DRIVING, 1}` for an account with no row — deliberately
+  not the column default 10, preserving the retired action's fallback (normalizing the two is
+  post-cutover debt). `defaultTransportMode` writes move with the locations surface (Group B).
 
 ## Realtime (`ws/`)
 

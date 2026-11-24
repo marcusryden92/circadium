@@ -68,8 +68,18 @@ export interface DatabaseChanges {
   travelTime: ChangeGroup<SerializedTravelTime>;
 }
 
+// The account-wide scheduling preferences: read with the bootstrap, written
+// through PATCH /scheduling/preferences. Outside the sync diff — changing
+// them never bumps dataVersion.
+export interface SchedulingPreferences {
+  bufferTimeMinutes: number;
+  defaultTransportMode: TransportMode;
+  weekStartDay: number;
+}
+
 // Everything the client needs to stand up (and to recover from a stale sync):
-// the full calendar snapshot (the fields below) plus locations + travelTimes.
+// the full calendar snapshot (the fields below) plus locations, travelTimes
+// and the scheduling preferences.
 export interface BootstrapPayload {
   dataVersion: number;
   planner: Planner[];
@@ -83,6 +93,7 @@ export interface BootstrapPayload {
   dependencies: PlannerDependency[];
   locations: SerializedLocation[];
   travelTimes: SerializedTravelTime[];
+  schedulingPreferences: SchedulingPreferences;
 }
 
 export interface SyncRequest {

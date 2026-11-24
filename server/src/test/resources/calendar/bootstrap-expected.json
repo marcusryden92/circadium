@@ -429,5 +429,10 @@
       "customNightMinutes": 25,
       "unroutable": true
     }
-  ]
+  ],
+  "schedulingPreferences": {
+    "bufferTimeMinutes": 15,
+    "defaultTransportMode": "TRANSIT",
+    "weekStartDay": 0
+  }
 }

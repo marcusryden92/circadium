@@ -77,7 +77,12 @@ class CalendarBootstrapIntegrationTest {
 
         ResultActions result = mockMvc.perform(asUser(userId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dataVersion").value(0));
+                .andExpect(jsonPath("$.dataVersion").value(0))
+                // The missing-row fallback the retired fetchAllSchedulingData used: buffer 5, not the
+                // column default 10 that applies once a preference write creates the row.
+                .andExpect(jsonPath("$.schedulingPreferences.bufferTimeMinutes").value(5))
+                .andExpect(jsonPath("$.schedulingPreferences.defaultTransportMode").value("DRIVING"))
+                .andExpect(jsonPath("$.schedulingPreferences.weekStartDay").value(1));
         for (String list : LISTS) {
             result.andExpect(jsonPath("$." + list).isArray()).andExpect(jsonPath("$." + list).isEmpty());
         }

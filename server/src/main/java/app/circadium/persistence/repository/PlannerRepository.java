@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PlannerRepository extends JpaRepository<Planner, String> {
 
     List<Planner> findByUserIdOrderById(String userId);
+
+    boolean existsByIdAndUserId(String id, String userId);
 }
