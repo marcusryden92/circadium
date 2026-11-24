@@ -30,6 +30,7 @@
 		<java.version>25</java.version>
 		<sentry.version>8.65.0</sentry.version>
 		<bucket4j.version>8.22.0</bucket4j.version>
+		<shedlock.version>6.10.0</shedlock.version>
 		<dependency-check.version>12.1.0</dependency-check.version>
 	</properties>
 	<dependencies>
@@ -96,6 +97,19 @@
 			<groupId>io.sentry</groupId>
 			<artifactId>sentry-spring-boot-4-starter</artifactId>
 			<version>${sentry.version}</version>
+		</dependency>
+		<!-- Scheduled-job locking (travel top-up first). Postgres-backed so every job is
+		     already safe under horizontal scaling; the shedlock table arrives via a Prisma
+		     migration during coexistence, like the sessions table did. -->
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-spring</artifactId>
+			<version>${shedlock.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-provider-jdbc-template</artifactId>
+			<version>${shedlock.version}</version>
 		</dependency>
 
 		<dependency>

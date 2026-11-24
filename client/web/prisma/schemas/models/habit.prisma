@@ -7,13 +7,13 @@
 // Habit buckets are the habits surface's own grouping, deliberately DISTINCT
 // from the item Category tree — a bucket is a shelf for habits, not a role.
 model HabitBucket {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   name      String
   color     String?
-  sortOrder Int     @default(0)
-  createdAt String
-  updatedAt String
+  sortOrder Int      @default(0)
+  createdAt DateTime
+  updatedAt DateTime
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   habits    Habit[]
 
@@ -28,8 +28,8 @@ model Habit {
   color     String?
   bucketId  String? // SetNull keeps the habit (unsorted) when its bucket goes
   sortOrder Int          @default(0)
-  createdAt String
-  updatedAt String
+  createdAt DateTime
+  updatedAt DateTime
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   bucket    HabitBucket? @relation(fields: [bucketId], references: [id], onDelete: SetNull)
   items     HabitItem[]
@@ -43,11 +43,11 @@ model Habit {
 // flexible rule, or a recurring plan) are eligible — enforced in the actions,
 // not the schema.
 model HabitItem {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   habitId   String
   plannerId String
   userId    String
-  createdAt String
+  createdAt DateTime
   habit     Habit   @relation(fields: [habitId], references: [id], onDelete: Cascade)
   planner   Planner @relation(fields: [plannerId], references: [id], onDelete: Cascade)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)

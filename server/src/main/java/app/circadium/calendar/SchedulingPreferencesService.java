@@ -34,11 +34,11 @@ public class SchedulingPreferencesService {
 
     /**
      * Upsert on userId, patching only the provided fields; a create takes the column defaults for the
-     * rest (buffer 10, DRIVING, week start 1), as the Prisma upserts did. defaultTransportMode is not
-     * writable here — its writes live with the locations surface (Group B).
+     * rest (buffer 10, DRIVING, week start 1), as the Prisma upserts did.
      */
     @Transactional
-    public SchedulingPreferences update(String userId, Integer bufferTimeMinutes, Integer weekStartDay) {
+    public SchedulingPreferences update(String userId, Integer bufferTimeMinutes, Integer weekStartDay,
+            TransportMode defaultTransportMode) {
         StringBuilder columns = new StringBuilder("\"id\", \"userId\"");
         StringBuilder values = new StringBuilder("?, ?");
         StringBuilder set = new StringBuilder();
@@ -55,6 +55,12 @@ public class SchedulingPreferencesService {
             values.append(", ?");
             params.add(weekStartDay);
             set.append("\"weekStartDay\" = EXCLUDED.\"weekStartDay\", ");
+        }
+        if (defaultTransportMode != null) {
+            columns.append(", \"defaultTransportMode\"");
+            values.append(", ?::\"TransportMode\"");
+            params.add(defaultTransportMode.name());
+            set.append("\"defaultTransportMode\" = EXCLUDED.\"defaultTransportMode\", ");
         }
 
         columns.append(", \"createdAt\", \"updatedAt\"");

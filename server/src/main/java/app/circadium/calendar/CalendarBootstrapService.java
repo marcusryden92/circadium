@@ -217,11 +217,11 @@ public class CalendarBootstrapService {
                 d.getUserId(), iso(d.getCreatedAt()), iso(d.getUpdatedAt()));
     }
 
-    private static SerializedLocation toWire(Location l) {
+    static SerializedLocation toWire(Location l) {
         return new SerializedLocation(l.getId(), l.getName(), l.getAddress(), l.getPlaceId());
     }
 
-    private static SerializedTravelTime toWire(TravelTime t) {
+    static SerializedTravelTime toWire(TravelTime t) {
         return new SerializedTravelTime(t.getId(), t.getFromLocationId(), t.getToLocationId(), t.getTransportMode(),
                 t.getGoogleRushHourMinutes(), t.getGoogleRegularMinutes(), t.getGoogleNightMinutes(),
                 t.getCustomRushHourMinutes(), t.getCustomRegularMinutes(), t.getCustomNightMinutes(),

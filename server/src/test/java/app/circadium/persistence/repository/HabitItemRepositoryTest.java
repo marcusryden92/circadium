@@ -52,8 +52,8 @@ class HabitItemRepositoryTest {
         habit.setUserId(userId);
         habit.setName("Meditate daily");
         habit.setSortOrder(0);
-        habit.setCreatedAt("2026-11-16T08:00:00.000Z");
-        habit.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        habit.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        habit.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         habitRepository.saveAndFlush(habit);
 
         String plannerId = UUID.randomUUID().toString();
@@ -72,7 +72,7 @@ class HabitItemRepositoryTest {
         item.setHabitId(habitId);
         item.setPlannerId(plannerId);
         item.setUserId(userId);
-        item.setCreatedAt("2026-11-16T08:00:00.000Z");
+        item.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         habitItemRepository.saveAndFlush(item);
         entityManager.clear();

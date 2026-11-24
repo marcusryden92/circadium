@@ -1,6 +1,7 @@
 package app.circadium.calendar;
 
 import app.circadium.calendar.CalendarContracts.SchedulingPreferences;
+import app.circadium.persistence.enums.TransportMode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,12 +28,13 @@ public class SchedulingPreferencesController {
     public record UpdateSchedulingPreferencesRequest(
             @Min(0) @Max(1440) Integer bufferTimeMinutes,
             @Schema(description = "0 = Sunday through 6 = Saturday.")
-            @Min(0) @Max(6) Integer weekStartDay) {
+            @Min(0) @Max(6) Integer weekStartDay,
+            TransportMode defaultTransportMode) {
 
         @AssertTrue(message = "At least one preference must be provided.")
         @Schema(hidden = true)
         public boolean isAnyPreferenceProvided() {
-            return bufferTimeMinutes != null || weekStartDay != null;
+            return bufferTimeMinutes != null || weekStartDay != null || defaultTransportMode != null;
         }
     }
 
@@ -45,6 +47,7 @@ public class SchedulingPreferencesController {
     @ApiResponse(responseCode = "401", description = "No valid access token")
     public SchedulingPreferences update(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody UpdateSchedulingPreferencesRequest request) {
-        return preferencesService.update(jwt.getSubject(), request.bufferTimeMinutes(), request.weekStartDay());
+        return preferencesService.update(jwt.getSubject(), request.bufferTimeMinutes(),
+                request.weekStartDay(), request.defaultTransportMode());
     }
 }

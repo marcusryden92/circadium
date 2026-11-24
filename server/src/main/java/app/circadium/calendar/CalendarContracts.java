@@ -171,6 +171,37 @@ public final class CalendarContracts {
             String createdAt) {
     }
 
+    /** The habits surface's own grouping entity, deliberately distinct from the Category tree. */
+    public record HabitBucket(
+            @NotNull String id,
+            String userId,
+            String name,
+            String color,
+            int sortOrder,
+            String createdAt,
+            String updatedAt) {
+    }
+
+    /** A pure tracking entity over repeating planner items; the engine never reads it. */
+    public record Habit(
+            @NotNull String id,
+            String userId,
+            String name,
+            String color,
+            String bucketId,
+            int sortOrder,
+            String createdAt,
+            String updatedAt) {
+    }
+
+    public record HabitItem(
+            @NotNull String id,
+            String habitId,
+            String plannerId,
+            String userId,
+            String createdAt) {
+    }
+
     public record Planner(
             @NotNull String id,
             String title,
