@@ -25,10 +25,11 @@ import {
 } from "@/utils/inspection";
 
 // Snapshot-impersonation hydration: replaces the whole normal bootstrap
-// (useFetchCalendarData + the UserProvider scheduling load + the external /
-// completion / habit boots, all of which CalendarProvider skips while a
-// target is set). Fires once per mount; a failed load exits inspection so
-// the admin lands back in their own account instead of a blank app.
+// (useFetchCalendarData — calendar groups and scheduling settings alike —
+// plus the external / completion / habit boots, all of which
+// CalendarProvider skips while a target is set). Fires once per mount; a
+// failed load exits inspection so the admin lands back in their own account
+// instead of a blank app.
 export function useInspectionData(target: InspectionTarget | null) {
   const dispatch = useDispatch<AppDispatch>();
   const fired = useRef(false);

@@ -32,8 +32,8 @@ export interface TravelTimeOverrides {
 }
 
 // All data access and mutation flows for the Locations page. Reads come from
-// Redux only — no fetch on mount. UserProvider loads locations on auth via
-// fetchAllSchedulingData; a page-level dispatch raced with
+// Redux only — no fetch on mount. Locations arrive with the calendar
+// bootstrap (useFetchCalendarData); a page-level dispatch raced with
 // useCalendarServerSync's diff hook and could cascade-delete locations on the
 // server if the racing fetch ever returned an empty list.
 //

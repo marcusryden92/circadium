@@ -5,7 +5,7 @@ import type { OccurrenceCompletion } from "@/types/prisma";
 import {
   logOccurrenceCompletion,
   unlogOccurrenceCompletion,
-} from "@/actions/occurrenceCompletions";
+} from "@/lib/api/occurrenceCompletions";
 import {
   upsertOccurrenceCompletion,
   removeOccurrenceCompletion,

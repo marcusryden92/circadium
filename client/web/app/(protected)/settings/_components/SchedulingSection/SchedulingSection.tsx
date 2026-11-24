@@ -12,7 +12,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import * as locationActions from "@/actions/locations";
 import { updateDefaultTransportMode } from "@/actions/locations";
-import { updateWeekStartDay } from "@/actions/scheduling";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import {
   setAllTravelTimes,
   setDefaultTransportMode,
@@ -96,7 +96,7 @@ export function SchedulingSection() {
   };
 
   const saveWeekStart = useCallback(async (day: WeekDayIntegers) => {
-    await updateWeekStartDay(day);
+    await updateSchedulingPreferences({ weekStartDay: day });
     return day;
   }, []);
 

@@ -30,6 +30,7 @@ import {
 } from "@circadium/shared/sync/syncLoop";
 import { createRealtimeClient } from "@circadium/shared/sync/realtimeClient";
 import type { BootstrapPayload } from "@circadium/shared/contracts";
+import { normalizeWeekStartDay } from "@/utils/calendarUtils";
 import { syncCalendarChanges, fetchCalendarBootstrap } from "@/lib/api/calendar";
 import {
   calendarRealtimeEnabled,
@@ -79,6 +80,9 @@ const useCalendarServerSync = (
     travelTimes,
   } = calendarState;
 
+  // Locations and travel times arrive with the same bootstrap payload as the
+  // calendar groups (plan 2.1), so the baselines seed from the exact rows the
+  // slices were hydrated with — nothing races.
   const initializeState = useCallback(
     (
       planner: Planner[],
@@ -90,6 +94,8 @@ const useCalendarServerSync = (
       engineMessages: EngineMessage[],
       queues: Queue[],
       dependencies: PlannerDependency[],
+      locations: SerializedLocation[],
+      travelTimes: SerializedTravelTime[],
       dataVersion: number,
     ) => {
       previousPlanner.current = planner;
@@ -101,27 +107,13 @@ const useCalendarServerSync = (
       previousEngineMessages.current = engineMessages;
       previousQueues.current = queues;
       previousDependencies.current = dependencies;
-      // Locations are loaded asynchronously by UserProvider, which may race
-      // with the calendar fetch. We seed previousLocations from the current
-      // value; the diff's create-branch is a no-op for locations (Google
-      // Places lookup must happen server-side via a direct action), so a
-      // late-arriving setLocations(loaded) will be absorbed without sending
-      // spurious create operations on the next sync pass.
-      previousLocations.current = locationsAtInitRef.current;
-      previousTravelTimes.current = travelTimesAtInitRef.current;
+      previousLocations.current = locations;
+      previousTravelTimes.current = travelTimes;
       knownDataVersion.current = dataVersion;
       setIsInitialized(true);
     },
     [],
   );
-
-  // Mirrors locations + travel times into refs so initializeState can read the
-  // latest values at the moment of init without taking them as parameters
-  // (which would re-trigger useFetchCalendarData on every change).
-  const locationsAtInitRef = useRef<SerializedLocation[]>(locations);
-  locationsAtInitRef.current = locations;
-  const travelTimesAtInitRef = useRef<SerializedTravelTime[]>(travelTimes);
-  travelTimesAtInitRef.current = travelTimes;
 
   // Direct server actions that bypass the diff (createLocation needs Google
   // Places; refreshAllTravelTimes / fetchMissingTravelTimes need Google
@@ -252,6 +244,21 @@ const useCalendarServerSync = (
       dispatch(schedulingSettingsSlice.actions.setLocations(fresh.locations));
       dispatch(
         schedulingSettingsSlice.actions.setAllTravelTimes(fresh.travelTimes),
+      );
+      // Preferences ride the same payload; adopting them keeps a behind tab's
+      // buffer/week-start in step with the session that changed them.
+      dispatch(
+        schedulingSettingsSlice.actions.setSchedulingSettings({
+          bufferTimeMinutes: fresh.schedulingPreferences.bufferTimeMinutes,
+          weekStartDay: normalizeWeekStartDay(
+            fresh.schedulingPreferences.weekStartDay,
+          ),
+        }),
+      );
+      dispatch(
+        schedulingSettingsSlice.actions.setDefaultTransportMode(
+          fresh.schedulingPreferences.defaultTransportMode,
+        ),
       );
     },
     [dispatch, hasPendingSourceChanges],

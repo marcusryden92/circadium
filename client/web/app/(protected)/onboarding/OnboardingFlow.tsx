@@ -148,8 +148,8 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     if (prefill.length > 0) setRoles(prefill);
   }, [isLoaded, categories]);
 
-  // Prefill location rows from existing locations when they hydrate (they load
-  // asynchronously via UserProvider, independent of the calendar fetch).
+  // Prefill location rows from existing locations when they hydrate (they
+  // arrive with the calendar bootstrap, a beat after first paint).
   const rowsPrefilled = useRef(false);
   useEffect(() => {
     if (rowsPrefilled.current || rowsTouched.current) return;

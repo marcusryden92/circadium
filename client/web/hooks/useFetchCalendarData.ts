@@ -9,6 +9,14 @@ import {
 } from "@/redux/slices/calendarSourceSlice";
 import { hydrateEngineOutput } from "@/redux/slices/engineOutputSlice";
 import {
+  setSchedulingSettings,
+  setDefaultTransportMode,
+  setAllTravelTimes,
+  setLocations,
+  type SerializedLocation,
+  type SerializedTravelTime,
+} from "@/redux/slices/schedulingSettingsSlice";
+import {
   Planner,
   Category,
   CategoryEvent,
@@ -21,13 +29,7 @@ import { SimpleEvent } from "@/types/prisma";
 import { EventTemplate } from "@/types/prisma";
 import { fetchCalendarBootstrap } from "@/lib/api/calendar";
 import { retry } from "@/lib/retry";
-
-// Locations and travel times also come back from the bootstrap, but
-// UserProvider loads them with the rest of the scheduling settings, so only
-// the calendar's own groups are taken from it here.
-async function loadCalendarData() {
-  return fetchCalendarBootstrap();
-}
+import { normalizeWeekStartDay } from "@/utils/calendarUtils";
 
 interface Data {
   planner: Planner[];
@@ -41,6 +43,10 @@ interface Data {
   dependencies: PlannerDependency[];
 }
 
+// The bootstrap is the one initial-load source (plan 2.1): the calendar
+// groups, locations, travel times and scheduling preferences all seed from
+// the same snapshot, and the sync baselines are initialized from that same
+// payload so nothing races.
 export function useFetchCalendarData(
   userId: string | undefined,
   initializeState: (
@@ -53,6 +59,8 @@ export function useFetchCalendarData(
     engineMessages: EngineMessage[],
     queues: Queue[],
     dependencies: PlannerDependency[],
+    locations: SerializedLocation[],
+    travelTimes: SerializedTravelTime[],
     dataVersion: number,
   ) => void,
 ) {
@@ -72,7 +80,7 @@ export function useFetchCalendarData(
         // Retry through a cold-start window: a failed first call would
         // otherwise leave isLoaded false and strand the app on the loading
         // screen until a manual refresh.
-        const loaded = await retry(loadCalendarData);
+        const loaded = await retry(fetchCalendarBootstrap);
 
         const {
           planner,
@@ -84,6 +92,9 @@ export function useFetchCalendarData(
           engineMessages,
           queues,
           dependencies,
+          locations,
+          travelTimes,
+          schedulingPreferences,
           dataVersion,
         } = loaded;
         const newData = {
@@ -100,7 +111,6 @@ export function useFetchCalendarData(
 
         setData(newData);
 
-        // Dispatch to Redux
         dispatch(
           hydrateSource({
             planner: newData.planner,
@@ -118,6 +128,19 @@ export function useFetchCalendarData(
             engineMessages: newData.engineMessages,
           }),
         );
+        dispatch(
+          setSchedulingSettings({
+            bufferTimeMinutes: schedulingPreferences.bufferTimeMinutes,
+            weekStartDay: normalizeWeekStartDay(
+              schedulingPreferences.weekStartDay,
+            ),
+          }),
+        );
+        dispatch(
+          setDefaultTransportMode(schedulingPreferences.defaultTransportMode),
+        );
+        dispatch(setAllTravelTimes(travelTimes));
+        dispatch(setLocations(locations));
         dispatch(markCalendarLoaded());
         initializeState(
           newData.planner,
@@ -129,6 +152,8 @@ export function useFetchCalendarData(
           newData.engineMessages,
           newData.queues,
           newData.dependencies,
+          locations,
+          travelTimes,
           dataVersion,
         );
       } catch (err) {

@@ -9,7 +9,7 @@ import {
   setStrategyWeights,
 } from "@/redux/slices/schedulingSettingsSlice";
 import { DEFAULT_LOCATION_GROUPING_PENALTIES } from "@circadium/shared/engine/strategies/defaultStrategy";
-import { updateUserSchedulingPreferences } from "@/actions/scheduling";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import type { AppDispatch, RootState } from "@/redux/store";
 import {
   engineControls,
@@ -78,7 +78,7 @@ export function EngineControls() {
     dispatch(setBufferTimeMinutesAction(clamped));
     if (bufferPersistRef.current) clearTimeout(bufferPersistRef.current);
     bufferPersistRef.current = setTimeout(() => {
-      updateUserSchedulingPreferences({ bufferTimeMinutes: clamped }).catch(
+      updateSchedulingPreferences({ bufferTimeMinutes: clamped }).catch(
         (err) => {
           console.error("Failed to persist buffer time:", err);
         },

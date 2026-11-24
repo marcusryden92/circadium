@@ -64,7 +64,7 @@ import {
   refreshExternalCalendarSource,
 } from "@/actions/externalCalendars";
 import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletionsSlice";
-import { getOccurrenceCompletions } from "@/actions/occurrenceCompletions";
+import { getOccurrenceCompletions } from "@/lib/api/occurrenceCompletions";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
 import { getHabitData } from "@/actions/habits";
 import { readInspectionTarget } from "@/utils/inspection";

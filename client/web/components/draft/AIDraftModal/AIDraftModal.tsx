@@ -50,10 +50,7 @@ import {
   revertFailedRelocations,
 } from "@/utils/draft/draftRelocations";
 import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
-import {
-  updateUserSchedulingPreferences,
-  updateWeekStartDay,
-} from "@/actions/scheduling";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import { updateDefaultTransportMode } from "@/actions/locations";
 import {
   setBufferTimeMinutes,
@@ -1117,7 +1114,7 @@ export function AIDraftModal({
         workingSettings.bufferTimeMinutes !== canonicalSettings.bufferTimeMinutes
       ) {
         dispatch(setBufferTimeMinutes(workingSettings.bufferTimeMinutes));
-        void updateUserSchedulingPreferences({
+        void updateSchedulingPreferences({
           bufferTimeMinutes: workingSettings.bufferTimeMinutes,
         }).catch(() => {});
       }
@@ -1125,7 +1122,9 @@ export function AIDraftModal({
         dispatch(
           setWeekStartDay(workingSettings.weekStartDay as WeekDayIntegers),
         );
-        void updateWeekStartDay(workingSettings.weekStartDay).catch(() => {});
+        void updateSchedulingPreferences({
+          weekStartDay: workingSettings.weekStartDay,
+        }).catch(() => {});
       }
       if (
         workingSettings.defaultTransportMode !==
