@@ -1,7 +1,10 @@
 package app.circadium;
 
+import app.circadium.external.googlecalendar.FakeGoogleCalendarClient;
+import app.circadium.external.ics.FakeIcsFeedFetcher;
 import app.circadium.external.maps.FakePlacesClient;
 import app.circadium.external.maps.FakeRoutesClient;
+import app.circadium.external.microsoftgraph.FakeMicrosoftGraphClient;
 import app.circadium.external.passwords.FakeBreachedPasswords;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -40,6 +43,24 @@ public class TestcontainersConfiguration {
 	@Primary
 	FakeRoutesClient fakeRoutesClient() {
 		return new FakeRoutesClient();
+	}
+
+	@Bean
+	@Primary
+	FakeIcsFeedFetcher fakeIcsFeedFetcher() {
+		return new FakeIcsFeedFetcher();
+	}
+
+	@Bean
+	@Primary
+	FakeGoogleCalendarClient fakeGoogleCalendarClient() {
+		return new FakeGoogleCalendarClient();
+	}
+
+	@Bean
+	@Primary
+	FakeMicrosoftGraphClient fakeMicrosoftGraphClient() {
+		return new FakeMicrosoftGraphClient();
 	}
 
 }

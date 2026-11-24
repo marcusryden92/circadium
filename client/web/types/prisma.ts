@@ -123,7 +123,9 @@ export type EngineMessage = WithIsoTimestamps<
   Prisma.EngineMessageGetPayload<undefined>
 >;
 
-export type DraftConversation = Prisma.DraftConversationGetPayload<undefined>;
+export type DraftConversation = WithIsoTimestamps<
+  Prisma.DraftConversationGetPayload<undefined>
+>;
 
 export type QueueMember = WithIsoTimestamps<
   Prisma.QueueMemberGetPayload<undefined>

@@ -10,8 +10,8 @@ model DraftConversation {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
-  updatedAt String
+  createdAt DateTime @db.Timestamp(3)
+  updatedAt DateTime @db.Timestamp(3)
 
   @@index([userId])
   @@map("DraftConversations")

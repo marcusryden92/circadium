@@ -64,12 +64,17 @@ export async function listDraftConversations(): Promise<
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  return db.draftConversation.findMany({
+  const rows = await db.draftConversation.findMany({
     where: { userId: session.user.id },
     orderBy: { updatedAt: "desc" },
     take: MAX_CONVERSATIONS,
     select: { id: true, title: true, updatedAt: true },
   });
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    updatedAt: row.updatedAt.toISOString(),
+  }));
 }
 
 export async function getDraftConversation(
@@ -86,7 +91,7 @@ export async function getDraftConversation(
   return {
     id: row.id,
     title: row.title,
-    updatedAt: row.updatedAt,
+    updatedAt: row.updatedAt.toISOString(),
     messages: sanitizeMessages(row.messages),
   };
 }
@@ -132,6 +137,7 @@ export async function upsertDraftConversation(input: {
       title,
       messages: messages as unknown as Prisma.InputJsonValue,
       userId,
+      createdAt: now,
       updatedAt: now,
     },
   });

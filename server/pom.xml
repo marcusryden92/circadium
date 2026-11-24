@@ -31,6 +31,7 @@
 		<sentry.version>8.65.0</sentry.version>
 		<bucket4j.version>8.22.0</bucket4j.version>
 		<shedlock.version>6.10.0</shedlock.version>
+		<ical4j.version>4.1.1</ical4j.version>
 		<dependency-check.version>12.1.0</dependency-check.version>
 	</properties>
 	<dependencies>
@@ -110,6 +111,13 @@
 			<groupId>net.javacrumbs.shedlock</groupId>
 			<artifactId>shedlock-provider-jdbc-template</artifactId>
 			<version>${shedlock.version}</version>
+		</dependency>
+
+		<!-- ICS feed parsing with recurrence expansion (overrides, EXDATEs) — the parseIcsFeed port. -->
+		<dependency>
+			<groupId>org.mnode.ical4j</groupId>
+			<artifactId>ical4j</artifactId>
+			<version>${ical4j.version}</version>
 		</dependency>
 
 		<dependency>

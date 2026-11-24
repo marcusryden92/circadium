@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,8 +43,8 @@ class DraftConversationRepositoryTest {
         conversation.setTitle("Plan my week");
         conversation.setMessages("[]");
         conversation.setUserId(userId);
-        conversation.setCreatedAt("2026-11-16T08:00:00.000Z");
-        conversation.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        conversation.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        conversation.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         draftConversationRepository.saveAndFlush(conversation);
         entityManager.clear();

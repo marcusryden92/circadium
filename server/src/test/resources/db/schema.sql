@@ -197,8 +197,8 @@ CREATE TABLE "DraftConversations" (
     "title" TEXT NOT NULL,
     "messages" JSONB NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DraftConversations_pkey" PRIMARY KEY ("id")
 );
