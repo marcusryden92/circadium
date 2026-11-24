@@ -28,7 +28,7 @@ jobs:
 
       # The version comes from the packageManager field in client/package.json.
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           package_json_file: client/package.json
 
