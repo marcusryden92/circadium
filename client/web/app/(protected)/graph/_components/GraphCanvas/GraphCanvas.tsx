@@ -1058,7 +1058,7 @@ export function GraphCanvas({
 
   const arrowFill = (edge: EdgeGeometry): React.CSSProperties => {
     const style = edgeStroke(edge);
-    return { fill: style.stroke as string, fillOpacity: style.strokeOpacity };
+    return { fill: style.stroke, fillOpacity: style.strokeOpacity };
   };
 
   const renderPill = (opts: {

@@ -1,6 +1,5 @@
 "use client";
 
-import type { PlannerType } from "@/generated/client";
 import { FieldStack } from "@/components/ui";
 import { useItem } from "../../ItemContext";
 import {
@@ -32,7 +31,7 @@ export function TypePickerSection() {
             type="button"
             className={typePickerBtn}
             data-active={item.plannerType === t}
-            onClick={() => setPlannerType(t as PlannerType)}
+            onClick={() => setPlannerType(t)}
           >
             {t}
           </button>

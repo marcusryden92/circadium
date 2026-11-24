@@ -40,7 +40,7 @@ function makePlanner(id: string, overrides: Partial<Planner> = {}): Planner {
     createdAt: "2026-01-01T09:00:00",
     updatedAt: "2026-01-01T09:00:00",
     ...overrides,
-  } as Planner;
+  };
 }
 
 function comp(
@@ -56,7 +56,7 @@ function comp(
     start: end,
     end,
     createdAt: "2026-01-01T00:00:00.000Z",
-  } as OccurrenceCompletion;
+  };
 }
 
 const K = (d: number) => `2026-01-0${d}T00:00`;

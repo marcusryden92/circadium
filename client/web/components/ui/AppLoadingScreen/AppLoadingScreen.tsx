@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import { Loader } from "@/components/ui/Loader";
 import { overlay, overlayHidden, logo } from "./AppLoadingScreen.css";
 
 // isLoaded flips true only once the session has resolved (the fetch is gated on

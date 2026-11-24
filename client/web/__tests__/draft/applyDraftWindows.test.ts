@@ -14,7 +14,7 @@ function slot(overrides: Partial<CategoryTimeWindow> = {}): CategoryTimeWindow {
   return {
     id: "win-1",
     categoryId: "category-work",
-    day: 1 as WeekDayIntegers,
+    day: 1,
     startTime: "09:00",
     endTime: "17:00",
     recurrenceExceptions: null,
@@ -40,7 +40,7 @@ function category(overrides: Partial<Category> = {}): Category {
     updatedAt: THEN,
     timeSlots: [slot()],
     ...overrides,
-  } as Category;
+  };
 }
 
 function draftState(categories: Category[]): DraftWindowsState {

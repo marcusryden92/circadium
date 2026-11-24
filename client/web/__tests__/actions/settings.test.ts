@@ -10,7 +10,7 @@ jest.mock("../../lib/db", () => ({
   db: { user: { update: jest.fn() } },
 }));
 
-const updateMock = db.user.update as unknown as jest.Mock;
+const updateMock = (db.user as unknown as { update: jest.Mock }).update;
 
 const SESSION_USER = {
   id: "user-1",

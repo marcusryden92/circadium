@@ -12,15 +12,16 @@ function refreshed(expiresAt: number) {
   return {
     ok: true,
     status: 200,
-    json: async () => ({
-      accessTokenExpiresAt: new Date(expiresAt).toISOString(),
-      refreshTokenExpiresAt: new Date(expiresAt + 30 * 24 * 60 * MINUTE).toISOString(),
-    }),
+    json: () =>
+      Promise.resolve({
+        accessTokenExpiresAt: new Date(expiresAt).toISOString(),
+        refreshTokenExpiresAt: new Date(expiresAt + 30 * 24 * 60 * MINUTE).toISOString(),
+      }),
   };
 }
 
 function status(code: number) {
-  return { ok: code >= 200 && code < 300, status: code, json: async () => ({}) };
+  return { ok: code >= 200 && code < 300, status: code, json: () => Promise.resolve({}) };
 }
 
 // Serializes callbacks per lock name, like the browser's Web Locks API.

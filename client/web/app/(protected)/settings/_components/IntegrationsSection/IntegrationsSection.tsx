@@ -34,7 +34,6 @@ import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useServerAction } from "@/hooks/useServerAction";
 import {
   ExternalCalendarKind,
-  ExternalCalendarMode,
   type ExternalCalendarSource,
 } from "@/types/prisma";
 import {
@@ -483,6 +482,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={google === null}
               onClick={() => {
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route 302s to Google's external OAuth screen; router.push can't follow it
                 window.location.href = "/api/integrations/google/connect";
               }}
             >
@@ -576,6 +576,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={microsoft === null}
               onClick={() => {
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route 302s to Microsoft's external OAuth screen; router.push can't follow it
                 window.location.href = "/api/integrations/microsoft/connect";
               }}
             >
@@ -648,11 +649,11 @@ export function IntegrationsSection() {
                   <div className={sourceControls}>
                     <SegmentedControl
                       options={MODE_OPTIONS}
-                      value={source.mode as ModeKey}
+                      value={source.mode}
                       onChange={(key) =>
                         void handlePatch(
                           source,
-                          { mode: key as ExternalCalendarMode },
+                          { mode: key },
                           true,
                         )
                       }

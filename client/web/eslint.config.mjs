@@ -94,6 +94,17 @@ export default [
     rules: {
       "jest/no-disabled-tests": "warn",
       "jest/valid-expect": "error",
+      // expect(mock.method) reads as an unbound method to the base rule; the
+      // jest variant understands the matcher context.
+      "@typescript-eslint/unbound-method": "off",
+      "jest/unbound-method": "error",
+      // Test doubles (jest.requireActual, mock factories, call-arg indexing)
+      // inherently traffic in `any`; the type-checked unsafe family is noise here.
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
     },
   },
 ];

@@ -25,7 +25,10 @@ describe("useSignOut", () => {
     signOutMock.mockResolvedValue(undefined);
     const { result } = renderHook(() => useSignOut());
 
-    await act(async () => result.current());
+    await act(async () => {
+      result.current();
+      await Promise.resolve();
+    });
 
     expect(signOutMock).toHaveBeenCalledTimes(1);
     expect(signOutMock).toHaveBeenCalledWith({ userId: "user-1" });
@@ -36,7 +39,10 @@ describe("useSignOut", () => {
     signOutMock.mockRejectedValue(new ApiError({ status: 0, message: "offline" }));
     const { result } = renderHook(() => useSignOut());
 
-    await act(async () => result.current());
+    await act(async () => {
+      result.current();
+      await Promise.resolve();
+    });
 
     expect(dispatch).toHaveBeenCalledWith({
       type: pushToast.type,
@@ -58,9 +64,15 @@ describe("useSignOut", () => {
     });
     expect(signOutMock).toHaveBeenCalledTimes(1);
 
-    await act(async () => fail(new ApiError({ status: 503, message: "down" })));
+    await act(async () => {
+      fail(new ApiError({ status: 503, message: "down" }));
+      await Promise.resolve();
+    });
     signOutMock.mockResolvedValue(undefined);
-    await act(async () => result.current());
+    await act(async () => {
+      result.current();
+      await Promise.resolve();
+    });
 
     expect(signOutMock).toHaveBeenCalledTimes(2);
   });

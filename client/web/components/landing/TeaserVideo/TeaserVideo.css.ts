@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { vars, radii } from "@/lib/theme";
+import { vars, radii, space } from "@/lib/theme";
 
 export const frame = style({
   position: "relative",
@@ -24,7 +24,7 @@ export const playLayer = style({
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  gap: 14,
+  gap: space["3.5"],
   border: 0,
   padding: 0,
   cursor: "pointer",
