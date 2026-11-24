@@ -6,7 +6,6 @@ import app.circadium.persistence.enums.TransportMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -38,14 +37,14 @@ public class TravelApiBudgetService {
                         + " ON CONFLICT (\"id\") DO NOTHING",
                 DbTime.toDb(TravelRefreshPolicy.monthStartUtc(now)), DbTime.toDb(now));
 
-        Map<String, Object> row = jdbcTemplate.queryForMap(
+        BudgetRow row = jdbcTemplate.queryForObject(
                 "SELECT \"elementsThisMonth\", \"periodStart\" FROM \"TravelApiBudget\""
-                        + " WHERE \"id\" = 'global' FOR UPDATE");
-        int count = (Integer) row.get("elementsThisMonth");
-        Instant periodStart = DbTime.fromDb((LocalDateTime) row.get("periodStart"));
+                        + " WHERE \"id\" = 'global' FOR UPDATE",
+                (rs, rowNum) -> new BudgetRow(rs.getInt("elementsThisMonth"),
+                        DbTime.fromDb(rs.getObject("periodStart", LocalDateTime.class))));
 
-        BudgetReservation reservation = TravelRefreshPolicy.reserveElements(now, planned, count,
-                periodStart, TravelRefreshPolicy.TRAVEL_ELEMENT_MONTHLY_CAP);
+        BudgetReservation reservation = TravelRefreshPolicy.reserveElements(now, planned, row.count(),
+                row.periodStart(), TravelRefreshPolicy.TRAVEL_ELEMENT_MONTHLY_CAP);
         if (!reservation.allowed()) {
             return reservation.reason();
         }
@@ -53,5 +52,8 @@ public class TravelApiBudgetService {
                         + " \"periodStart\" = ?, \"updatedAt\" = ? WHERE \"id\" = 'global'",
                 reservation.nextCount(), DbTime.toDb(reservation.periodStart()), DbTime.toDb(now));
         return null;
+    }
+
+    private record BudgetRow(int count, Instant periodStart) {
     }
 }

@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Button, Caption, Combobox, Input } from "@/components/ui";
-import { createHabit } from "@/actions/habits";
+import { createHabit } from "@/lib/api/habits";
 import { upsertHabit } from "@/redux/slices/habitsSlice";
 import type { AppDispatch } from "@/redux/store";
 import type { HabitBucket } from "@/types/prisma";

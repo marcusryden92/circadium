@@ -40,12 +40,9 @@ import {
 import useManuallyRefreshCalendar from "@/hooks/useManuallyRefreshCalendar";
 import useCalendarServerSync from "@/hooks/useCalendarServerSync";
 import {
-  setAllTravelTimes,
   type SerializedLocation,
   type SerializedTravelTime,
 } from "@/redux/slices/schedulingSettingsSlice";
-import * as locationActions from "@/actions/locations";
-import { serializeTravelTime } from "@/utils/locations";
 import {
   buildInheritedLocationMap,
   InheritedLocationInfo,
@@ -66,7 +63,7 @@ import {
 import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletionsSlice";
 import { getOccurrenceCompletions } from "@/lib/api/occurrenceCompletions";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
-import { getHabitData } from "@/actions/habits";
+import { getHabitData } from "@/lib/api/habits";
 import { readInspectionTarget } from "@/utils/inspection";
 import { useInspectionData } from "@/hooks/useInspectionData";
 import { InspectionBanner } from "@/components/ui/InspectionBanner";
@@ -411,36 +408,8 @@ export default function CalendarProvider({
   useFetchCalendarData(inspecting ? undefined : userId, initializeState);
   useInspectionData(inspectionTarget);
 
-  // Capped background refresh of TTL-aged travel times, once per app load.
-  // Silent and best-effort: the action bounds what a single session may spend
-  // (STALE_TOP_UP_MAX_PAIRS), so a long-dormant cache tops up incrementally
-  // across sessions rather than in one large unconfirmed refetch.
-  const staleTopUpFired = useRef(false);
-  useEffect(() => {
-    if (inspecting) return;
-    if (!isCalendarLoaded || !userId || staleTopUpFired.current) return;
-    staleTopUpFired.current = true;
-    void (async () => {
-      try {
-        const result =
-          await locationActions.topUpStaleTravelTimes(defaultTransportMode);
-        if (result.refreshed === 0 && result.failed === 0) return;
-        const fresh = await locationActions.fetchTravelTimes();
-        const serialized = fresh.map(serializeTravelTime);
-        dispatch(setAllTravelTimes(serialized));
-        markSynced("travelTimes", serialized);
-      } catch {
-        // Stale values keep working until the next session's attempt.
-      }
-    })();
-  }, [
-    isCalendarLoaded,
-    userId,
-    defaultTransportMode,
-    dispatch,
-    markSynced,
-    inspecting,
-  ]);
+  // The silent travel-time top-up is the Java server's nightly job now (plan
+  // 2.2) — fresh rows arrive with the next bootstrap, no per-load trigger.
 
   const externalSources = useSelector(
     (state: RootState) => state.externalCalendar.sources,

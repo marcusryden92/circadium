@@ -129,11 +129,51 @@ effects and response shapes.
   per user; PUT patches only the named canvas's column (`kind: graph|mindmap`), stamping
   `updatedAt` itself (that table has no DB trigger).
 - `PATCH /scheduling/preferences` (`calendar/SchedulingPreferencesController`) — partial update of
-  `bufferTimeMinutes`/`weekStartDay` (at least one required; weekday 0-6); the first write creates
-  the row with column defaults for the rest. Reads ride the bootstrap: `BootstrapPayload` carries
-  `schedulingPreferences`, answering `{5, DRIVING, 1}` for an account with no row — deliberately
-  not the column default 10, preserving the retired action's fallback (normalizing the two is
-  post-cutover debt). `defaultTransportMode` writes move with the locations surface (Group B).
+  `bufferTimeMinutes`/`weekStartDay`/`defaultTransportMode` (at least one required; weekday 0-6);
+  the first write creates the row with column defaults for the rest. Reads ride the bootstrap:
+  `BootstrapPayload` carries `schedulingPreferences`, answering `{5, DRIVING, 1}` for an account
+  with no row — deliberately not the column default 10, preserving the retired action's fallback
+  (normalizing the two is post-cutover debt).
+
+### Locations, travel times and habits (plan 2.2 Group B)
+
+The Google-dependent location surface and the habit trackers (same out-of-band rules as Group A).
+Google clients live in `external/maps` (`PlacesClient`/`RoutesClient` interfaces, REST impls over
+`RestClient` with retry on 429/5xx and the exact TS field masks); `GOOGLE_MAPS_API_KEY` is one key
+for both APIs and optional in every profile — absent, these endpoints answer 503
+`maps_not_configured`, so a deploy never waits on the secret. Tests replace both clients with
+fakes in `TestcontainersConfiguration`.
+
+- `POST /locations/search` — Places autocomplete behind a per-user 30/min in-memory throttle
+  (429 `search_throttled`; single-instance like the auth rate limiter).
+- `POST /locations`, `PATCH /locations/{id}` (`calendar/LocationController`) — create resolves the
+  place server-side (cap 5 → 409 `location_limit`; duplicate placeId → 409 `duplicate_place`); a
+  place change refetches details and drops every cached travel time touching the location. Name
+  edits, deletes and custom overrides ride the sync diff, not these endpoints.
+- `POST /travel-times/fetch-missing`, `POST /travel-times/refresh-all`
+  (`calendar/TravelTimeController`) — the Routes `computeRouteMatrix` flows. Freshness policy in
+  `calendar/TravelRefreshPolicy` (ported thresholds: 180d TTL, 30d unroutable retry, 1h refresh
+  gates, 10-pair top-up cap, monthly element cap 4500); every spend reserves first through
+  `calendar/TravelApiBudgetService` — a `FOR UPDATE` on the account-global `TravelApiBudget` row,
+  committed before the Google call (the TS version could double-spend under concurrency). Refusals
+  answer 409 (`travel_budget` / `refresh_gate`) with the TS wording; both responses carry the
+  account's fresh rows so the client needs no follow-up read. Writes preserve custom overrides and
+  negative-cache unroutable pairs.
+- `GET/POST /habits`, `POST/PATCH/DELETE /habits/buckets[/{id}]`, `DELETE /habits/{id}`,
+  `PUT/DELETE /habits/{habitId}/items`, `POST /habits/apply` (`calendar/HabitController`) — the
+  tracking layer. Links accept only top-level repeating rows (the TS recurrence-parse rule, 409
+  `item_not_repeating`); the assistant batch runs in one transaction with skip-unknown semantics
+  and caller-supplied bucket/habit ids; its update wire uses `PatchField {set, value}` because the
+  per-field delta distinguishes absent from null.
+
+## Scheduled jobs (`jobs/`)
+
+`@Scheduled` + ShedLock from day one (`jobs/SchedulingConfig`: Postgres `shedlock` table,
+`usingDbTime`), so every job is already safe when a second instance appears. First job:
+`TravelTopUpJob` (nightly 03:40 UTC) — the silent travel-time top-up the client used to trigger
+once per app load. Per user with ≥2 locations: the 24h `lastTravelTopUpAt` allowance, oldest
+stale pairs capped at 10, quiet stop on a spent budget. Clients see fresh rows on the next
+bootstrap.
 
 ## Realtime (`ws/`)
 

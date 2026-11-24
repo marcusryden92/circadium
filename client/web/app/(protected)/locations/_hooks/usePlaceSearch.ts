@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as locationActions from "@/actions/locations";
+import * as locationActions from "@/lib/api/locations";
 
 export interface Prediction {
   placeId: string;

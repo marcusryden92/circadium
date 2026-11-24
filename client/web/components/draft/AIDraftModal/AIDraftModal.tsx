@@ -51,7 +51,6 @@ import {
 } from "@/utils/draft/draftRelocations";
 import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
 import { updateSchedulingPreferences } from "@/lib/api/scheduling";
-import { updateDefaultTransportMode } from "@/actions/locations";
 import {
   setBufferTimeMinutes,
   setDefaultTransportMode,
@@ -79,7 +78,7 @@ import {
   diffDraftHabits,
 } from "@/utils/draft/diffDraftHabits";
 import { buildHabitChangeSet } from "@/utils/draft/applyDraftHabits";
-import { applyHabitChanges } from "@/actions/habits";
+import { applyHabitChanges } from "@/lib/api/habits";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
 import { WindowsView } from "@/components/draft/WindowsView";
 import { PrecedenceView } from "@/components/draft/PrecedenceView";
@@ -1133,9 +1132,9 @@ export function AIDraftModal({
         dispatch(
           setDefaultTransportMode(workingSettings.defaultTransportMode),
         );
-        void updateDefaultTransportMode(
-          workingSettings.defaultTransportMode,
-        ).catch(() => {});
+        void updateSchedulingPreferences({
+          defaultTransportMode: workingSettings.defaultTransportMode,
+        }).catch(() => {});
       }
     }
     captureEvent("assistant_draft_saved", {

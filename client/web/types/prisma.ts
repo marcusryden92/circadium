@@ -162,11 +162,15 @@ export type OccurrenceCompletion = Omit<
   "createdAt"
 > & { createdAt: string };
 
-export type HabitBucket = Prisma.HabitBucketGetPayload<undefined>;
+// The habit tables' timestamps migrated TEXT -> timestamp(3) when their writes
+// moved to Java (plan 2.2); the app speaks ISO strings end-to-end.
+export type HabitBucket = WithIsoTimestamps<Prisma.HabitBucketGetPayload<undefined>>;
 
-export type Habit = Prisma.HabitGetPayload<undefined>;
+export type Habit = WithIsoTimestamps<Prisma.HabitGetPayload<undefined>>;
 
-export type HabitItem = Prisma.HabitItemGetPayload<undefined>;
+export type HabitItem = Omit<Prisma.HabitItemGetPayload<undefined>, "createdAt"> & {
+  createdAt: string;
+};
 
 export type FeedbackReport = Prisma.FeedbackReportGetPayload<undefined>;
 

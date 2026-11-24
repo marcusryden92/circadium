@@ -80,6 +80,9 @@ class LocationTravelIntegrationTest {
 
     @AfterEach
     void cleanUp() {
+        // No FK from the preferences table to users (NextAuth-era shape): the refresh stamp
+        // must go explicitly or it leaks into the next test.
+        jdbcTemplate.update("DELETE FROM \"UserSchedulingPreferences\" WHERE \"userId\" = ?", USER);
         jdbcTemplate.update("DELETE FROM \"users\" WHERE \"id\" = ?", USER);
         jdbcTemplate.update("DELETE FROM \"TravelApiBudget\"");
     }

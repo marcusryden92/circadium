@@ -10,8 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import * as locationActions from "@/actions/locations";
-import { updateDefaultTransportMode } from "@/actions/locations";
+import { refreshAllTravelTimes } from "@/lib/api/locations";
 import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import {
   setAllTravelTimes,
@@ -23,7 +22,6 @@ import type { AppDispatch, RootState } from "@/redux/store";
 import type { TransportMode } from "@/generated/client";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import { serializeTravelTime } from "@/utils/locations";
 import { useServerAction } from "@/hooks/useServerAction";
 import { Button, ConfirmModal, SegmentedControl } from "@/components/ui";
 import { StatusLine } from "../StatusLine";
@@ -76,7 +74,7 @@ export function SchedulingSection() {
   const { weekStartDay, locations, markSynced } = useCalendarProvider();
 
   const saveMode = useCallback(async (mode: TransportMode) => {
-    await updateDefaultTransportMode(mode);
+    await updateSchedulingPreferences({ defaultTransportMode: mode });
     return mode;
   }, []);
 
@@ -119,7 +117,7 @@ export function SchedulingSection() {
     dispatch(setEnableTravelEvents(!enableTravelEvents));
   };
 
-  const refreshAction = useServerAction(locationActions.refreshAllTravelTimes);
+  const refreshAction = useServerAction(refreshAllTravelTimes);
   const [confirmRefresh, setConfirmRefresh] = useState(false);
 
   const handleRefreshAll = async () => {
@@ -127,10 +125,8 @@ export function SchedulingSection() {
     refreshAction.clear();
     const result = await refreshAction.run(transportMode);
     if (!result) return;
-    const fresh = await locationActions.fetchTravelTimes();
-    const serialized = fresh.map(serializeTravelTime);
-    dispatch(setAllTravelTimes(serialized));
-    markSynced("travelTimes", serialized);
+    dispatch(setAllTravelTimes(result.travelTimes));
+    markSynced("travelTimes", result.travelTimes);
     refreshAction.setSuccess(
       result.failed > 0
         ? `Refreshed ${result.updated} travel times. ${result.failed} pair${result.failed > 1 ? "s" : ""} couldn't be routed.`
