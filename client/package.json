@@ -9,5 +9,11 @@
     "lint": "pnpm --filter web lint",
     "type-check": "pnpm -r type-check",
     "test": "pnpm -r test"
+  },
+  "pnpm": {
+    "overrides": {
+      "@prisma/config>effect": "3.22.1",
+      "yaml@<2.8.3": ">=2.8.3"
+    }
   }
 }
