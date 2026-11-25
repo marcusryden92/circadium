@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { Button, Switch, vars } from "@/components/ui";
 import { useServerAction } from "@/hooks/useServerAction";
-import { sendSupportMessage } from "@/actions/feedback";
+import { sendSupportMessage } from "@/lib/api/feedback";
 import {
   card,
   cardHead,

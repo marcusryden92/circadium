@@ -47,4 +47,13 @@ public interface AccountMailer {
      * @param hasPassword false for accounts that only sign in through an OAuth provider
      */
     void sendExistingAccountNotice(String email, boolean hasPassword);
+
+    /**
+     * The support-inbox notification for a new feedback report. The report row is the source of truth; a
+     * delivery failure must never fail the report (delivery is already asynchronous and merely logged).
+     *
+     * @param userName the reporting user's display name, may be null
+     */
+    void sendFeedbackNotification(String reportId, String userName, String userEmail, String message,
+            boolean hasSnapshot);
 }

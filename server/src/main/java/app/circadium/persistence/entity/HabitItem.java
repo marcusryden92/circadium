@@ -6,6 +6,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "HabitItems")
 @Getter
@@ -21,6 +23,6 @@ public class HabitItem {
 
     private String userId;
 
-    private String createdAt;
+    private Instant createdAt;
 
 }

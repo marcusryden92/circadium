@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { AiMode } from "@/generated/client";
-import { updateAiMode, updateAiModel } from "@/actions/settings";
+import { updateAiMode, updateAiModel } from "@/lib/api/profile";
 import { resolveAiModel, type AiModelId } from "@/lib/aiModels";
 import {
   clearAiKey,

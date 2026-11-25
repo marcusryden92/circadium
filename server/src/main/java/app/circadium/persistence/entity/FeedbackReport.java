@@ -3,6 +3,7 @@ package app.circadium.persistence.entity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -24,6 +25,6 @@ public class FeedbackReport {
 
     private String userId;
 
-    private String createdAt;
+    private Instant createdAt;
 
 }

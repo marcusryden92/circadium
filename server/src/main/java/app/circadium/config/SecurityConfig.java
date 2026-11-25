@@ -77,7 +77,14 @@ class SecurityConfig {
             pathPattern(HttpMethod.POST, "/auth/password-reset"),
             pathPattern(HttpMethod.POST, "/auth/password-reset/confirm"),
             pathPattern(HttpMethod.POST, "/auth/handoff"),
-            pathPattern(HttpMethod.POST, "/auth/oauth/confirm"));
+            pathPattern(HttpMethod.POST, "/auth/oauth/confirm"),
+            // The calendar-import consent flows are browser navigations that authenticate the
+            // access cookie themselves (CalendarOAuthController): the chain's JSON 401 would
+            // dead-end a navigating browser, and the callback may arrive after the cookie lapsed.
+            pathPattern(HttpMethod.GET, "/integrations/google/connect"),
+            pathPattern(HttpMethod.GET, "/integrations/google/callback"),
+            pathPattern(HttpMethod.GET, "/integrations/microsoft/connect"),
+            pathPattern(HttpMethod.GET, "/integrations/microsoft/callback"));
 
     /**
      * Provider sign-in, the only part of the API with server-side state: Spring keeps {@code state}, the PKCE
@@ -148,6 +155,10 @@ class SecurityConfig {
                     } else {
                         authorize.requestMatchers(API_DOCS).access(adminWithMfa());
                     }
+                    // Unlike the API docs, the admin surface stays gated under local too: it reads
+                    // other users' data, and the web's own rule (isAdminSession) never relaxed.
+                    authorize.requestMatchers(PathPatternRequestMatcher.pathPattern("/admin/**"))
+                            .access(adminWithMfa());
                     authorize.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer

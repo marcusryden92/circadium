@@ -95,7 +95,7 @@ export function renderEngineMessage(
     "SEQUENCE_PAST_HORIZON",
     "SCHEDULED_OK",
   ];
-  const rawType = (raw as { type: unknown }).type;
+  const rawType = (raw).type;
   if (
     typeof rawType !== "string" ||
     !knownTypes.includes(rawType as EngineMessagePayload["type"])

@@ -106,9 +106,9 @@ describe("the account flows", () => {
 
   it("change the password inside replaceSession, with the cookie made fresh beforehand", async () => {
     const order: string[] = [];
-    ensureFreshMock.mockImplementation(async () => {
+    ensureFreshMock.mockImplementation(() => {
       order.push("fresh");
-      return true;
+      return Promise.resolve(true);
     });
     replaceSessionMock.mockImplementation(async (request: () => Promise<unknown>) => {
       order.push("lock");

@@ -156,9 +156,7 @@ describe("verifyAccessToken", () => {
     ["a network failure", new TypeError("fetch failed")],
   ])("throws on %s instead of reporting signed out", async (_, failure) => {
     const token = await sign();
-    const unavailable: JWTVerifyGetKey = async () => {
-      throw failure;
-    };
+    const unavailable: JWTVerifyGetKey = () => Promise.reject(failure);
 
     await expect(verifyAccessToken(token, unavailable)).rejects.toBe(failure);
   });
@@ -182,13 +180,15 @@ describe("verifyAccessToken against the remote key set", () => {
 
   it("fetches Java's published keys from the API origin", async () => {
     const fetchMock = jest.fn(
-      async () =>
-        new Response(JSON.stringify({ keys: [publicJwk] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ keys: [publicJwk] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        ),
     );
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
     const { verifyAccessToken: verify } = await freshModule();
 
     await expect(verify(await sign())).resolves.toMatchObject({
@@ -201,8 +201,8 @@ describe("verifyAccessToken against the remote key set", () => {
 
   it("throws when the key set endpoint answers 503", async () => {
     global.fetch = jest.fn(
-      async () => new Response("unavailable", { status: 503 }),
-    ) as unknown as typeof fetch;
+      () => Promise.resolve(new Response("unavailable", { status: 503 })),
+    );
     const { verifyAccessToken: verify } = await freshModule();
 
     // The isolated module has its own copy of jose, so match on the code

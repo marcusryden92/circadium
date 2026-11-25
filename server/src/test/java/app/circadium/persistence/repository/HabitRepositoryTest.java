@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,8 +47,8 @@ class HabitRepositoryTest {
         bucket.setUserId(userId);
         bucket.setName("Health");
         bucket.setSortOrder(0);
-        bucket.setCreatedAt("2026-11-16T08:00:00.000Z");
-        bucket.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        bucket.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        bucket.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
         habitBucketRepository.saveAndFlush(bucket);
 
         String id = UUID.randomUUID().toString();
@@ -57,8 +58,8 @@ class HabitRepositoryTest {
         habit.setName("Meditate daily");
         habit.setBucketId(bucketId);
         habit.setSortOrder(0);
-        habit.setCreatedAt("2026-11-16T08:00:00.000Z");
-        habit.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        habit.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        habit.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         habitRepository.saveAndFlush(habit);
         entityManager.clear();

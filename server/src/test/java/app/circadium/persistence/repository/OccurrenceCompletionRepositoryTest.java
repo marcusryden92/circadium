@@ -60,7 +60,7 @@ class OccurrenceCompletionRepositoryTest {
         completion.setOccurrenceKey("2026-11-16T07:00");
         completion.setStart("2026-11-16T07:00:00.000Z");
         completion.setEnd("2026-11-16T07:20:00.000Z");
-        completion.setCreatedAt("2026-11-16T07:20:00.000Z");
+        completion.setCreatedAt(Instant.parse("2026-11-16T07:20:00.000Z"));
 
         occurrenceCompletionRepository.saveAndFlush(completion);
         entityManager.clear();

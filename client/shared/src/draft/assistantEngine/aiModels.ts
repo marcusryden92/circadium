@@ -4,6 +4,9 @@
 // here with no migration. Every model listed must accept the engine's
 // `output_config: { effort }` param (Opus 4.8 and Sonnet 5 do; Haiku does not
 // — don't add it here without teaching runAssistantTurn to drop effort).
+// The Java API validates writes against its mirror of this list
+// (server/src/main/java/app/circadium/account/ProfileController.java) — the
+// two must change together.
 
 export type AiModelId = "claude-opus-4-8" | "claude-sonnet-5";
 

@@ -6,6 +6,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "Habits")
 @Getter
@@ -25,8 +27,8 @@ public class Habit {
 
     private int sortOrder;
 
-    private String createdAt;
+    private Instant createdAt;
 
-    private String updatedAt;
+    private Instant updatedAt;
 
 }

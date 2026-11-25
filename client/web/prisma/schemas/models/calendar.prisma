@@ -93,7 +93,7 @@ model OccurrenceCompletion {
   occurrenceKey String
   start         String
   end           String
-  createdAt     String
+  createdAt     DateTime
   planner       Planner @relation(fields: [plannerId], references: [id], onDelete: Cascade)
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 

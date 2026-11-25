@@ -5,12 +5,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { useFlashValue } from "@/hooks/useFlashAnimation";
 import { useServerAction } from "@/hooks/useServerAction";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import * as locationActions from "@/actions/locations";
-import {
-  serializeLocation,
-  serializeTravelTime,
-  hasCustomOverride,
-} from "@/utils/locations";
+import * as locationActions from "@/lib/api/locations";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
+import { hasCustomOverride } from "@/utils/locations";
 import type { RootState } from "@/redux/store";
 import {
   upsertLocation,
@@ -32,8 +29,8 @@ export interface TravelTimeOverrides {
 }
 
 // All data access and mutation flows for the Locations page. Reads come from
-// Redux only — no fetch on mount. UserProvider loads locations on auth via
-// fetchAllSchedulingData; a page-level dispatch raced with
+// Redux only — no fetch on mount. Locations arrive with the calendar
+// bootstrap (useFetchCalendarData); a page-level dispatch raced with
 // useCalendarServerSync's diff hook and could cascade-delete locations on the
 // server if the racing fetch ever returned an empty list.
 //
@@ -77,7 +74,7 @@ export function useLocationsPageState() {
     const previous = transportMode;
     dispatch(setDefaultTransportMode(mode));
     try {
-      await locationActions.updateDefaultTransportMode(mode);
+      await updateSchedulingPreferences({ defaultTransportMode: mode });
     } catch (err) {
       dispatch(setDefaultTransportMode(previous));
       console.error("Failed to persist transport mode", err);
@@ -114,9 +111,8 @@ export function useLocationsPageState() {
         placeId,
         sessionToken,
       });
-      const serialized = serializeLocation(created);
-      dispatch(upsertLocation(serialized));
-      markSynced("locations", upsertIntoList(locations, serialized));
+      dispatch(upsertLocation(created));
+      markSynced("locations", upsertIntoList(locations, created));
       flashSuccess(`Added "${name}".`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add location");
@@ -158,13 +154,12 @@ export function useLocationsPageState() {
         placeId: draft.placeId,
         sessionToken: draft.sessionToken,
       });
-      const serialized = serializeLocation(updated);
-      dispatch(upsertLocation(serialized));
+      dispatch(upsertLocation(updated));
       // updateLocation cascades the affected travel times server-side; mirror
       // that in Redux so the matrix shows them as missing immediately, and
       // advance the sync refs so neither shows up as a phantom diff.
       dispatch(removeTravelTimesByLocationId(updated.id));
-      markSynced("locations", upsertIntoList(locations, serialized));
+      markSynced("locations", upsertIntoList(locations, updated));
       markSynced(
         "travelTimes",
         allTravelTimes.filter(
@@ -217,10 +212,8 @@ export function useLocationsPageState() {
     setError(null);
     const result = await fetchMissing.run(transportMode);
     if (!result) return;
-    const fresh = await locationActions.fetchTravelTimes();
-    const serialized = fresh.map(serializeTravelTime);
-    dispatch(setAllTravelTimes(serialized));
-    markSynced("travelTimes", serialized);
+    dispatch(setAllTravelTimes(result.travelTimes));
+    markSynced("travelTimes", result.travelTimes);
     const fetchedText =
       result.fetched > 0
         ? `Fetched ${result.fetched} travel time${result.fetched > 1 ? "s" : ""}.`

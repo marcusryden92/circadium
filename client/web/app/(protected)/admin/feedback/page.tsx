@@ -11,7 +11,7 @@ import {
   getFeedbackReportSnapshot,
   listFeedbackReports,
   type FeedbackReportSummary,
-} from "@/actions/adminFeedback";
+} from "@/lib/api/adminFeedback";
 import { SnapshotInspector } from "./_components/SnapshotInspector";
 import {
   page,
@@ -62,7 +62,7 @@ export default function AdminFeedbackPage() {
     { kind: "delete" | "clear"; id: string } | null
   >(null);
 
-  // The server actions enforce the same rule; this only explains a refusal.
+  // The API enforces the same rule; this only explains a refusal.
   const isAdmin = role === "ADMIN" && session?.twoFactorVerified === true;
 
   const reload = useCallback(async () => {

@@ -151,3 +151,14 @@ INSERT INTO "QueueMembers" ("id", "sortOrder", "queueId", "plannerId", "userId",
 INSERT INTO "PlannerDependencies" ("id", "predecessorId", "successorId", "userId", "createdAt", "updatedAt") VALUES
     ('bootstrap-dependency-1', 'bootstrap-planner-plan', 'bootstrap-planner-goal', 'bootstrap-user',
         '2026-01-13T10:00:00.000Z', '2026-01-13T10:00:00.000Z');
+
+-- Non-default values on every wire field, so a mapping slip cannot hide behind a default; the other
+-- account's row proves the bootstrap scopes the single-row read. The table has no FK to users (a
+-- NextAuth-era shape), so user-delete cleanups never cascade here — the reseed clears its own rows.
+DELETE FROM "UserSchedulingPreferences" WHERE "userId" IN ('bootstrap-user', 'bootstrap-other');
+INSERT INTO "UserSchedulingPreferences" ("id", "userId", "bufferTimeMinutes", "defaultTransportMode",
+        "weekStartDay", "lastTravelRefreshAt", "lastTravelTopUpAt", "createdAt", "updatedAt") VALUES
+    ('bootstrap-preferences', 'bootstrap-user', 15, 'TRANSIT', 0, '2026-02-01 00:00:00.000', NULL,
+        '2026-01-02 08:00:00.000', '2026-02-01 00:00:00.000'),
+    ('bootstrap-other-preferences', 'bootstrap-other', 25, 'WALKING', 6, NULL, NULL,
+        '2026-01-02 08:00:00.000', '2026-01-02 08:00:00.000');

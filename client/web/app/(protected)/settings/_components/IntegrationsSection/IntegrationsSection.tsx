@@ -15,26 +15,22 @@ import {
   refreshExternalCalendarSource,
   updateExternalCalendarSource,
   deleteExternalCalendarSource,
-} from "@/actions/externalCalendars";
-import {
   getGoogleCalendarStatus,
   listGoogleCalendars,
   addGoogleCalendarSource,
   disconnectGoogleCalendar,
-} from "@/actions/googleCalendar";
-import {
   getMicrosoftCalendarStatus,
   listMicrosoftCalendars,
   addMicrosoftCalendarSource,
   disconnectMicrosoftCalendar,
-} from "@/actions/microsoftCalendar";
-import type { GoogleCalendarListEntry } from "@/utils/external-calendar/googleCalendarApi";
-import type { MicrosoftCalendarListEntry } from "@/utils/external-calendar/microsoftGraphApi";
+  type GoogleCalendarListEntry,
+  type MicrosoftCalendarListEntry,
+} from "@/lib/api/externalCalendars";
+import { apiUrl } from "@/lib/session/config";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useServerAction } from "@/hooks/useServerAction";
 import {
   ExternalCalendarKind,
-  ExternalCalendarMode,
   type ExternalCalendarSource,
 } from "@/types/prisma";
 import {
@@ -483,7 +479,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={google === null}
               onClick={() => {
-                window.location.href = "/api/integrations/google/connect";
+                window.location.href = `${apiUrl()}/integrations/google/connect`;
               }}
             >
               Connect Google
@@ -576,7 +572,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={microsoft === null}
               onClick={() => {
-                window.location.href = "/api/integrations/microsoft/connect";
+                window.location.href = `${apiUrl()}/integrations/microsoft/connect`;
               }}
             >
               Connect Microsoft
@@ -648,11 +644,11 @@ export function IntegrationsSection() {
                   <div className={sourceControls}>
                     <SegmentedControl
                       options={MODE_OPTIONS}
-                      value={source.mode as ModeKey}
+                      value={source.mode}
                       onChange={(key) =>
                         void handlePatch(
                           source,
-                          { mode: key as ExternalCalendarMode },
+                          { mode: key },
                           true,
                         )
                       }

@@ -6,6 +6,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "HabitCompletions")
 @Getter
@@ -25,6 +27,6 @@ public class OccurrenceCompletion {
 
     private String end;
 
-    private String createdAt;
+    private Instant createdAt;
 
 }

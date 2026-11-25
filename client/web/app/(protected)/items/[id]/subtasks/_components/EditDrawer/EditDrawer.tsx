@@ -46,7 +46,6 @@ import {
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useDraggableContext } from "@/components/draggable/DraggableContext";
 import { useFlashBoolean } from "@/hooks/useFlashAnimation";
-import { assignLocationToPlanner } from "@/actions/locations";
 import { deleteGoal, duplicateSubtree } from "@/utils/goalPageHandlers";
 import { getEffectiveCategoryId } from "@/utils/goalPageHandlers";
 import { promoteSubtree } from "@/utils/goal-handlers/promoteSubtree";
@@ -373,7 +372,6 @@ export function EditDrawer() {
   };
 
   const onLocationChange = async (locationId: string | null) => {
-    await assignLocationToPlanner(task.id, locationId);
     updatePlannerArray(
       (prev) => prev.map((p) => (p.id === task.id ? { ...p, locationId } : p)),
       historyMessages.item.field("location", task.title),

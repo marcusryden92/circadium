@@ -5,7 +5,7 @@ import {
   getViewState,
   saveViewState,
   type ViewStateKind,
-} from "@/actions/viewState";
+} from "@/lib/api/viewState";
 
 // Load-once + debounced-save for a canvas page's serialized view state
 // (graph / mindmap). The caller passes the JSON snapshot of its current

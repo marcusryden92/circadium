@@ -123,7 +123,9 @@ export type EngineMessage = WithIsoTimestamps<
   Prisma.EngineMessageGetPayload<undefined>
 >;
 
-export type DraftConversation = Prisma.DraftConversationGetPayload<undefined>;
+export type DraftConversation = WithIsoTimestamps<
+  Prisma.DraftConversationGetPayload<undefined>
+>;
 
 export type QueueMember = WithIsoTimestamps<
   Prisma.QueueMemberGetPayload<undefined>
@@ -155,17 +157,36 @@ export type ExternalCalendarSource = Omit<
 
 export type ExternalEvent = Prisma.ExternalEventGetPayload<undefined>;
 
-export type OccurrenceCompletion =
-  Prisma.OccurrenceCompletionGetPayload<undefined>;
+// createdAt migrated TEXT -> timestamp(3) when its writes moved to Java (plan
+// 2.1); the app speaks the ISO string end-to-end, like the calendar tables.
+export type OccurrenceCompletion = Omit<
+  Prisma.OccurrenceCompletionGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
-export type HabitBucket = Prisma.HabitBucketGetPayload<undefined>;
+// The habit tables' timestamps migrated TEXT -> timestamp(3) when their writes
+// moved to Java (plan 2.2); the app speaks ISO strings end-to-end.
+export type HabitBucket = WithIsoTimestamps<Prisma.HabitBucketGetPayload<undefined>>;
 
-export type Habit = Prisma.HabitGetPayload<undefined>;
+export type Habit = WithIsoTimestamps<Prisma.HabitGetPayload<undefined>>;
 
-export type HabitItem = Prisma.HabitItemGetPayload<undefined>;
+export type HabitItem = Omit<Prisma.HabitItemGetPayload<undefined>, "createdAt"> & {
+  createdAt: string;
+};
 
-export type FeedbackReport = Prisma.FeedbackReportGetPayload<undefined>;
+// The feedback tables' createdAt migrated TEXT -> timestamp(3) when their
+// writes moved to Java (plan 2.4); the app speaks the ISO string end-to-end.
+export type FeedbackReport = Omit<
+  Prisma.FeedbackReportGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
-export type Suggestion = Prisma.SuggestionGetPayload<undefined>;
+export type Suggestion = Omit<
+  Prisma.SuggestionGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
-export type SuggestionVote = Prisma.SuggestionVoteGetPayload<undefined>;
+export type SuggestionVote = Omit<
+  Prisma.SuggestionVoteGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };

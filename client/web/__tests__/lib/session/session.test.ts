@@ -19,7 +19,7 @@ const cookiesMock = cookies as jest.MockedFunction<typeof cookies>;
 const verifyMock = verifyAccessToken as jest.MockedFunction<
   typeof verifyAccessToken
 >;
-const findUserMock = db.user.findUnique as unknown as jest.Mock;
+const findUserMock = (db.user as unknown as { findUnique: jest.Mock }).findUnique;
 
 const ISSUED_AT = 1_800_000_000;
 

@@ -76,6 +76,7 @@ circadium:
     security-from: Circadium <security@circadium.app>
     # No mailbox behind it on purpose: replies bounce, so support@ only gets mail people meant to send.
     account-from: Circadium <no-reply@circadium.app>
+    support-address: support@circadium.app
     allow-logging-fallback: false
   oauth:
     # Every provider listed must be configured outside local. Narrow the list to roll a provider out (or back)
@@ -103,6 +104,11 @@ circadium:
     pwned:
       enabled: true
       base-url: https://api.pwnedpasswords.com
+  # Google Maps Platform (Places New + Routes), one key for both. Optional in every profile:
+  # without it the location/travel endpoints answer 503 maps_not_configured, so a deploy is
+  # never coupled to the Fly secret being set first.
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY:}
   # Erases a deleted account's PostHog person (see PosthogProperties). Optional: both blank turns it off.
   analytics:
     posthog:

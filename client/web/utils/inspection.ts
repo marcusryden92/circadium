@@ -57,6 +57,7 @@ export function readInspectionTarget(): InspectionTarget | null {
 
 export function startInspection(target: InspectionTarget): void {
   window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(target));
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full reload is required so the providers re-hydrate Redux from the impersonation snapshot
   window.location.assign("/dashboard");
 }
 

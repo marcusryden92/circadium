@@ -107,7 +107,7 @@ export function ThemeProvider({
 
   const overrideStyle: CSSProperties | undefined = useMemo(() => {
     if (!userVars) return undefined;
-    return assignInlineVars(vars, userVars) as CSSProperties;
+    return assignInlineVars(vars, userVars);
   }, [userVars]);
 
   return (

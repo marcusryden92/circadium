@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,8 +44,8 @@ class HabitBucketRepositoryTest {
         bucket.setName("Health");
         bucket.setColor("#22AA55");
         bucket.setSortOrder(1);
-        bucket.setCreatedAt("2026-11-16T08:00:00.000Z");
-        bucket.setUpdatedAt("2026-11-16T08:00:00.000Z");
+        bucket.setCreatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
+        bucket.setUpdatedAt(Instant.parse("2026-11-16T08:00:00.000Z"));
 
         habitBucketRepository.saveAndFlush(bucket);
         entityManager.clear();

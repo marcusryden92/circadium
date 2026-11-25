@@ -17,7 +17,7 @@ import {
   getSuggestions,
   voteSuggestion,
   type SuggestionView,
-} from "@/actions/feedback";
+} from "@/lib/api/feedback";
 import {
   card,
   cardHead,

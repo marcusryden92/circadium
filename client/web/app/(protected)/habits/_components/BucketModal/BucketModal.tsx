@@ -16,7 +16,7 @@ import {
   createHabitBucket,
   updateHabitBucket,
   deleteHabitBucket,
-} from "@/actions/habits";
+} from "@/lib/api/habits";
 import {
   upsertHabitBucket,
   removeHabitBucket,

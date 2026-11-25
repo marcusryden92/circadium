@@ -109,7 +109,7 @@ CREATE TABLE "HabitCompletions" (
     "occurrenceKey" TEXT NOT NULL,
     "start" TEXT NOT NULL,
     "end" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HabitCompletions_pkey" PRIMARY KEY ("id")
 );
@@ -197,8 +197,8 @@ CREATE TABLE "DraftConversations" (
     "title" TEXT NOT NULL,
     "messages" JSONB NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DraftConversations_pkey" PRIMARY KEY ("id")
 );
@@ -282,7 +282,7 @@ CREATE TABLE "FeedbackReports" (
     "message" TEXT NOT NULL,
     "dataSnapshot" JSONB,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "FeedbackReports_pkey" PRIMARY KEY ("id")
 );
@@ -293,7 +293,7 @@ CREATE TABLE "Suggestions" (
     "title" TEXT NOT NULL,
     "body" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Suggestions_pkey" PRIMARY KEY ("id")
 );
@@ -304,7 +304,7 @@ CREATE TABLE "SuggestionVotes" (
     "value" INTEGER NOT NULL,
     "suggestionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SuggestionVotes_pkey" PRIMARY KEY ("id")
 );
@@ -316,8 +316,8 @@ CREATE TABLE "HabitBuckets" (
     "name" TEXT NOT NULL,
     "color" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HabitBuckets_pkey" PRIMARY KEY ("id")
 );
@@ -330,8 +330,8 @@ CREATE TABLE "Habits" (
     "color" TEXT,
     "bucketId" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Habits_pkey" PRIMARY KEY ("id")
 );
@@ -342,9 +342,19 @@ CREATE TABLE "HabitItems" (
     "habitId" TEXT NOT NULL,
     "plannerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HabitItems_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "shedlock" (
+    "name" VARCHAR(64) NOT NULL,
+    "lock_until" TIMESTAMP(3) NOT NULL,
+    "locked_at" TIMESTAMP(3) NOT NULL,
+    "locked_by" VARCHAR(255) NOT NULL,
+
+    CONSTRAINT "shedlock_pkey" PRIMARY KEY ("name")
 );
 
 -- CreateTable

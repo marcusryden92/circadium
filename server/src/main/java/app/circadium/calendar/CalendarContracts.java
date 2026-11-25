@@ -10,6 +10,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DeserializationContext;
@@ -30,6 +33,14 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 public final class CalendarContracts {
 
     private CalendarContracts() {
+    }
+
+    /** JavaScript's toISOString() shape (the timestamp wire contract): three fractional digits + Z. */
+    static final DateTimeFormatter ISO_MILLIS =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+
+    static String iso(Instant instant) {
+        return instant == null ? null : ISO_MILLIS.format(instant);
     }
 
     /** One optimistic-concurrency sync: the client's diff against the state it last confirmed. */
@@ -129,7 +140,66 @@ public final class CalendarContracts {
             List<PlannerDependency> dependencies,
             @Schema(description = "Oldest first.")
             List<SerializedLocation> locations,
-            List<SerializedTravelTime> travelTimes) {
+            List<SerializedTravelTime> travelTimes,
+            SchedulingPreferences schedulingPreferences) {
+    }
+
+    /**
+     * The account-wide scheduling preferences, read with the bootstrap and written through
+     * {@code PATCH /scheduling/preferences} — outside the sync diff, so changing them never moves
+     * {@code dataVersion}.
+     */
+    public record SchedulingPreferences(
+            int bufferTimeMinutes,
+            TransportMode defaultTransportMode,
+            @Schema(description = "0 = Sunday through 6 = Saturday.")
+            int weekStartDay) {
+    }
+
+    /**
+     * One completed occurrence of a recurring task/goal leaf, or one checked-off plan occurrence.
+     * Kept outside the sync diff (the row is a log entry, not calendar fabric); {@code start}/{@code end}
+     * stay the strings the client wrote, like the calendar tables' domain datetimes.
+     */
+    public record OccurrenceCompletion(
+            @NotNull String id,
+            String plannerId,
+            String userId,
+            String occurrenceKey,
+            String start,
+            String end,
+            String createdAt) {
+    }
+
+    /** The habits surface's own grouping entity, deliberately distinct from the Category tree. */
+    public record HabitBucket(
+            @NotNull String id,
+            String userId,
+            String name,
+            String color,
+            int sortOrder,
+            String createdAt,
+            String updatedAt) {
+    }
+
+    /** A pure tracking entity over repeating planner items; the engine never reads it. */
+    public record Habit(
+            @NotNull String id,
+            String userId,
+            String name,
+            String color,
+            String bucketId,
+            int sortOrder,
+            String createdAt,
+            String updatedAt) {
+    }
+
+    public record HabitItem(
+            @NotNull String id,
+            String habitId,
+            String plannerId,
+            String userId,
+            String createdAt) {
     }
 
     public record Planner(

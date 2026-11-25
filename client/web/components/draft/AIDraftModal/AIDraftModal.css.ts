@@ -314,7 +314,7 @@ export const mobileTabSelect = style([
     border: "none",
     margin: 0,
     padding: 0,
-    paddingRight: 22,
+    paddingRight: space["6"],
     color: vars.ink,
     cursor: "pointer",
     maxWidth: "100%",

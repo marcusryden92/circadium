@@ -429,7 +429,7 @@ export function WeekStructureModal({
                       ? null
                       : t.recurrenceExceptions,
                   updatedAt: new Date().toISOString(),
-                } as EventTemplate)
+                })
               : t,
           ),
         );
@@ -496,7 +496,7 @@ export function WeekStructureModal({
                       ? null
                       : t.recurrenceExceptions,
                   updatedAt: new Date().toISOString(),
-                } as EventTemplate)
+                })
               : t,
           ),
         );
@@ -529,7 +529,7 @@ export function WeekStructureModal({
     setTplsWorking((prev) =>
       prev.map((t) =>
         t.id === id
-          ? ({ ...t, ...patch, updatedAt: new Date().toISOString() } as EventTemplate)
+          ? ({ ...t, ...patch, updatedAt: new Date().toISOString() })
           : t,
       ),
     );

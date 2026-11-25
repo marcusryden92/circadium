@@ -11,10 +11,6 @@ import { PopoverLocationPicker } from "../PopoverLocationPicker";
 import { PopoverColorPicker } from "../PopoverColorPicker";
 import { handleEventCopy } from "@/utils/calendarEventHandlers";
 import { historyMessages } from "@/utils/historyMessages";
-import {
-  assignLocationToPlanner,
-  setUseParentLocation,
-} from "@/actions/locations";
 import { timeOnDate } from "@/utils/calendarUtils";
 import {
   plannerIdFromEventId,
@@ -155,11 +151,6 @@ const EventPopover: React.FC<EventPopoverProps> = ({
         ),
       historyMessages.item.field("location", plannerItem?.title),
     );
-    try {
-      await assignLocationToPlanner(plannerId, locationId);
-    } catch (error) {
-      console.error("Failed to update location:", error);
-    }
   };
 
   const handleToggleLocationOverride = useCallback(async () => {
@@ -176,11 +167,6 @@ const EventPopover: React.FC<EventPopoverProps> = ({
       historyMessages.item.field("location inheritance", plannerItem.title),
     );
     setLocationOverrideEnabled(newOverrideEnabled);
-    try {
-      await setUseParentLocation(plannerItem.id, newUseParent);
-    } catch (error) {
-      console.error("Failed to toggle location override:", error);
-    }
   }, [
     plannerItem,
     categoryHasLocation,

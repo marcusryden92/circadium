@@ -211,6 +211,17 @@ model AccountDeletionToken {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Owned by the Java server: ShedLock's lock table for scheduled jobs (ShedLock's
+// documented JdbcTemplate schema; snake_case is its convention, not ours).
+model Shedlock {
+  name      String   @id @db.VarChar(64)
+  lockUntil DateTime @map("lock_until")
+  lockedAt  DateTime @map("locked_at")
+  lockedBy  String   @map("locked_by") @db.VarChar(255)
+
+  @@map("shedlock")
+}
+
 enum UserRole {
   ADMIN
   USER

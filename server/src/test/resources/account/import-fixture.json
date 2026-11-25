@@ -1,0 +1,363 @@
+{
+  "meta": {
+    "exportedAt": "2026-01-20T12:00:00.000Z",
+    "format": "circadium.data-export.v1",
+    "note": "Your personal data held by Circadium. Credentials (passwords, access tokens) are intentionally excluded."
+  },
+  "profile": null,
+  "linkedSignIns": [],
+  "planners": [
+    {
+      "id": "planner-1",
+      "title": "Target task",
+      "parentId": null,
+      "plannerType": "task",
+      "isReady": true,
+      "isTriaged": true,
+      "duration": 60,
+      "deadline": "2026-02-01T10:00:00.000Z",
+      "starts": null,
+      "recurrence": null,
+      "recurrenceExceptions": null,
+      "splitting": null,
+      "completedSegments": null,
+      "maxMinutesPerDay": null,
+      "earliestStartDate": null,
+      "allowedTimes": null,
+      "linkedItemId": null,
+      "notes": "a note",
+      "sortOrder": 0,
+      "completedStartTime": null,
+      "completedEndTime": null,
+      "priority": 4,
+      "userId": "transfer-user",
+      "color": "#abcdef",
+      "locationId": "loc-1",
+      "useParentLocation": false,
+      "categoryId": "category-2",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    },
+    {
+      "id": "planner-2",
+      "title": "Big goal",
+      "parentId": null,
+      "plannerType": "goal",
+      "isReady": false,
+      "isTriaged": true,
+      "duration": 0,
+      "deadline": null,
+      "starts": null,
+      "recurrence": null,
+      "recurrenceExceptions": null,
+      "splitting": null,
+      "completedSegments": null,
+      "maxMinutesPerDay": 120,
+      "earliestStartDate": null,
+      "allowedTimes": null,
+      "linkedItemId": null,
+      "notes": null,
+      "sortOrder": 0,
+      "completedStartTime": null,
+      "completedEndTime": null,
+      "priority": 5,
+      "userId": "transfer-user",
+      "color": null,
+      "locationId": null,
+      "useParentLocation": false,
+      "categoryId": null,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    },
+    {
+      "id": "planner-3",
+      "title": "Goal step",
+      "parentId": "planner-2",
+      "plannerType": "task",
+      "isReady": null,
+      "isTriaged": true,
+      "duration": 30,
+      "deadline": null,
+      "starts": null,
+      "recurrence": null,
+      "recurrenceExceptions": null,
+      "splitting": null,
+      "completedSegments": null,
+      "maxMinutesPerDay": null,
+      "earliestStartDate": null,
+      "allowedTimes": null,
+      "linkedItemId": "planner-1",
+      "notes": null,
+      "sortOrder": 1024,
+      "completedStartTime": null,
+      "completedEndTime": null,
+      "priority": 4,
+      "userId": "transfer-user",
+      "color": null,
+      "locationId": null,
+      "useParentLocation": true,
+      "categoryId": null,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "calendarEvents": [],
+  "weeklyTemplates": [
+    {
+      "id": "template-1",
+      "title": "Sleep",
+      "startDay": "monday",
+      "startTime": "22:00",
+      "userId": "transfer-user",
+      "duration": 480,
+      "color": "#123456",
+      "locationId": "loc-1",
+      "recurrenceExceptions": null,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "category-1",
+      "name": "Professional",
+      "icon": null,
+      "color": "#ff8800",
+      "sortOrder": 0,
+      "useTimeWindows": false,
+      "isStrict": false,
+      "confineToOwnWindows": false,
+      "locationId": "loc-2",
+      "parentId": null,
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z",
+      "timeSlots": []
+    },
+    {
+      "id": "category-2",
+      "name": "Deep work",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "useTimeWindows": true,
+      "isStrict": true,
+      "confineToOwnWindows": false,
+      "locationId": null,
+      "parentId": "category-1",
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z",
+      "timeSlots": [
+        {
+          "id": "window-1",
+          "day": 1,
+          "startTime": "09:00",
+          "endTime": "17:00",
+          "recurrenceExceptions": null,
+          "categoryId": "category-2",
+          "userId": "transfer-user"
+        }
+      ]
+    }
+  ],
+  "categoryEvents": [],
+  "travelEvents": [],
+  "engineMessages": [],
+  "locations": [
+    {
+      "id": "loc-1",
+      "name": "Home",
+      "address": "1 Home Street",
+      "placeId": "place-1",
+      "lat": 59.3293,
+      "lng": 18.0686,
+      "userId": "transfer-user",
+      "createdAt": "2026-01-01T10:00:00.000Z",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    },
+    {
+      "id": "loc-2",
+      "name": "Office",
+      "address": "2 Office Road",
+      "placeId": "place-2",
+      "lat": 59.3326,
+      "lng": 18.0649,
+      "userId": "transfer-user",
+      "createdAt": "2026-01-01T10:00:00.000Z",
+      "updatedAt": "2026-01-01T10:00:00.000Z"
+    }
+  ],
+  "travelTimes": [
+    {
+      "id": "traveltime-1",
+      "fromLocationId": "loc-1",
+      "toLocationId": "loc-2",
+      "transportMode": "DRIVING",
+      "googleRushHourMinutes": 30,
+      "googleRegularMinutes": 20,
+      "googleNightMinutes": 15,
+      "customRushHourMinutes": null,
+      "customRegularMinutes": 25,
+      "customNightMinutes": null,
+      "unroutableAt": null,
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "schedulingPreferences": {
+    "id": "schedulingprefs-1",
+    "userId": "transfer-user",
+    "bufferTimeMinutes": 15,
+    "defaultTransportMode": "TRANSIT",
+    "weekStartDay": 1,
+    "lastTravelRefreshAt": null,
+    "lastTravelTopUpAt": "2026-01-03T04:00:00.000Z",
+    "createdAt": "2026-01-02T03:04:05.678Z",
+    "updatedAt": "2026-01-02T03:04:05.678Z"
+  },
+  "taskPreferences": [
+    {
+      "id": "taskpref-1",
+      "plannerId": "planner-1",
+      "taskType": "DEEP_WORK",
+      "preferredDays": [1, 2],
+      "preferredStartTime": "09:00",
+      "preferredEndTime": "12:00",
+      "avoidDays": [],
+      "priority": "MEDIUM",
+      "energyLevel": "HIGH",
+      "allowFlexibility": true
+    }
+  ],
+  "queues": [
+    {
+      "id": "queue-1",
+      "title": "Pipeline",
+      "sortOrder": 0,
+      "color": null,
+      "categoryId": "category-1",
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z",
+      "members": [
+        {
+          "id": "member-1",
+          "sortOrder": 1024,
+          "queueId": "queue-1",
+          "plannerId": "planner-1",
+          "userId": "transfer-user",
+          "createdAt": "2026-01-02T03:04:05.678Z",
+          "updatedAt": "2026-01-02T03:04:05.678Z"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "dependency-1",
+      "predecessorId": "planner-1",
+      "successorId": "planner-2",
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "aiConversations": [
+    {
+      "id": "conversation-1",
+      "title": "Planning chat",
+      "messages": [
+        { "id": "m1", "role": "user", "content": "hello" },
+        { "id": "m2", "role": "assistant", "content": "hi there" }
+      ],
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "viewState": {
+    "id": "viewstate-1",
+    "userId": "transfer-user",
+    "graph": "{\"zoom\":40}",
+    "mindmap": null,
+    "updatedAt": "2026-01-02T03:04:05.678Z"
+  },
+  "externalCalendarSources": [
+    {
+      "id": "source-1",
+      "userId": "transfer-user",
+      "kind": "ICS",
+      "url": "https://example.test/cal.ics",
+      "name": "Work shifts",
+      "color": null,
+      "enabled": true,
+      "mode": "BUSY",
+      "modeExceptions": "[\"uid-2\"]",
+      "locationId": "loc-1",
+      "locationExceptions": "{\"uid-1\":\"loc-2\",\"uid-2\":null}",
+      "lastFetchedAt": "2026-01-04T05:00:00.000Z",
+      "lastError": null,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "externalCalendarEvents": [
+    {
+      "id": "source-1|uid-1|2026-01-10T10:00:00.000Z",
+      "sourceId": "source-1",
+      "userId": "transfer-user",
+      "uid": "uid-1",
+      "title": "Shift",
+      "start": "2026-01-10T10:00:00.000Z",
+      "end": "2026-01-10T12:00:00.000Z",
+      "allDay": false
+    }
+  ],
+  "googleCalendarConnection": null,
+  "microsoftCalendarConnection": null,
+  "occurrenceCompletions": [
+    {
+      "id": "completion-1",
+      "plannerId": "planner-1",
+      "userId": "transfer-user",
+      "occurrenceKey": "2026-01-05T00:00",
+      "start": "2026-01-05T10:00:00.000Z",
+      "end": "2026-01-05T11:00:00.000Z",
+      "createdAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "habitBuckets": [
+    {
+      "id": "bucket-1",
+      "userId": "transfer-user",
+      "name": "Health",
+      "color": null,
+      "sortOrder": 0,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "habits": [
+    {
+      "id": "habit-1",
+      "userId": "transfer-user",
+      "name": "Meditate",
+      "color": "#00ff00",
+      "bucketId": "bucket-1",
+      "sortOrder": 0,
+      "createdAt": "2026-01-02T03:04:05.678Z",
+      "updatedAt": "2026-01-02T03:04:05.678Z"
+    }
+  ],
+  "habitItems": [
+    {
+      "id": "habititem-1",
+      "habitId": "habit-1",
+      "plannerId": "planner-1",
+      "userId": "transfer-user",
+      "createdAt": "2026-01-02T03:04:05.678Z"
+    }
+  ]
+}

@@ -42,7 +42,7 @@ class SuggestionRepositoryTest {
         suggestion.setTitle("Add dark mode to the mobile app");
         suggestion.setBody("It would reduce eye strain at night.");
         suggestion.setUserId(userId);
-        suggestion.setCreatedAt("2026-11-16T08:00:00.000Z");
+        suggestion.setCreatedAt(java.time.Instant.parse("2026-11-16T08:00:00.000Z"));
 
         suggestionRepository.saveAndFlush(suggestion);
         entityManager.clear();

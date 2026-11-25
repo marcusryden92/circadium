@@ -24,7 +24,7 @@ import { ChatPane } from "@/components/draft/ChatPane";
 import { ChatHistoryPopover } from "@/components/draft/ChatHistoryPopover";
 import { useAIDraftState } from "@/hooks/useAIDraftState";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { DraftConversationMessage } from "@/actions/draftConversations";
+import type { DraftConversationMessage } from "@/lib/api/draftConversations";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useAiAccess } from "@/components/ui";
 import { AI_MODELS, type AiModelId } from "@/lib/aiModels";
@@ -50,11 +50,7 @@ import {
   revertFailedRelocations,
 } from "@/utils/draft/draftRelocations";
 import type { DraftSchedulingSettings } from "@/utils/draft/draftSettings";
-import {
-  updateUserSchedulingPreferences,
-  updateWeekStartDay,
-} from "@/actions/scheduling";
-import { updateDefaultTransportMode } from "@/actions/locations";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import {
   setBufferTimeMinutes,
   setDefaultTransportMode,
@@ -82,7 +78,7 @@ import {
   diffDraftHabits,
 } from "@/utils/draft/diffDraftHabits";
 import { buildHabitChangeSet } from "@/utils/draft/applyDraftHabits";
-import { applyHabitChanges } from "@/actions/habits";
+import { applyHabitChanges } from "@/lib/api/habits";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
 import { WindowsView } from "@/components/draft/WindowsView";
 import { PrecedenceView } from "@/components/draft/PrecedenceView";
@@ -1117,7 +1113,7 @@ export function AIDraftModal({
         workingSettings.bufferTimeMinutes !== canonicalSettings.bufferTimeMinutes
       ) {
         dispatch(setBufferTimeMinutes(workingSettings.bufferTimeMinutes));
-        void updateUserSchedulingPreferences({
+        void updateSchedulingPreferences({
           bufferTimeMinutes: workingSettings.bufferTimeMinutes,
         }).catch(() => {});
       }
@@ -1125,7 +1121,9 @@ export function AIDraftModal({
         dispatch(
           setWeekStartDay(workingSettings.weekStartDay as WeekDayIntegers),
         );
-        void updateWeekStartDay(workingSettings.weekStartDay).catch(() => {});
+        void updateSchedulingPreferences({
+          weekStartDay: workingSettings.weekStartDay,
+        }).catch(() => {});
       }
       if (
         workingSettings.defaultTransportMode !==
@@ -1134,9 +1132,9 @@ export function AIDraftModal({
         dispatch(
           setDefaultTransportMode(workingSettings.defaultTransportMode),
         );
-        void updateDefaultTransportMode(
-          workingSettings.defaultTransportMode,
-        ).catch(() => {});
+        void updateSchedulingPreferences({
+          defaultTransportMode: workingSettings.defaultTransportMode,
+        }).catch(() => {});
       }
     }
     captureEvent("assistant_draft_saved", {

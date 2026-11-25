@@ -50,4 +50,24 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update User u set u.isTwoFactorEnabled = :enabled where u.id = :id")
     int updateTwoFactorEnabled(@Param("id") String id, @Param("enabled") boolean enabled);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update User u set u.name = :name where u.id = :id")
+    int updateName(@Param("id") String id, @Param("name") String name);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update User u set u.onboardedAt = :onboardedAt where u.id = :id")
+    int updateOnboardedAt(@Param("id") String id, @Param("onboardedAt") Instant onboardedAt);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update User u set u.aiMode = :mode where u.id = :id")
+    int updateAiMode(@Param("id") String id, @Param("mode") app.circadium.persistence.enums.AiMode mode);
+
+    @Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update User u set u.aiModel = :model where u.id = :id")
+    int updateAiModel(@Param("id") String id, @Param("model") String model);
 }

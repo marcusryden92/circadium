@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, FieldStack, ResponsiveSegmentedControl } from "@/components/ui";
 import { useCalendarProvider } from "@/context/CalendarProvider";
-import * as locationActions from "@/actions/locations";
-import { serializeLocation, serializeTravelTime } from "@/utils/locations";
+import * as locationActions from "@/lib/api/locations";
+import { updateSchedulingPreferences } from "@/lib/api/scheduling";
 import {
   upsertLocation,
   setDefaultTransportMode,
@@ -86,18 +86,19 @@ export function LocationsStep({
 
   const handleTransportChange = (mode: TransportMode) => {
     dispatch(setDefaultTransportMode(mode));
-    void locationActions.updateDefaultTransportMode(mode).catch(() => {});
+    void updateSchedulingPreferences({ defaultTransportMode: mode }).catch(
+      () => {},
+    );
   };
 
   const warmTravelTimes = (currentLocations: SerializedLocation[]) => {
     if (currentLocations.length < 2) return;
     void (async () => {
       try {
-        await locationActions.fetchMissingTravelTimes(transportMode);
-        const fresh = await locationActions.fetchTravelTimes();
-        const serialized = fresh.map(serializeTravelTime);
-        dispatch(setAllTravelTimes(serialized));
-        markSynced("travelTimes", serialized);
+        const result =
+          await locationActions.fetchMissingTravelTimes(transportMode);
+        dispatch(setAllTravelTimes(result.travelTimes));
+        markSynced("travelTimes", result.travelTimes);
       } catch {
         // Best-effort; the engine falls back to zero travel.
       }
@@ -138,14 +139,13 @@ export function LocationsStep({
           placeId: row.selected!.placeId,
           sessionToken: row.sessionToken ?? undefined,
         });
-        const serialized = serializeLocation(created);
-        dispatch(upsertLocation(serialized));
-        currentLocations = upsertIntoList(currentLocations, serialized);
+        dispatch(upsertLocation(created));
+        currentLocations = upsertIntoList(currentLocations, created);
         markSynced("locations", currentLocations);
         const idx = nextRows.findIndex((r) => r.key === row.key);
         if (idx !== -1) {
           nextRows = nextRows.map((r, i) =>
-            i === idx ? { ...r, createdId: serialized.id } : r,
+            i === idx ? { ...r, createdId: created.id } : r,
           );
         }
         // Persist the createdId after each success. If a later row throws, the

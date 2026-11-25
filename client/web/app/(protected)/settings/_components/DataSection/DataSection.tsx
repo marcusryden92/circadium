@@ -4,8 +4,11 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Shield, Upload } from "lucide-react";
 import { Button, SegmentedControl, ConfirmModal } from "@/components/ui";
-import { exportUserData } from "@/actions/dataExport";
-import { importUserData, type ImportMode } from "@/actions/dataImport";
+import {
+  exportUserData,
+  importUserData,
+  type ImportMode,
+} from "@/lib/api/dataTransfer";
 import { card, cardTitle, fieldNote } from "../../page.css";
 import {
   actions,

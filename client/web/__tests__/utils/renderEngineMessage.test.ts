@@ -30,7 +30,7 @@ describe("renderEngineMessage precedence types", () => {
         queueId: "gone-queue",
         failedPlannerId: "gone-planner",
       },
-    } as unknown as EngineMessage;
+    };
 
     const rendered = renderEngineMessage(message, emptyLookups);
     expect(rendered).not.toBeNull();
@@ -51,7 +51,7 @@ describe("renderEngineMessage precedence types", () => {
           successorId: "gone-successor",
           cause,
         },
-      } as unknown as EngineMessage;
+      };
 
       const rendered = renderEngineMessage(message, emptyLookups);
       expect(rendered).not.toBeNull();
@@ -72,7 +72,7 @@ describe("renderEngineMessage precedence types", () => {
         predecessorId: "gone-predecessor",
         successorId: "gone-successor",
       },
-    } as unknown as EngineMessage;
+    };
 
     const rendered = renderEngineMessage(message, emptyLookups);
     expect(rendered).not.toBeNull();
@@ -97,7 +97,7 @@ describe("renderEngineMessage precedence types", () => {
         queueId: "q1",
         failedPlannerId: "p1",
       },
-    } as unknown as EngineMessage;
+    };
 
     const rendered = renderEngineMessage(message, lookups);
     expect(rendered!.title).toContain("Work");
@@ -148,7 +148,7 @@ describe("renderEngineMessage constraint attribution", () => {
         maxCapacity: 238,
         ...extra,
       },
-    } as unknown as EngineMessage;
+    };
   }
 
   it("renders the generic body for legacy payloads without a limitingAxis", () => {
@@ -275,7 +275,7 @@ describe("renderEngineMessage constraint attribution", () => {
         plannerId: "leaf",
         reason: "IMPOSSIBLE_CONSTRAINTS",
       },
-    } as unknown as EngineMessage;
+    };
 
     const specific = renderEngineMessage(message, withEntities);
     expect(specific!.body.join(" ")).toContain("Its allowed times (Sun)");
@@ -347,7 +347,7 @@ describe("renderEngineMessage LOCATION_OVERLAP", () => {
         affectedCount: 1,
         ...extra,
       },
-    }) as unknown as EngineMessage;
+    });
 
   it("resolves planner, template, and location names from the lookups", () => {
     const lookups = buildEngineMessageLookups(

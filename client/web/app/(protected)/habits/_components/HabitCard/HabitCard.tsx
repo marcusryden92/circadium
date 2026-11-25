@@ -26,7 +26,7 @@ import {
   habitGridWeeks,
   type HabitTrackerStats,
 } from "@/utils/habits/habitStats";
-import { deleteHabit, removeHabitItem } from "@/actions/habits";
+import { deleteHabit, removeHabitItem } from "@/lib/api/habits";
 import {
   removeHabit as removeHabitFromStore,
   removeHabitItem as removeHabitItemFromStore,

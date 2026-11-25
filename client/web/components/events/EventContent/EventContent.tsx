@@ -40,7 +40,7 @@ import type { AppDispatch, RootState } from "@/redux/store";
 import {
   logOccurrenceCompletion,
   unlogOccurrenceCompletion,
-} from "@/actions/occurrenceCompletions";
+} from "@/lib/api/occurrenceCompletions";
 import {
   upsertOccurrenceCompletion,
   removeOccurrenceCompletion,

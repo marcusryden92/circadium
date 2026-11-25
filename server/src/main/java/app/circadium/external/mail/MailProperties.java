@@ -13,6 +13,8 @@ import org.springframework.validation.annotation.Validated;
  * @param securityFrom sender of the security mail (2FA codes, changes to password, email or 2FA, deletion)
  * @param accountFrom sender of the other account mail (confirmation and sign-up links, reset, existing-account
  *     notice); a no-reply address, so answers to automated mail stay out of the support inbox
+ * @param supportAddress the support inbox: sender AND recipient of the feedback notification (the reporting
+ *     user rides along as reply-to)
  */
 @Validated
 @ConfigurationProperties("circadium.mail")
@@ -22,6 +24,7 @@ public record MailProperties(
         @NotBlank String webBaseUrl,
         @NotBlank String securityFrom,
         @NotBlank String accountFrom,
+        @NotBlank String supportAddress,
         boolean allowLoggingFallback) {
 
     public boolean deliveryConfigured() {

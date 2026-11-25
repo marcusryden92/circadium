@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Caption, Input, TypeBadge } from "@/components/ui";
 import { parsePlanRecurrence } from "@/utils/planRecurrence";
-import { addHabitItem } from "@/actions/habits";
+import { addHabitItem } from "@/lib/api/habits";
 import { upsertHabitItem } from "@/redux/slices/habitsSlice";
 import type { AppDispatch } from "@/redux/store";
 import type { Habit, HabitItem, Planner } from "@/types/prisma";
