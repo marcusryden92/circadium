@@ -24,7 +24,7 @@ import { ChatPane } from "@/components/draft/ChatPane";
 import { ChatHistoryPopover } from "@/components/draft/ChatHistoryPopover";
 import { useAIDraftState } from "@/hooks/useAIDraftState";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { DraftConversationMessage } from "@/actions/draftConversations";
+import type { DraftConversationMessage } from "@/lib/api/draftConversations";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useAiAccess } from "@/components/ui";
 import { AI_MODELS, type AiModelId } from "@/lib/aiModels";

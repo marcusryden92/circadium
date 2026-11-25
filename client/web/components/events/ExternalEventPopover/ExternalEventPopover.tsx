@@ -15,7 +15,7 @@ import {
   toggleExternalEventBusyException,
   updateExternalCalendarSource,
   setExternalEventLocation,
-} from "@/actions/externalCalendars";
+} from "@/lib/api/externalCalendars";
 import { toggleModeException } from "@/utils/external-calendar/modeExceptions";
 import {
   setLocationException,

@@ -59,7 +59,7 @@ import {
 import {
   fetchExternalCalendarData,
   refreshExternalCalendarSource,
-} from "@/actions/externalCalendars";
+} from "@/lib/api/externalCalendars";
 import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletionsSlice";
 import { getOccurrenceCompletions } from "@/lib/api/occurrenceCompletions";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";

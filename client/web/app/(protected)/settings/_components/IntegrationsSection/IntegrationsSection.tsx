@@ -15,21 +15,18 @@ import {
   refreshExternalCalendarSource,
   updateExternalCalendarSource,
   deleteExternalCalendarSource,
-} from "@/actions/externalCalendars";
-import {
   getGoogleCalendarStatus,
   listGoogleCalendars,
   addGoogleCalendarSource,
   disconnectGoogleCalendar,
-} from "@/actions/googleCalendar";
-import {
   getMicrosoftCalendarStatus,
   listMicrosoftCalendars,
   addMicrosoftCalendarSource,
   disconnectMicrosoftCalendar,
-} from "@/actions/microsoftCalendar";
-import type { GoogleCalendarListEntry } from "@/utils/external-calendar/googleCalendarApi";
-import type { MicrosoftCalendarListEntry } from "@/utils/external-calendar/microsoftGraphApi";
+  type GoogleCalendarListEntry,
+  type MicrosoftCalendarListEntry,
+} from "@/lib/api/externalCalendars";
+import { apiUrl } from "@/lib/session/config";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useServerAction } from "@/hooks/useServerAction";
 import {
@@ -482,8 +479,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={google === null}
               onClick={() => {
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route 302s to Google's external OAuth screen; router.push can't follow it
-                window.location.href = "/api/integrations/google/connect";
+                window.location.href = `${apiUrl()}/integrations/google/connect`;
               }}
             >
               Connect Google
@@ -576,8 +572,7 @@ export function IntegrationsSection() {
               size="sm"
               disabled={microsoft === null}
               onClick={() => {
-                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- API route 302s to Microsoft's external OAuth screen; router.push can't follow it
-                window.location.href = "/api/integrations/microsoft/connect";
+                window.location.href = `${apiUrl()}/integrations/microsoft/connect`;
               }}
             >
               Connect Microsoft

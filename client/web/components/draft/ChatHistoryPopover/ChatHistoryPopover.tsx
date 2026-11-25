@@ -10,7 +10,7 @@ import {
   listDraftConversations,
   type DraftConversationMessage,
   type DraftConversationSummary,
-} from "@/actions/draftConversations";
+} from "@/lib/api/draftConversations";
 import { headerActionButton } from "@/components/draft/AIDraftModal/AIDraftModal.css";
 import {
   menu,
