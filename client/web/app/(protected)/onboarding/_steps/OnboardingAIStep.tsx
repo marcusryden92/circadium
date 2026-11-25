@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button, ConfirmModal, useAiAccess } from "@/components/ui";
-import { AiMode } from "@/generated/client";
+import { AiMode } from "@/types/prisma";
 import { AIDraftModal } from "@/components/draft/AIDraftModal";
 import { AssistantGate } from "@/components/draft/AssistantGate";
 import { StepFrame } from "../_components/StepFrame";

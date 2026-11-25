@@ -23,7 +23,7 @@ circadium/
 
 - **[client/web/CLAUDE.md](client/web/CLAUDE.md)** — the full map of the web app
   (stack, domain model, scheduling engine, AI assistant, state flow, styling,
-  Prisma, routes). All paths in it are relative to `client/web/`. **Read it
+  routes). All paths in it are relative to `client/web/`. **Read it
   before working anywhere under `client/web/`.**
 - **[server/CLAUDE.md](server/CLAUDE.md)** — the Java API: stack, build,
   deploys, configuration, and the auth design.

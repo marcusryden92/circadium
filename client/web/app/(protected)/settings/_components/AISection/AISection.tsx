@@ -9,7 +9,7 @@ import {
   SegmentedControl,
   useAiAccess,
 } from "@/components/ui";
-import { AiMode } from "@/generated/client";
+import { AiMode } from "@/types/prisma";
 import { AI_MODELS, type AiModelId } from "@/lib/aiModels";
 import type { ServerActionStatus } from "@/hooks/useServerAction";
 import { StatusLine } from "../StatusLine";

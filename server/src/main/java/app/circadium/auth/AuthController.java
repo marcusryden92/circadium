@@ -1,5 +1,9 @@
 package app.circadium.auth;
 
+import app.circadium.persistence.entity.Account;
+import app.circadium.persistence.entity.User;
+import app.circadium.persistence.repository.AccountRepository;
+import app.circadium.persistence.repository.UserRepository;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -7,9 +11,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +37,8 @@ public class AuthController {
     private final TokenService tokenService;
     private final SigningKeys signingKeys;
     private final AuthCookies authCookies;
+    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
     @PostMapping("/auth/refresh")
     public ResponseEntity<TokenResponse> refresh(
@@ -72,6 +80,38 @@ public class AuthController {
                 jwt.getClaimAsString(TokenService.SESSION_FAMILY_CLAIM));
     }
 
+    /**
+     * The DB-checked session the web's server components render from: the user row is authoritative for the role
+     * and profile fields, and a deleted account answers 401 even while the token is within its lifetime. Session
+     * liveness itself is already enforced by the decoder ({@link SessionFamilyValidator}); the issued-before
+     * password-change comparison is kept as the web's own {@code getSession} performed it (second granularity,
+     * same-second accepted) so the flip off Prisma provably changes nothing.
+     */
+    @GetMapping("/auth/session")
+    public SessionResponse session(@AuthenticationPrincipal Jwt jwt) {
+        User user = userRepository.findById(jwt.getSubject())
+                .orElseThrow(AuthController::sessionEnded);
+        Instant changed = user.getPasswordChangedAt();
+        if (changed != null && jwt.getIssuedAt().getEpochSecond() < changed.getEpochSecond()) {
+            throw sessionEnded();
+        }
+        List<String> providers = accountRepository.findAllByUserId(user.getId()).stream()
+                .map(Account::getProvider)
+                .toList();
+        return new SessionResponse(
+                new SessionResponse.SessionUser(
+                        user.getId(), user.getName(), user.getEmail(), user.getRole().name(),
+                        user.isTwoFactorEnabled(), !providers.isEmpty(), providers,
+                        user.getOnboardedAt(), user.getAiMode() == null ? null : user.getAiMode().name(),
+                        user.getAiModel()),
+                jwt.getExpiresAt(),
+                TokenService.isTwoFactorVerified(jwt));
+    }
+
+    private static AccountFlowException sessionEnded() {
+        return new AccountFlowException(HttpStatus.UNAUTHORIZED, "session_ended", "This sign-in has ended.");
+    }
+
     @GetMapping("/.well-known/jwks.json")
     public ResponseEntity<Map<String, Object>> jwks() {
         return ResponseEntity.ok()
@@ -105,4 +145,20 @@ public class AuthController {
     }
 
     public record MeResponse(String userId, String role, String sessionId) {}
+
+    /** Mirrors the web's {@code lib/session/session.ts} Session shape, plus the protected layout's profile reads. */
+    public record SessionResponse(SessionUser user, Instant accessTokenExpiresAt, boolean twoFactorVerified) {
+
+        public record SessionUser(
+                String id,
+                String name,
+                String email,
+                String role,
+                boolean isTwoFactorEnabled,
+                boolean isOAuth,
+                List<String> signInProviders,
+                Instant onboardedAt,
+                String aiMode,
+                String aiModel) {}
+    }
 }

@@ -51,6 +51,13 @@ export const TransportMode = {
 export type TransportMode =
   (typeof TransportMode)[keyof typeof TransportMode];
 
+export const AiMode = {
+  BYOK: "BYOK",
+  MANAGED: "MANAGED",
+  OFF: "OFF",
+} as const;
+export type AiMode = (typeof AiMode)[keyof typeof AiMode];
+
 // Narrowed at the DB boundary from the WeekDayType enum (sunday..saturday) to
 // the integer the app code uses everywhere (0=Sunday .. 6=Saturday).
 export type WeekDayIntegers = 0 | 1 | 2 | 3 | 4 | 5 | 6;

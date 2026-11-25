@@ -78,8 +78,8 @@ public class DataExportService {
             new Col("categoryId", Kind.STR), new Col("createdAt", Kind.TS), new Col("updatedAt", Kind.TS));
 
     private static final List<Col> SIMPLE_EVENTS = List.of(
-            new Col("id", Kind.STR), new Col("title", Kind.STR), new Col("start", Kind.STR),
-            new Col("end", Kind.STR), new Col("duration", Kind.INT), new Col("userId", Kind.STR),
+            new Col("id", Kind.STR), new Col("title", Kind.STR), new Col("start", Kind.TS),
+            new Col("end", Kind.TS), new Col("duration", Kind.INT), new Col("userId", Kind.STR),
             new Col("rrule", Kind.STR), new Col("backgroundColor", Kind.STR), new Col("borderColor", Kind.STR),
             new Col("createdAt", Kind.TS), new Col("updatedAt", Kind.TS));
 

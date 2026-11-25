@@ -19,7 +19,7 @@ import {
   setWeekStartDay,
 } from "@/redux/slices/schedulingSettingsSlice";
 import type { AppDispatch, RootState } from "@/redux/store";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useServerAction } from "@/hooks/useServerAction";

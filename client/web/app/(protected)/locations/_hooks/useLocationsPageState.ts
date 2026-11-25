@@ -18,7 +18,7 @@ import {
   setDefaultTransportMode,
   type SerializedLocation,
 } from "@/redux/slices/schedulingSettingsSlice";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type { EditLocationDraft } from "../_components/EditLocationModal";
 import { SUCCESS_MESSAGE_MS } from "../_constants";
 

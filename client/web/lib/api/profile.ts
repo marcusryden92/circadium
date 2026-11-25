@@ -1,4 +1,4 @@
-import { AiMode } from "@/generated/client";
+import { AiMode } from "@/types/prisma";
 import { apiRequest } from "@/lib/api/client";
 
 // The small profile settings, on the Java API (plan 2.4): display name, AI

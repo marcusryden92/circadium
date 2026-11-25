@@ -16,6 +16,8 @@ public interface AccountRepository extends JpaRepository<Account, String> {
 
     List<Account> findAllByUserIdAndProvider(String userId, String provider);
 
+    List<Account> findAllByUserId(String userId);
+
     /** A targeted update, so a sign-in never rewrites the rest of a row it loaded earlier. */
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)

@@ -31,7 +31,12 @@ spring:
         type:
           preferred_instant_jdbc_type: TIMESTAMP
   flyway:
-    enabled: false
+    # Flyway owns the schema since the Prisma cutover (plan 2.6). Databases
+    # Prisma built are stamped at the V1 baseline on first contact and pick up
+    # from V2; fresh databases (local docker, Testcontainers) build from V1.
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
 
 # The only session is provider sign-in's round trip (see SecurityConfig). SameSite=None: Apple returns the browser
 # with a cross-site form POST, and browsers send Lax cookies only on cross-site GETs. The cookie is read only by the

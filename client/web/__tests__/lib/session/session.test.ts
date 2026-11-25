@@ -3,25 +3,13 @@
  */
 import { cookies } from "next/headers";
 
-import { db } from "@/lib/db";
-import { verifyAccessToken } from "@/lib/session/accessToken";
-import { getSession, issuedBeforePasswordChange } from "@/lib/session/session";
+import { getSession } from "@/lib/session/session";
 
 jest.mock("next/headers", () => ({ cookies: jest.fn() }));
-jest.mock("../../../lib/db", () => ({
-  db: { user: { findUnique: jest.fn() } },
-}));
-jest.mock("../../../lib/session/accessToken", () => ({
-  verifyAccessToken: jest.fn(),
-}));
 
 const cookiesMock = cookies as jest.MockedFunction<typeof cookies>;
-const verifyMock = verifyAccessToken as jest.MockedFunction<
-  typeof verifyAccessToken
->;
-const findUserMock = (db.user as unknown as { findUnique: jest.Mock }).findUnique;
-
-const ISSUED_AT = 1_800_000_000;
+const fetchMock = jest.fn();
+global.fetch = fetchMock as unknown as typeof fetch;
 
 function withCookies(values: Record<string, string>) {
   cookiesMock.mockResolvedValue({
@@ -30,31 +18,40 @@ function withCookies(values: Record<string, string>) {
   } as unknown as Awaited<ReturnType<typeof cookies>>);
 }
 
-function userRow(overrides: Record<string, unknown> = {}) {
+function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
-    id: "user-1",
-    name: "Ada",
-    email: "ada@example.com",
-    role: "USER",
-    isTwoFactorEnabled: false,
-    passwordChangedAt: null,
-    accounts: [],
-    sessions: [{ id: "session-1" }],
-    ...overrides,
+    user: {
+      id: "user-1",
+      name: "Ada",
+      email: "ada@example.com",
+      role: "USER",
+      isTwoFactorEnabled: false,
+      isOAuth: false,
+      signInProviders: [],
+      onboardedAt: null,
+      aiMode: null,
+      aiModel: null,
+      ...((overrides.user as Record<string, unknown>) ?? {}),
+    },
+    accessTokenExpiresAt: "2027-01-01T00:15:00Z",
+    twoFactorVerified: false,
+    ...Object.fromEntries(
+      Object.entries(overrides).filter(([key]) => key !== "user"),
+    ),
+  };
+}
+
+function answer(status: number, body?: unknown) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
   };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  verifyMock.mockResolvedValue({
-    userId: "user-1",
-    role: "USER",
-    sessionId: "family-1",
-    issuedAt: ISSUED_AT,
-    expiresAt: ISSUED_AT + 900,
-    twoFactorVerified: false,
-  });
-  findUserMock.mockResolvedValue(userRow());
+  fetchMock.mockResolvedValue(answer(200, sessionPayload()));
 });
 
 describe("getSession", () => {
@@ -62,90 +59,72 @@ describe("getSession", () => {
     withCookies({});
 
     await expect(getSession()).resolves.toBeNull();
-    expect(verifyMock).not.toHaveBeenCalled();
-    expect(findUserMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("is null when the token fails verification", async () => {
-    withCookies({ circadium_access: "bad" });
-    verifyMock.mockResolvedValue(null);
+  it("asks Java's session endpoint with the cookie's token as bearer", async () => {
+    withCookies({ circadium_access: "token" });
+
+    await expect(getSession()).resolves.toEqual(sessionPayload());
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/auth\/session$/);
+    expect(init.headers).toEqual({ Authorization: "Bearer token" });
+    expect(init.cache).toBe("no-store");
+  });
+
+  it("is null when Java answers 401 (ended sign-in, deleted account, password change)", async () => {
+    withCookies({ circadium_access: "token" });
+    fetchMock.mockResolvedValue(answer(401, { code: "session_ended" }));
 
     await expect(getSession()).resolves.toBeNull();
-    expect(findUserMock).not.toHaveBeenCalled();
   });
 
-  it("builds the session from the token's user row", async () => {
+  it("throws when Java cannot be checked, so callers can tell it from signed out", async () => {
     withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(
-      userRow({ role: "ADMIN", isTwoFactorEnabled: true }),
-    );
+    fetchMock.mockResolvedValue(answer(503));
 
-    await expect(getSession()).resolves.toEqual({
-      user: {
-        id: "user-1",
-        name: "Ada",
-        email: "ada@example.com",
-        role: "ADMIN",
-        isTwoFactorEnabled: true,
-        isOAuth: false,
-        signInProviders: [],
-      },
-      accessTokenExpiresAt: new Date((ISSUED_AT + 900) * 1000).toISOString(),
-      twoFactorVerified: false,
-    });
-    expect(verifyMock).toHaveBeenCalledWith("token");
-    expect(findUserMock.mock.calls[0][0].where).toEqual({ id: "user-1" });
+    await expect(getSession()).rejects.toThrow("session check failed");
   });
 
-  it("is null once the token's sign-in has ended, though the token is still valid", async () => {
+  it("retries a failing check before giving up", async () => {
     withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(userRow({ sessions: [] }));
+    fetchMock
+      .mockResolvedValueOnce(answer(502))
+      .mockResolvedValueOnce(answer(200, sessionPayload()));
 
-    await expect(getSession()).resolves.toBeNull();
-    expect(findUserMock.mock.calls[0][0].select.sessions.where).toEqual({
-      familyId: "family-1",
-    });
+    await expect(getSession()).resolves.toEqual(sessionPayload());
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("says whether this sign-in passed the emailed code", async () => {
+  it("passes the session payload through as the session", async () => {
     withCookies({ circadium_access: "token" });
-    verifyMock.mockResolvedValue({
-      userId: "user-1",
-      role: "USER",
-      sessionId: "family-1",
-      issuedAt: ISSUED_AT,
-      expiresAt: ISSUED_AT + 900,
-      twoFactorVerified: true,
-    });
-
-    await expect(getSession()).resolves.toMatchObject({ twoFactorVerified: true });
-  });
-
-  it("marks accounts with a provider link as OAuth and names the providers", async () => {
-    withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(
-      userRow({ accounts: [{ provider: "google" }, { provider: "apple" }] }),
+    fetchMock.mockResolvedValue(
+      answer(
+        200,
+        sessionPayload({
+          user: {
+            role: "ADMIN",
+            isTwoFactorEnabled: true,
+            isOAuth: true,
+            signInProviders: ["google", "apple"],
+            onboardedAt: "2026-01-02T03:04:05Z",
+            aiMode: "BYOK",
+          },
+          twoFactorVerified: true,
+        }),
+      ),
     );
 
     await expect(getSession()).resolves.toMatchObject({
-      user: { isOAuth: true, signInProviders: ["google", "apple"] },
+      user: {
+        role: "ADMIN",
+        isOAuth: true,
+        signInProviders: ["google", "apple"],
+        onboardedAt: "2026-01-02T03:04:05Z",
+        aiMode: "BYOK",
+      },
+      twoFactorVerified: true,
     });
-  });
-
-  it("is null when the account no longer exists", async () => {
-    withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(null);
-
-    await expect(getSession()).resolves.toBeNull();
-  });
-
-  it("is null for a token issued before the last password change", async () => {
-    withCookies({ circadium_access: "token" });
-    findUserMock.mockResolvedValue(
-      userRow({ passwordChangedAt: new Date((ISSUED_AT + 60) * 1000) }),
-    );
-
-    await expect(getSession()).resolves.toBeNull();
   });
 
   it("reads the cookie named by AUTH_ACCESS_COOKIE", async () => {
@@ -158,30 +137,12 @@ describe("getSession", () => {
       });
 
       await getSession();
-      expect(verifyMock).toHaveBeenCalledWith("staging-token");
+      expect(fetchMock.mock.calls[0][1].headers).toEqual({
+        Authorization: "Bearer staging-token",
+      });
     } finally {
       if (previous === undefined) delete process.env.AUTH_ACCESS_COOKIE;
       else process.env.AUTH_ACCESS_COOKIE = previous;
     }
-  });
-});
-
-describe("issuedBeforePasswordChange", () => {
-  const changedAt = new Date(ISSUED_AT * 1000 + 400);
-
-  it("is false when the password was never changed", () => {
-    expect(issuedBeforePasswordChange(ISSUED_AT, null)).toBe(false);
-  });
-
-  it("is true for a token from an earlier second", () => {
-    expect(issuedBeforePasswordChange(ISSUED_AT - 1, changedAt)).toBe(true);
-  });
-
-  it("accepts a token from the same second as the change", () => {
-    expect(issuedBeforePasswordChange(ISSUED_AT, changedAt)).toBe(false);
-  });
-
-  it("accepts a token from after the change", () => {
-    expect(issuedBeforePasswordChange(ISSUED_AT + 1, changedAt)).toBe(false);
   });
 });

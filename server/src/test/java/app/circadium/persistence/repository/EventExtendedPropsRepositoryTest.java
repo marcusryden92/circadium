@@ -49,8 +49,8 @@ class EventExtendedPropsRepositoryTest {
         SimpleEvent event = new SimpleEvent();
         event.setId(eventId);
         event.setTitle("Placed goal leaf");
-        event.setStart("2026-11-16T09:00:00.000Z");
-        event.setEnd("2026-11-16T10:00:00.000Z");
+        event.setStart(Instant.parse("2026-11-16T09:00:00.000Z"));
+        event.setEnd(Instant.parse("2026-11-16T10:00:00.000Z"));
         event.setUserId(userId);
         event.setBackgroundColor("#111111");
         event.setBorderColor("#222222");

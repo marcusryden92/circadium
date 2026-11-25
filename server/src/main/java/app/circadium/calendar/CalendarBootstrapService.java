@@ -144,9 +144,9 @@ public class CalendarBootstrapService {
 
     private static CalendarContracts.SimpleEvent toWire(SimpleEvent e,
             CalendarContracts.EventExtendedProps extendedProps) {
-        return new CalendarContracts.SimpleEvent(e.getId(), e.getTitle(), e.getStart(), e.getEnd(), e.getDuration(),
-                e.getUserId(), e.getRrule(), e.getBackgroundColor(), e.getBorderColor(), iso(e.getCreatedAt()),
-                iso(e.getUpdatedAt()), extendedProps);
+        return new CalendarContracts.SimpleEvent(e.getId(), e.getTitle(), iso(e.getStart()), iso(e.getEnd()),
+                e.getDuration(), e.getUserId(), e.getRrule(), e.getBackgroundColor(), e.getBorderColor(),
+                iso(e.getCreatedAt()), iso(e.getUpdatedAt()), extendedProps);
     }
 
     private static CalendarContracts.EventExtendedProps toWire(EventExtendedProps p) {
