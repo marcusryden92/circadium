@@ -23,8 +23,9 @@ public class TestcontainersConfiguration {
 	@Bean
 	@ServiceConnection
 	PostgreSQLContainer postgresContainer() {
-		return new PostgreSQLContainer(DockerImageName.parse("postgres:16"))
-						.withInitScript("db/schema.sql");
+		// No init script: the schema comes from the Flyway migrations at context
+		// startup, so every test runs against exactly what a fresh deploy builds.
+		return new PostgreSQLContainer(DockerImageName.parse("postgres:16"));
 	}
 
 	@Bean

@@ -15,9 +15,16 @@ the item's step file before starting it.
 - Boot 4 starter names differ from Boot 3: `spring-boot-starter-webmvc` (not `-web`),
   Flyway via `spring-boot-starter-flyway` + `flyway-database-postgresql`, and modular
   `spring-boot-starter-*-test` starters instead of one `spring-boot-starter-test`.
-- Data: JPA/Hibernate for CRUD, JdbcTemplate for the sync/bulk hot paths. Flyway is on
-  the classpath but inactive during coexistence (`spring.flyway.enabled=false`,
-  `jpa.hibernate.ddl-auto=validate`) — Prisma owns migrations until the Phase 2 cutover.
+- Data: JPA/Hibernate for CRUD, JdbcTemplate for the sync/bulk hot paths. **Flyway owns the
+  schema** since the 2.6 cutover: migrations in `src/main/resources/db/migration/`
+  (`V1__baseline.sql` = the schema as the last Prisma migration left it; changes are new
+  `V<n>__*.sql` files), applied at boot with `baseline-on-migrate` so Prisma-era databases
+  are stamped at V1 on first contact. `jpa.hibernate.ddl-auto=validate` keeps entities and
+  schema honest. Integration tests build their Testcontainers schema from the same
+  migrations (no init script).
+- The local seed lives in `seed/DemoSeeder` (local profile, off unless
+  `circadium.seed.enabled=true`): the predictable admin (`admin@circadium.app` / `password`)
+  plus a compact demo dataset following the retired TS seed's conventions.
 - API docs: springdoc-openapi 3.x (`/v3/api-docs`, `/swagger-ui.html`). Its version is
   pinned explicitly in the POM because the Spring Boot BOM does not manage it.
 
@@ -47,9 +54,9 @@ Deploys run from `.github/workflows/server-ci.yml` after `verify`, on pushes tha
 | `main` | `circadium-server` | `api.circadium.app` | `fly.prod.toml` | `FLY_API_TOKEN_PROD` |
 
 Each secret is a deploy token for its own app only. Both apps run one always-on machine in
-`fra` and deploy blue-green: a release that fails its health check never takes over. If the
-schema check fails because the web's Vercel build had not yet applied a new Prisma
-migration, re-run the job once the Vercel deploy is done. The failed release leaves its new
+`fra` and deploy blue-green: a release that fails its health check never takes over.
+Migrations run at the new machine's boot (Flyway), before its health check, so a deploy
+carrying a schema change migrates its own database. The failed release leaves its new
 machine behind, and the next deploy refuses while two images are present: destroy that machine
 first (`fly machine destroy <id> --force`). Do not restart it, because once healthy it takes
 traffic beside the old machine, and the sign-in session and rate limiter are per machine. A
@@ -64,8 +71,8 @@ Config is environment-only across three profiles in `application.yml` (`local` i
 default; `staging`, `prod`). Secrets never live in the repo.
 
 - The Java datasource is a JDBC URL via `DATABASE_JDBC_URL` (plus `DATABASE_USERNAME`
-  / `DATABASE_PASSWORD`) — deliberately distinct from the web app's libpq/Prisma
-  `DATABASE_URL`.
+  / `DATABASE_PASSWORD`) — deliberately distinct from the web app's retired libpq
+  `DATABASE_URL` (gone with the 2.6 cutover; the web no longer connects to the DB at all).
 - Locally these fall back to the docker Postgres the web app brings up with
   `pnpm db:start` (from `client/web`): `jdbc:postgresql://localhost:5433/circadium_dev`,
   user/password `circadium`/`circadium`.
@@ -123,8 +130,9 @@ effects and response shapes.
   the occurrence-completion log, one row per (plannerId, occurrenceKey). PUT upserts (update
   branch moves only start/end, keeping id + createdAt), 404 `item_not_found` unless the planner is
   the caller's; DELETE takes query params and is a no-op for a missing row. `HabitCompletions.createdAt`
-  is `timestamp(3)` since this step (the last 1.13b straggler); `start`/`end` stay TEXT until the
-  2.5 domain-datetime decision.
+  is `timestamp(3)` since this step (the last 1.13b straggler); `start`/`end` stay TEXT — the
+  domain-datetime audit (2026-11-25) migrated only `SimpleEvents.start`/`end` (Flyway V2); the
+  rest of the domain datetimes wait for their own normalizing pass.
 - `GET/PUT /view-state` (`calendar/ViewStateController`) — the graph/mindmap canvas blobs, one row
   per user; PUT patches only the named canvas's column (`kind: graph|mindmap`), stamping
   `updatedAt` itself (that table has no DB trigger).
@@ -274,6 +282,13 @@ Two clients, two token transports (`auth/ClientType`):
 - `auth/CookieBearerTokenResolver` takes the header first, then the access cookie, but never
   the cookie on a public endpoint (Spring 401s an invalid token even where none is required,
   so a stale cookie would break login and refresh).
+- `GET /auth/session` is the web's server-side session read (the protected layout and
+  `getSession` render from it since the 2.6 cutover): the DB-checked user row (name, email,
+  role, 2FA flag, provider sign-ins, `onboardedAt`/`aiMode`/`aiModel`) plus
+  `accessTokenExpiresAt` and the `amr`-derived `twoFactorVerified`. Answers 401
+  `session_ended` for a deleted account or a token issued before the last password change
+  (second granularity, same-second accepted — the retired web `getSession` rule; session
+  family liveness is already the decoder's job via `SessionFamilyValidator`).
 
 CSRF: Spring's CSRF tokens are off. `config/CorsConfig` is a servlet filter (after the
 correlation id, before the rate limiter and Spring Security) that allows credentialed calls
@@ -413,6 +428,8 @@ All packages live under `app.circadium` (component scan root). Each has a
 - `feedback` — support messages and the suggestion wall.
 - `ws` — WebSocket handler, per-user session registry, dataVersion publisher.
 - `jobs` — scheduled jobs (push, external-calendar refresh, token cleanup), ShedLock-guarded.
+- `seed` — the local development seed (`DemoSeeder`): admin account + compact demo dataset;
+  local profile only, gated on `circadium.seed.enabled`.
 - `external` — Google Calendar, Microsoft Graph, ICS, Google Places/Routes, Resend mail.
 - `admin` — administrative endpoints (feedback inspector), gated `/admin/**` in the security
   chain (ADMIN + 2FA-verified sign-in).

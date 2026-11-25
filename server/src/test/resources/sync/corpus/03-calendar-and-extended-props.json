@@ -468,8 +468,8 @@
       {
         "id": "bootstrap-event-1",
         "title": "Flashcards",
-        "start": "2026-03-03T09:00:00.000Z",
-        "end": "2026-03-03T09:45:00.000Z",
+        "start": "2026-03-03T09:00:00",
+        "end": "2026-03-03T09:45:00",
         "duration": 45,
         "userId": "bootstrap-user",
         "rrule": null,
@@ -481,8 +481,8 @@
       {
         "id": "bootstrap-event-2",
         "title": "Weekly review (moved)",
-        "start": "2026-03-02T09:00:00.000Z",
-        "end": "2026-03-02T10:00:00.000Z",
+        "start": "2026-03-02T09:00:00",
+        "end": "2026-03-02T10:00:00",
         "duration": null,
         "userId": "bootstrap-user",
         "rrule": "FREQ=WEEKLY;INTERVAL=1",
@@ -494,8 +494,8 @@
       {
         "id": "bootstrap-other-event",
         "title": "Not yours",
-        "start": "2026-03-03T08:00:00.000Z",
-        "end": "2026-03-03T08:30:00.000Z",
+        "start": "2026-03-03T08:00:00",
+        "end": "2026-03-03T08:30:00",
         "duration": 30,
         "userId": "bootstrap-other",
         "rrule": null,
@@ -507,8 +507,8 @@
       {
         "id": "sync-event-new",
         "title": "Easy run",
-        "start": "2026-03-04T17:00:00.000Z",
-        "end": "2026-03-04T17:40:00.000Z",
+        "start": "2026-03-04T17:00:00",
+        "end": "2026-03-04T17:40:00",
         "duration": 40,
         "userId": "bootstrap-user",
         "rrule": null,

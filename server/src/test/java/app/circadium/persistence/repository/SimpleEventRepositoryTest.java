@@ -42,8 +42,8 @@ class SimpleEventRepositoryTest {
         SimpleEvent event = new SimpleEvent();
         event.setId(id);
         event.setTitle("Deep work block");
-        event.setStart("2026-11-16T09:00:00.000Z");
-        event.setEnd("2026-11-16T10:30:00.000Z");
+        event.setStart(Instant.parse("2026-11-16T09:00:00.000Z"));
+        event.setEnd(Instant.parse("2026-11-16T10:30:00.000Z"));
         event.setUserId(userId);
         event.setBackgroundColor("#336699");
         event.setBorderColor("#224466");
@@ -55,7 +55,7 @@ class SimpleEventRepositoryTest {
 
         SimpleEvent loaded = simpleEventRepository.findById(id).orElseThrow();
         assertEquals("Deep work block", loaded.getTitle());
-        assertEquals("2026-11-16T09:00:00.000Z", loaded.getStart());
+        assertEquals(Instant.parse("2026-11-16T09:00:00.000Z"), loaded.getStart());
         assertEquals("#336699", loaded.getBackgroundColor());
         assertNull(loaded.getDuration());
         assertNull(loaded.getRrule());

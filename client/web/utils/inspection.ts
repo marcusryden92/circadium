@@ -20,7 +20,7 @@ import type {
   SerializedTravelTime,
 } from "@/redux/slices/schedulingSettingsSlice";
 import type { WeekDayIntegers } from "@/types/calendarTypes";
-import type { WeekDayType, TransportMode } from "@/generated/client";
+import type { WeekDayType, TransportMode } from "@/types/prisma";
 import { weekdayToInt, normalizeWeekStartDay } from "@/utils/calendarUtils";
 
 // Snapshot impersonation (admin debugging). The target lives in

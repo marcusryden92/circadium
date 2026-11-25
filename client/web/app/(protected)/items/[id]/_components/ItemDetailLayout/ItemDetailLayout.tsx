@@ -37,7 +37,7 @@ import {
   totalSubtaskDuration,
 } from "@/utils/taskArrayUtils";
 import { useItemHandlers } from "../../_hooks/useItemHandlers";
-import type { PlannerType } from "@/generated/client";
+import type { PlannerType } from "@/types/prisma";
 
 import { ItemProvider } from "../ItemContext";
 import { ItemTabs } from "../ItemTabs";

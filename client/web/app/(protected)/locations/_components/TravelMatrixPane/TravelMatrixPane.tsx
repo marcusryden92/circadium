@@ -2,7 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { Button, Loader } from "@/components/ui";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type {
   SerializedLocation,
   SerializedTravelTime,

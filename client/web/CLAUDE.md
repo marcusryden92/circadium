@@ -10,8 +10,8 @@
 
   - **Next.js** 16.3 — App Router, `(protected)` route group (server actions are gone — see Code style rules). Builds run **webpack, not Turbopack** (`--webpack` in the dev/build scripts): the custom webpack config (rrule alias + `node:` stubs for the Anthropic SDK) and the Vanilla Extract plugin's experimental Turbopack support make the default bundler a later migration. `middleware.ts` is kept deliberately (deprecated in favor of `proxy.ts`, but proxy drops the edge runtime this middleware is built for), and `agentRules: false` stops `next dev` from appending its managed block to this file.
   - **React** 19, **TypeScript** 6.0.3 (strict, `moduleResolution: "bundler"`, `@/*` path alias).
-  - **Prisma** 7.8 with `@prisma/adapter-pg` driver adapter (Prisma 7 requires a driver adapter at construction time — see [lib/db.ts](lib/db.ts)). Client is generated to `generated/client` (outside `/prisma/` so the VS Code Prisma extension doesn't merge its embedded `schema.prisma` copy with the source schema) and imported as `@/generated/client`.
-  - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev`).
+  - **No database client.** Prisma was retired at the plan 2.6 cutover: the Java API owns the schema (Flyway migrations in `server/src/main/resources/db/migration/`) and every read and write, the web's row types are the hand-declared `@circadium/shared/contracts` re-exported through [types/prisma.ts](types/prisma.ts) (historical name), and even the session read goes through Java's `GET /auth/session`.
+  - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev` — consumed only by the Java server; the local seed is the Java `DemoSeeder`).
   - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server components. Sign-in, registration, reset, verification, deletion and Google / Microsoft / Apple sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
   - **Vanilla Extract** for styling — `@vanilla-extract/{css,sprinkles,recipes,dynamic,next-plugin}`. Every page/component has a co-located `*.css.ts` file. There is no Tailwind in this project despite a leftover `components.json`.
   - **Redux Toolkit** for cross-component state, **React Context** for scoped providers (Store, User, Calendar, Capture, Search).
@@ -30,7 +30,7 @@
   - **No narration comments** ("// fixed to handle X", "// updated to use new API"). Comments explain *why* something non-obvious exists, not *what* the code does.
   - **No summary, changelog, refactor-notes, or migration-notes markdown files** added to the repo. Make the change and commit.
   - **Absolute imports with `@/`** prefix.
-  - **There are no server actions and no `app/api/` routes left** — every server call is a Java API endpoint reached through [lib/api/](lib/api/) (plan Phase 2; Group D removed the last six actions). Server components may still READ through Prisma (the protected layout) until the 2.6 cutover. The AI assistant's tool-use loop runs in the browser on the user's own key; see the AI-assistant section.
+  - **There are no server actions, no `app/api/` routes, and no Prisma left** — every server call is a Java API endpoint reached through [lib/api/](lib/api/) (plan Phase 2; the 2.6 cutover removed the last direct DB reads: the protected layout and `getSession` now render from Java's `GET /auth/session`). The AI assistant's tool-use loop runs in the browser on the user's own key; see the AI-assistant section.
   - **Zod schemas** in [schemas/](schemas/) for any user-facing form.
   - Spell out "category" — never "cat".
   - The location surface is named **Locations**, not "Places" (Google Places is the underlying API, but the user-facing concept is Location).
@@ -123,7 +123,6 @@
   │   ├── calendarRealtime.ts           # NEXT_PUBLIC_CALENDAR_REALTIME: "on" opens the realtime WebSocket (wss from the API origin) for cross-session catch-up; unset keeps HTTP sync as the only channel (java backend only; build-time inlined)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
-  │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
   │   ├── passwordStrength.ts           # loadPasswordCheck: zxcvbn-ts, dictionaries loaded on demand; feeds components/ui/PasswordInput's PasswordStrength meter (guidance only: Java enforces length + the breached-password lookup)
   │   ├── taskItem.ts
   │   └── theme/                        # The whole design system
@@ -139,25 +138,9 @@
   │       ├── categoryColor.ts          # Category color resolution + glow/gradient/tint
   │       └── global.css.ts, index.ts
   │
-  ├── prisma/
-  │   ├── schemas/
-  │   │   ├── schema.prisma             # Generator + datasource only
-  │   │   └── models/
-  │   │       ├── user.prisma           # User (+ dataVersion OCC counter, onboardedAt gate, aiMode BYOK/MANAGED/OFF), Account, VerificationToken, PasswordResetToken, TwoFactorToken, TwoFactorConfirmation, AccountDeletionToken, UserRole, AiMode
-  │   │       ├── calendar.prisma       # SimpleEvent, EventExtendedProps, Planner, EventTemplate, WeekDayType, PlannerType, EventType
-  │   │       ├── category.prisma       # Category, CategoryTimeWindow, CategoryEvent
-  │   │       ├── location.prisma       # Location, TravelTime, TravelEvent, TransportMode
-  │   │       ├── scheduling.prisma     # UserSchedulingPreferences, TaskPreferences, enums
-  │   │       ├── engineMessage.prisma  # EngineMessage — engine-emitted console rows with user-owned dismissed flag
-  │   │       ├── queue.prisma          # Queue + QueueMember — ordered work streams over root Planner items (one queue per planner, DB-unique)
-  │   │       ├── dependency.prisma     # PlannerDependency — immutable prerequisite edges between root Planner items
-  │   │       ├── draftConversation.prisma # DraftConversation — AI-assistant chat history (messages as Json)
-  │   │       ├── externalCalendar.prisma # ExternalCalendarSource + ExternalEvent + GoogleCalendarConnection, ExternalCalendarKind/Mode — imported ICS + Google calendars (busy blocks fed to the engine + read-only overlay)
-  │   │       ├── habit.prisma          # HabitBucket + Habit + HabitItem — trackers over repeating top-level planner items, grouped by the habits surface's OWN bucket entity, distinct from Category (outside the OCC diff sync; the OccurrenceCompletion log lives in calendar.prisma)
-  │   │       └── viewState.prisma      # UserViewState — per-user graph/mindmap canvas view preferences (outside the OCC diff sync)
-  │   ├── migrations/                   # 0_init … add_habit_buckets — see "Migration history" below for the full list
-  │   ├── seed.ts                       # Wholesale reseed (admin@circadium.app / "password")
-  │   └── seed-helpers/                 # generateCategories, generateLocations (+ TravelTimes), generatePlanners, generatePlans, generateTemplates
+  │                                     # (prisma/ is GONE — the 2.6 cutover deleted the schema, migrations, generated client
+  │                                     #  and seed. The schema lives in server/src/main/resources/db/migration/ (Flyway);
+  │                                     #  the row types live in client/shared/src/contracts/; the seed is the Java DemoSeeder.)
   │
   ├── redux/                            # RE-EXPORT SHIMS over @circadium/shared/state (the real slices/thunks/store live in client/shared/src/state/ — plan item 0.7). Every file here is a one-liner so the ~50 @/redux/* import sites are untouched; edit the shared source, not these
   │   ├── store.ts                      # Re-exports makeStore(deps) + RootState/AppDispatch/AppStore/StateDependencies from shared. makeStore is a FACTORY (no module singleton): StoreProvider owns the one per-mount instance and injects the web-only engine-input adapters (deriveExternalBusyEvents, deriveOccurrenceCompletions) as the thunk middleware's extraArgument. Slices: user, calendarSource, engineOutput, schedulingSettings, externalCalendar, occurrenceCompletions, habits, toasts, syncStatus
@@ -175,7 +158,7 @@
   ├── schemas/                          # Zod schemas (auth + TaskListSchema)
   │
   ├── types/
-  │   ├── prisma.ts                     # Re-exports Prisma payload types with runtime augmentations (SimpleEvent.extendedProps gets categoryWrapperId + travel fields; the trespass flags are persisted columns re-typed OPTIONAL — builders never set them, stabilizeEvent carries them forward, markTrespassingEvents owns the truth each regen)
+  │   ├── prisma.ts                     # The row-type hub (historical name): re-exports the hand-declared @circadium/shared contracts — SimpleEvent.extendedProps carries the runtime travel/wrapper fields, trespass flags are OPTIONAL (builders never set them, stabilizeEvent carries them forward, markTrespassingEvents owns the truth each regen)
   │   ├── calendarTypes.ts              # WeekDayIntegers, TravelExtendedProps, TrespassingExtendedProps
   │   ├── categoryTypes.ts
   │   ├── ui.ts, user.ts, userTypes.ts
@@ -229,7 +212,7 @@
   ├── routes.ts                         # publicRoutes, authRoutes, DEFAULT_LOGIN_REDIRECT (/dashboard)
   ├── auth.ts                           # auth() = lib/session getSession, for server components (the protected layout)
   ├── docker-compose.dev.yml
-  ├── prisma.config.ts, components.json (legacy), jest.config.ts, jest.setup.ts
+  ├── components.json (legacy), jest.config.ts, jest.setup.ts
   ├── next.config.mjs                   # withVanillaExtract + rrule webpack alias
   └── package.json                      # pnpm scripts
   ```
@@ -316,7 +299,7 @@
 
   ### External calendars (imported feeds)
 
-  A user can subscribe to outside calendars so the scheduler works around commitments it doesn't own. The domain lives in [prisma/schemas/models/externalCalendar.prisma](prisma/schemas/models/externalCalendar.prisma), the client-side logic in [utils/external-calendar/](utils/external-calendar/), and the server surface on the Java API, called via [lib/api/externalCalendars.ts](lib/api/externalCalendars.ts) (fetching, parsing, OAuth connections, source CRUD, refresh). All of it is **outside the OCC diff sync** — direct calls that mirror results into the `externalCalendar` Redux slice (like `viewState`), so importing a calendar never bumps `dataVersion`.
+  A user can subscribe to outside calendars so the scheduler works around commitments it doesn't own. The row types live in the shared contracts (`ExternalCalendarSource`/`ExternalEvent`), the client-side logic in [utils/external-calendar/](utils/external-calendar/), and the server surface on the Java API, called via [lib/api/externalCalendars.ts](lib/api/externalCalendars.ts) (fetching, parsing, OAuth connections, source CRUD, refresh). All of it is **outside the OCC diff sync** — direct calls that mirror results into the `externalCalendar` Redux slice (like `viewState`), so importing a calendar never bumps `dataVersion`.
 
   - **ExternalCalendarSource** — a per-user connected source: `kind` (`ICS | GOOGLE | MICROSOFT`), `url` (feed URL for ICS, provider `calendarId` for GOOGLE/MICROSOFT), `name`, `color?`, `enabled`, `mode` (`BUSY | VISUAL`, default `BUSY`), `modeExceptions` (JSON `string[]` of provider event UIDs whose busy/visual behavior flips the source default), `locationId?` (default location for the source's timed busy events — FK to Location, `SetNull`; gives the scheduler travel around imported commitments like a hotel-bar shift), `locationExceptions` (JSON `Record<uid, locationId | null>` — per-event location overrides keyed by series UID; a present key wins over the source default, a null value is an explicit "Anywhere", survives refresh like modeExceptions), `lastFetchedAt?`, `lastError?` (cleared on the next successful refresh). Cascade-deleted with the user.
   - **ExternalEvent** — a materialized imported occurrence with a deterministic composite id `` `${sourceId}|${uid}|${occurrenceStartISO}` `` (the CategoryEvent / plan-occurrence pattern). Carries `uid` (provider UID — **series-level** for recurring events, so one exception covers a whole series), `title`, `start`, `end`, `allDay`. Cascade-deleted with its source.
@@ -333,7 +316,7 @@
   - **Period model** ([utils/recurringPeriods.ts](utils/recurringPeriods.ts), shared by the engine and the stats layer so they can never disagree): periods step from the item's IMMUTABLE `createdAt` (snapped to day/month), deliberately independent of `weekStartDay` and `earliestStartDate` — an `OccurrenceCompletion` is bound to its period key, so deriving keys from mutable inputs would re-key the log. Keys are local wall-clock (`occurrenceKey`), weekly is a rolling 7-day window from the creation day.
   - **Engine (in-pool scoring, NOT a gap-filler).** [expandRecurringItems](utils/calendar-generation/helpers/CalendarGenerator/expandRecurringItems.ts) enumerates each recurring root's periods over a small horizon (`RECURRENCE_HORIZON_DAYS = 14`, at or below the initial slot horizon so every occurrence's window is materialized on the first slot build) and injects per-period **occurrence clones** into the SAME leaf pool / scoring as one-off work. A recurring TASK clones as one childless root (`${taskId}|${periodKey}`); a recurring GOAL clones its **whole subtree** per period — every node re-minted as `${nodeId}|${periodKey}` with parent pointers remapped into the clone tree, so ordinary goal machinery (leaf enumeration, sibling-order chaining, day caps via a raw-id match in `seedGoalDayLedger`, category/location inheritance) operates per period unchanged. Clones null `recurrence`/`linkedItemId`/row-level completion (completion derives EXCLUSIVELY from the log; leaves with a logged period are stamped completed so every downstream filter treats them like completed leaves); base recurring rows are filtered from candidacy in [prepareCandidates](utils/calendar-generation/helpers/CalendarGenerator/prepareCandidates.ts) (templates for their clones). Each clone root carries `deadline = periodEnd`, so `calculateTaskUrgency` scores it like a deadline-bearing task — whether it **places or is skipped ("missed") emerges from the same contest**. Constraints merge per clone in CalendarGenerator: the SOURCE row's resolved chain floored at max(period start, now) and capped by `placementWindowEnd` = period end (threaded through [findValidSlots](utils/calendar-generation/helpers/Scheduler/findValidSlots.ts) → [findAllFittingSlots](utils/calendar-generation/helpers/TimeSlotManager/findAllFittingSlots.ts)) — so week 1 and week 2 never both land on the nearest weekend. A `NO_SLOTS` on a materialized window is a **silent permanent miss** (occurrence `NO_SLOTS` failures are filtered; structural TOO_LARGE/IMPOSSIBLE remap+coalesce to the source row). Occurrences are excluded from memoization by id shape ([buildMemoizedEvents](utils/calendar-generation/helpers/EventAssembler/buildMemoizedEvents.ts)) so a past uncompleted one **vanishes** while a completed one re-derives from the log; recurring occurrences are also excluded from the EDF tier, fit-tightness scoring, and the polish pass.
   - **Occurrence-completion log (out-of-band, like `viewState`/external calendars).** `OccurrenceCompletion` rows (model renamed from HabitCompletion; table still `HabitCompletions`) keyed `@@unique([plannerId, occurrenceKey])` are written by the Java API ([lib/api/occurrenceCompletions.ts](lib/api/occurrenceCompletions.ts): log/unlog/get — **never bump `dataVersion`**), mirrored into the `occurrenceCompletions` Redux slice, hydrated by a CalendarProvider bootstrap, and fed to the engine each run via `deriveOccurrenceCompletions` → `options.occurrenceCompletions`. The log serves three shapes: recurring-task occurrences (row on the task id), recurring-goal LEAF periods (row on the leaf id — a period is done when every structural leaf is logged; fully-logged periods emit nothing), and **plan check-offs** ("did this actually happen?" — row on the plan id keyed by the occurrence's local start, or the anchor instant for one-offs; purely a record, the engine never reads plan completions and the dashboard rollover still excludes plans). [buildOccurrenceCompletedEvents](utils/calendar-generation/helpers/EventAssembler/buildOccurrenceCompletedEvents.ts) freezes recurring-item completions at their logged window (id-stable via `stabilizeEvent`; resolves rows through the structural root, skips plan rows and no-longer-leaf nodes). The calendar tile/popover Complete action ([EventContent](components/events/EventContent/EventContent.tsx)) routes occurrence tiles and plan tiles to the log (plans without a regen — the tile re-renders off the slice) and everything else to row-level completion.
-  - **Habit trackers (the /habits surface).** A **Habit** is a pure TRACKING entity over **repeating** top-level planner items, grouped by **HabitBucket** — the habits surface's OWN grouping entity, deliberately distinct from the item Category tree. Models in [prisma/schemas/models/habit.prisma](prisma/schemas/models/habit.prisma): `HabitBucket` (name, optional `color`, `sortOrder`), `Habit` (name, optional `color`, `bucketId` SetNull — deleted buckets leave habits unsorted), `HabitItem` (`@@unique([habitId, plannerId])`, an item may feed several habits; only items whose recurrence parses are linkable — enforced in the actions and the picker, never the schema). The engine never reads any of it; all writes go to the Java API ([lib/api/habits.ts](lib/api/habits.ts): getHabitData/bucket CRUD/habit CRUD/addItem/removeItem + the assistant's batch `applyHabitChanges`) mirrored wholesale into the `habits` Redux slice (never bump `dataVersion`). `/habits` ([HabitsClient](app/(protected)/habits/HabitsClient.tsx)) renders every bucket as a section (bucket order; empty buckets too; "Unsorted" trails) with create/edit/delete via [BucketModal](app/(protected)/habits/_components/BucketModal/BucketModal.tsx), and per habit: tracked-item chips (open/remove), the recurring-only picker ([AddHabitItemModal](app/(protected)/habits/_components/AddHabitItemModal/AddHabitItemModal.tsx) — triaged roots whose recurrence parses), and a **week-aligned month grid** (`habitGridWeeks` lays the 30-day window out as weekday-header + week rows on the user's `weekStartDay`; every completed occurrence of every linked item counts as ONE instance on its day — green circle, count inside when several, today ringed) with **non-trackable days grayed** via `HabitDayCell.expected` (a day is expected when a completion landed on it, a recurring plan occurrence falls on it, a daily-period rule covers it, or the engine scheduled an occurrence of a linked item there — weekly/monthly rules leave undetermined days gray, so misses read from the period stats, not the grid). Stats from [computeHabitTrackerStats](utils/habits/habitStats.ts): per-day counts from each tracked item's completion signal (recurring task → logged periods; recurring goal → periods whose EVERY leaf is logged, counted on the last leaf's day; recurring plan → check-offs), plus period-based rate/streaks graded ONLY when the habit tracks exactly one recurring item (no honest cadence otherwise — those habits show activity without a "missed" verdict). The "New habit" modal ([NewHabitModal](app/(protected)/habits/_components/NewHabitModal/NewHabitModal.tsx)) creates the tracker only (name + bucket) — repeating items are created separately (item detail / capture / assistant) and linked afterward. Deleting a habit never touches the tracked items. Tests: [recurring-item-scheduling](__tests__/calendar-generation/recurring-item-scheduling.test.ts) (engine, tasks + goal subtrees) + [habitStats](__tests__/utils/habitStats.test.ts) (tracker stats, expected days, week layout) + [draftHabits](__tests__/draft/draftHabits.test.ts) + [recurrenceContract](__tests__/draft/recurrenceContract.test.ts) (assistant contracts).
+  - **Habit trackers (the /habits surface).** A **Habit** is a pure TRACKING entity over **repeating** top-level planner items, grouped by **HabitBucket** — the habits surface's OWN grouping entity, deliberately distinct from the item Category tree. Row types in the shared contracts: `HabitBucket` (name, optional `color`, `sortOrder`), `Habit` (name, optional `color`, `bucketId` SetNull — deleted buckets leave habits unsorted), `HabitItem` (`@@unique([habitId, plannerId])`, an item may feed several habits; only items whose recurrence parses are linkable — enforced in the actions and the picker, never the schema). The engine never reads any of it; all writes go to the Java API ([lib/api/habits.ts](lib/api/habits.ts): getHabitData/bucket CRUD/habit CRUD/addItem/removeItem + the assistant's batch `applyHabitChanges`) mirrored wholesale into the `habits` Redux slice (never bump `dataVersion`). `/habits` ([HabitsClient](app/(protected)/habits/HabitsClient.tsx)) renders every bucket as a section (bucket order; empty buckets too; "Unsorted" trails) with create/edit/delete via [BucketModal](app/(protected)/habits/_components/BucketModal/BucketModal.tsx), and per habit: tracked-item chips (open/remove), the recurring-only picker ([AddHabitItemModal](app/(protected)/habits/_components/AddHabitItemModal/AddHabitItemModal.tsx) — triaged roots whose recurrence parses), and a **week-aligned month grid** (`habitGridWeeks` lays the 30-day window out as weekday-header + week rows on the user's `weekStartDay`; every completed occurrence of every linked item counts as ONE instance on its day — green circle, count inside when several, today ringed) with **non-trackable days grayed** via `HabitDayCell.expected` (a day is expected when a completion landed on it, a recurring plan occurrence falls on it, a daily-period rule covers it, or the engine scheduled an occurrence of a linked item there — weekly/monthly rules leave undetermined days gray, so misses read from the period stats, not the grid). Stats from [computeHabitTrackerStats](utils/habits/habitStats.ts): per-day counts from each tracked item's completion signal (recurring task → logged periods; recurring goal → periods whose EVERY leaf is logged, counted on the last leaf's day; recurring plan → check-offs), plus period-based rate/streaks graded ONLY when the habit tracks exactly one recurring item (no honest cadence otherwise — those habits show activity without a "missed" verdict). The "New habit" modal ([NewHabitModal](app/(protected)/habits/_components/NewHabitModal/NewHabitModal.tsx)) creates the tracker only (name + bucket) — repeating items are created separately (item detail / capture / assistant) and linked afterward. Deleting a habit never touches the tracked items. Tests: [recurring-item-scheduling](__tests__/calendar-generation/recurring-item-scheduling.test.ts) (engine, tasks + goal subtrees) + [habitStats](__tests__/utils/habitStats.test.ts) (tracker stats, expected days, week layout) + [draftHabits](__tests__/draft/draftHabits.test.ts) + [recurrenceContract](__tests__/draft/recurrenceContract.test.ts) (assistant contracts).
   - **Known limits.** "N times per week" (count per period) is one-per-period for now; recurring tasks with children schedule only the root's own block per period (children stay independent candidates); detour links inside a recurring goal are nulled on clones (splicing an external target into a repeating period would multiply-schedule it); a subtree edit after logged periods can misclassify old periods in stats (period completion checks CURRENT leaves).
 
   ### Category system
@@ -750,7 +733,7 @@
   ## App routes & access control
 
   - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion", "/auth/oauth/complete", "/auth/oauth/confirm"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|reset|new-password]` (pages for signed-out visitors; a `callbackUrl` pointing at one falls back to the dashboard), and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
-  - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only (Prisma, bcrypt). It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` adds the database checks (account still exists, the token's `sid` family still has a `sessions` row, i.e. not signed out or ended by a password change or reset, and token not older than the last password change) on every render. `getSession().twoFactorVerified` comes from the token's `amr` claim: this sign-in passed the emailed code.
+  - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only. It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` calls Java's DB-checked `GET /auth/session` (account still exists, the token's `sid` family still has a `sessions` row — i.e. not signed out or ended by a password change or reset — and token not older than the last password change; a 401 there is "signed out", any other failure throws so callers can tell it from signed out) on every render. The session carries `twoFactorVerified` (from the token's `amr`: this sign-in passed the emailed code) and the profile fields the protected layout renders from (`onboardedAt`, `aiMode`, `aiModel`).
   - Every route outside `publicRoutes` and `authRoutes` requires a valid access token. Without one the middleware redirects to `/auth/login?callbackUrl=<path>`; the login page first tries a silent refresh (the refresh cookie only ever reaches the API, so only the browser can use it) and sends a signed-in visitor on. If Java's keys cannot be fetched the middleware answers 503 rather than treating the visitor as signed out. The `(protected)` layout redirects to the login page when `getSession()` refuses a token the middleware accepted. Auth pages are never redirected away from by the middleware: a token the database refuses would loop.
   - Session changes (sign-in, sign-out, password change, a user switch in another tab) are always full page loads ([lib/session/navigation.ts](lib/session/navigation.ts)), so no Redux state or PostHog identity crosses accounts; [PostHogProvider](context/PostHogProvider.tsx) resets a stored identity on a signed-out page. An explicit sign-out (and a confirmed deletion) also runs `forgetDeviceData(userId)` ([lib/session/deviceData.ts](lib/session/deviceData.ts)): every localStorage key ending in `.<userId>` except `theme.*` goes, and so does the AI key vault. New user-scoped keys must follow that suffix convention to be cleared. PostHog records no session replay on a page load under `/auth/*` (the emailed-link and OAuth URLs carry credentials).
   - Security headers (next.config.mjs, every route): CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` (`no-referrer` on `/auth/*`), no `X-Powered-By`. Scripts are not CSP-restricted yet (that needs nonces).
@@ -859,27 +842,26 @@
 
   ## Database commands
 
-  This project uses **migrations**, not `prisma db push`.
+  **The Java API owns the schema** since the 2.6 cutover: Flyway migrations in
+  `server/src/main/resources/db/migration/` (`V1__baseline.sql` is the schema exactly as the
+  last Prisma migration left it; every change from `V2` on is a new versioned file), applied
+  automatically when the Java server boots. The web only manages the local container:
 
   ```bash
   # Local Postgres (Docker)
   pnpm db:start                       # docker compose up -d
   pnpm db:stop                        # docker compose down
-  pnpm db:reset:dev                   # nuke volume, restart, migrate, seed
-
-  # Migrations
-  pnpm prisma:migrate:dev             # prisma migrate dev (interactive in dev)
-  pnpm prisma:migrate:deploy          # prisma migrate deploy (CI / prod)
-
-  # Other
-  pnpm db:seed                        # prisma db seed
-  pnpm db:studio                      # prisma studio
-  pnpm prisma generate                # regenerate client after schema changes
+  pnpm db:reset:dev                   # nuke volume + restart (empty DB; the Java server migrates it on boot)
   ```
 
-  The seed creates a single admin user (`admin@circadium.app` / `password`) and populates locations, travel times, categories, templates, and planners. Seed planners are labeled with location markers `A/B/C/D` (no-location / Work / Home / Gym).
+  The seed is the Java `DemoSeeder` (local profile only): from `server/`,
+  `.\mvnw.cmd spring-boot:run -Dspring-boot.run.arguments=--circadium.seed.enabled=true`
+  creates the admin (`admin@circadium.app` / `password`, onboarded) and a compact demo
+  dataset (locations + travel times, roles/categories with windows, templates, goal trees,
+  a recurring task, plans) following the retired TS generators' conventions.
 
-  Migration history (single source of truth in [prisma/migrations/](prisma/migrations/)):
+  Prisma-era migration history (now baked into the Flyway `V1__baseline.sql`; the names below
+  survive only as documentation of why columns exist):
 
   - `0_init`
   - `add_data_version` — the OCC counter on User
@@ -929,7 +911,10 @@
   - `habit_completions_created_at_timestamp` — `HabitCompletions.createdAt` TEXT → `timestamp(3)` (the one straggler 1.13b deferred): its writes moved to the Java API (plan 2.1), which stamps createdAt on create and never on the upsert's update branch. `start`/`end` stay TEXT until the domain-datetime decision point (plan 2.5). The web type re-declares `createdAt: string` in [types/prisma.ts](types/prisma.ts) (the calendar-tables pattern).
   - `habit_timestamps_and_shedlock` — the habit tables' TEXT timestamps (`HabitBuckets`/`Habits` createdAt+updatedAt, `HabitItems` createdAt) → `timestamp(3)` with their writes moving to Java (plan 2.2; Java stamps both, no triggers), plus the `shedlock` table for the Java server's scheduled jobs (the travel top-up runs nightly server-side now — the client's per-load trigger is gone). Web types re-declare the strings in [types/prisma.ts](types/prisma.ts).
 
-  Prisma 7 requires a driver adapter at construction. Both `lib/db.ts` and `prisma/seed.ts` use `PrismaPg`. Don't construct `PrismaClient` without one.
+  Post-cutover changes live as Flyway migrations only. The first: `V2__simple_event_times_timestamp` —
+  `SimpleEvents.start`/`end` TEXT → `timestamp(3)` + the `("userId", "start")` scan index (the 2.5
+  audit decision; the wire stays `.SSS'Z'` ISO via Java's serialization, web types unchanged strings),
+  and the orphaned `_prisma_migrations` table dropped.
 
   ---
 
@@ -943,8 +928,7 @@
   AUTH_ACCESS_COOKIE=""               # Java access cookie name (local default circadium_access; staging __Secure-circadium_staging_access, prod __Secure-circadium_access; required in production builds)
   NEXT_PUBLIC_OAUTH_PROVIDERS=""      # Sign-in buttons, comma-separated (default google,microsoft,apple); must match the API's OAUTH_PROVIDERS
   NEXT_PUBLIC_CALENDAR_REALTIME=""    # "on": open a WebSocket to the Java API so a user's other sessions update live; unset: HTTP sync only (java backend only; see lib/calendarRealtime.ts)
-  DATABASE_URL=""                     # Pooled, used by the app
-  DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
+  # DATABASE_URL / DIRECT_URL left with the 2.6 cutover — the web has no DB client.
   # RESEND_API_KEY left with Group D — every mail, support included, comes from Java.
   # ANTHROPIC_API_KEY is NOT required: the AI assistant is BYOK — each user's
   # own key, stored on their device, calling Anthropic from the browser.
@@ -962,12 +946,10 @@
   2. The endpoint authenticates and scopes by the token's user id; the adapter never sends one.
   3. If it mutates rows the diff layer tracks, call `markSynced(...)` on the next render or you'll get phantom diffs.
 
-  ### A new Prisma model
-  1. Add a new file in [prisma/schemas/models/](prisma/schemas/models/) and reference it in `schema.prisma` if needed.
-  2. `pnpm prisma:migrate:dev --name <descriptive_name>`.
-  3. `pnpm prisma generate`.
-  4. Add type re-exports in [types/prisma.ts](types/prisma.ts) (note: `.ts`, not `.d.ts`).
-  5. If the model is engine output, give it a deterministic id and write wholesale on each regen — see CategoryEvent / TravelEvent for the pattern.
+  ### A new table or column
+  1. Add a Flyway migration `V<n>__<descriptive_name>.sql` in `server/src/main/resources/db/migration/` and the matching Java entity change (`ddl-auto: validate` keeps them honest).
+  2. Declare the row shape in [client/shared/src/contracts/models.ts](../shared/src/contracts/models.ts) (and the enum in `enums.ts` if new), then re-export it from [types/prisma.ts](types/prisma.ts) if the web consumes it.
+  3. If the model is engine output, give it a deterministic id and write wholesale on each regen — see CategoryEvent / TravelEvent for the pattern.
 
   ### A new scheduling strategy
   See [documentation/calendar-generation-deep-dive.md](documentation/calendar-generation-deep-dive.md#10-strategies). Implement the interface, add a weight constant in `defaultStrategy.ts`, wire it in via `buildSchedulingStrategy`.

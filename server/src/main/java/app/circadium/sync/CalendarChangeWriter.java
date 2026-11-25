@@ -136,8 +136,8 @@ class CalendarChangeWriter {
     private void calendar(String userId, ChangeGroup<SimpleEventRow> group, String now) {
         List<Column<SimpleEventRow>> content = List.of(
                 text("title", SimpleEventRow::title),
-                text("start", SimpleEventRow::start),
-                text("end", SimpleEventRow::end),
+                timestamp("start", SimpleEventRow::start),
+                timestamp("end", SimpleEventRow::end),
                 int4("duration", SimpleEventRow::duration),
                 text("rrule", SimpleEventRow::rrule),
                 text("backgroundColor", SimpleEventRow::backgroundColor),

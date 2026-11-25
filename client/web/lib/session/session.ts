@@ -1,11 +1,9 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 
-import type { UserRole } from "@/generated/client";
-import { db } from "@/lib/db";
+import type { AiMode, UserRole } from "@/types/prisma";
 import { retry } from "@/lib/retry";
-import { verifyAccessToken } from "@/lib/session/accessToken";
-import { accessCookieName } from "@/lib/session/config";
+import { accessCookieName, apiUrl } from "@/lib/session/config";
 
 export type SessionUser = {
   id: string;
@@ -17,6 +15,10 @@ export type SessionUser = {
   isOAuth: boolean;
   /** The providers this account signs in with (`google`, `microsoft`, `apple`). */
   signInProviders: string[];
+  /** ISO instant, or null while the first-run setup is still owed. */
+  onboardedAt: string | null;
+  aiMode: AiMode | null;
+  aiModel: string | null;
 };
 
 export type Session = {
@@ -35,70 +37,32 @@ export type Session = {
 };
 
 /**
- * True when the token predates the account's last password change. JWT `iat`
- * has second granularity, so a token from the same second as the change is
- * accepted: it is ambiguous, and the login right after a reset lands there.
- */
-export function issuedBeforePasswordChange(
-  issuedAtSeconds: number,
-  passwordChangedAt: Date | null,
-): boolean {
-  if (!passwordChangedAt) return false;
-  return issuedAtSeconds < Math.floor(passwordChangedAt.getTime() / 1000);
-}
-
-/**
  * The signed-in user for this request, from the Java access cookie, or null.
  *
- * The token proves who the caller is; the rest of the user comes from the
- * database, which is also authoritative for the role. A deleted account, an
- * ended sign-in (signed out, or every session ended by a password change or
- * reset: Java deletes the family's `sessions` rows), or a token from before a
- * password change counts as signed out, even though the token itself is still
- * within its lifetime.
+ * The token proves who the caller is; the rest comes from Java's DB-checked
+ * `GET /auth/session`, which is also authoritative for the role. A deleted
+ * account, an ended sign-in (signed out, or every session ended by a password
+ * change or reset), or a token from before a password change answers 401 there
+ * and counts as signed out, even though the token itself is still within its
+ * lifetime. Any other failure throws, so callers can tell "signed out" from
+ * "could not check".
  */
 export const getSession = cache(async (): Promise<Session | null> => {
   const token = (await cookies()).get(accessCookieName())?.value;
   if (!token) return null;
 
-  const claims = await verifyAccessToken(token);
-  if (!claims) return null;
+  const response = await retry(async () => {
+    const result = await fetch(`${apiUrl()}/auth/session`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    // 5xx (Java waking or restarting) is worth a retry; 401 is an answer.
+    if (result.status >= 500) {
+      throw new Error(`session check failed: ${result.status}`);
+    }
+    return result;
+  });
+  if (!response.ok) return null;
 
-  const user = await retry(() =>
-    db.user.findUnique({
-      where: { id: claims.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isTwoFactorEnabled: true,
-        passwordChangedAt: true,
-        accounts: { select: { provider: true } },
-        sessions: {
-          where: { familyId: claims.sessionId },
-          select: { id: true },
-          take: 1,
-        },
-      },
-    }),
-  );
-  if (!user || user.sessions.length === 0) return null;
-  if (issuedBeforePasswordChange(claims.issuedAt, user.passwordChangedAt)) {
-    return null;
-  }
-
-  return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isTwoFactorEnabled: user.isTwoFactorEnabled,
-      isOAuth: user.accounts.length > 0,
-      signInProviders: user.accounts.map((account) => account.provider),
-    },
-    accessTokenExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
-    twoFactorVerified: claims.twoFactorVerified,
-  };
+  return (await response.json()) as Session;
 });

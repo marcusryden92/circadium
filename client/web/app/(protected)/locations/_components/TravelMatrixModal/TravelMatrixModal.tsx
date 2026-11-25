@@ -9,7 +9,7 @@ import {
   ResponsiveSegmentedControl,
   useShellOverlay,
 } from "@/components/ui";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type {
   SerializedLocation,
   SerializedTravelTime,

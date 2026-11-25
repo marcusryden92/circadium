@@ -12,9 +12,7 @@ export default [
     ignores: [
       "**/.next/",
       "node_modules/",
-      "generated/",
       "public/",
-      "prisma/",
       "*.md",
       ".env",
       "*.d.ts",

@@ -1,4 +1,4 @@
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type { TravelTime } from "@/types/prisma";
 import type { SerializedTravelTime } from "@/redux/slices/schedulingSettingsSlice";
 

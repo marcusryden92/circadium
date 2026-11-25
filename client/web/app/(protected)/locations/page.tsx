@@ -10,7 +10,7 @@ import {
   ResponsiveSegmentedControl,
 } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type { SerializedLocation } from "@/redux/slices/schedulingSettingsSlice";
 import { LocationsRail } from "./_components/LocationsRail";
 import { TravelMatrixPane } from "./_components/TravelMatrixPane";

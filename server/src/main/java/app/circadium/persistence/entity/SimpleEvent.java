@@ -18,9 +18,9 @@ public class SimpleEvent {
 
     private String title;
 
-    private String start;
+    private Instant start;
 
-    private String end;
+    private Instant end;
 
     private Integer duration;
 

@@ -30,8 +30,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "prisma/**/*",
-    "generated/**/*",
     "utils/assert/assert.js"
   ],
   // Test files get jest globals via tsconfig.test.json instead of leaking

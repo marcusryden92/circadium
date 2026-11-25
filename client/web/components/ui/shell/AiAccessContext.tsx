@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AiMode } from "@/generated/client";
+import { AiMode } from "@/types/prisma";
 import { updateAiMode, updateAiModel } from "@/lib/api/profile";
 import { resolveAiModel, type AiModelId } from "@/lib/aiModels";
 import {

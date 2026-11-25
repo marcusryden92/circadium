@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom";
 
-// jsdom does not ship TextEncoder/TextDecoder; the Prisma client (imported
-// transitively through @/types/prisma) needs both. Standard Next.js + jsdom +
-// Prisma polyfill.
+// jsdom does not ship TextEncoder/TextDecoder; code under test (uuid, jose,
+// streaming helpers) expects both on the global. Standard Next.js + jsdom
+// polyfill.
 import { TextEncoder, TextDecoder } from "util";
 (global as unknown as { TextEncoder: typeof TextEncoder }).TextEncoder =
   TextEncoder;

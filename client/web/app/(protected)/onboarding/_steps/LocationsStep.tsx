@@ -12,7 +12,7 @@ import {
   setAllTravelTimes,
   type SerializedLocation,
 } from "@/redux/slices/schedulingSettingsSlice";
-import type { TransportMode } from "@/generated/client";
+import type { TransportMode } from "@/types/prisma";
 import type { RootState } from "@/redux/store";
 import { TRANSPORT_MODE_OPTIONS } from "../../locations/_constants";
 import { StepFrame } from "../_components/StepFrame";

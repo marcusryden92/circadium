@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserRole } from "@/generated/client";
+import type { UserRole } from "@/types/prisma";
 import { EmailCard } from "../EmailCard";
 import { PasswordCard } from "../PasswordCard";
 import { TwoFactorCard } from "../TwoFactorCard";

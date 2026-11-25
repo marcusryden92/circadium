@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import StoreProvider from "@/context/StoreProvider";
 import UserProvider from "@/context/UserProvider";
 import CalendarProvider from "@/context/CalendarProvider";
-import type { AiMode } from "@/generated/client";
+import type { AiMode } from "@/types/prisma";
 import {
   AppShell,
   AssistantProvider,
