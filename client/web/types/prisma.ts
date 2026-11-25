@@ -4,6 +4,8 @@
 // has always used. The name "prisma" is historical: the generated client is
 // gone, and the Java API owns the schema (Flyway).
 export type {
+  WeekDayType,
+  WeekDayIntegers,
   EventExtendedProps,
   SimpleEvent,
   Planner,
