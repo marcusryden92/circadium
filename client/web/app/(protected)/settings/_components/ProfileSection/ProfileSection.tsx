@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, Field, Input } from "@/components/ui";
-import { settings } from "@/actions/settings";
+import { settings } from "@/lib/api/profile";
 import { useServerAction } from "@/hooks/useServerAction";
 import type { UserRole } from "@/generated/client";
 import { StatusLine } from "../StatusLine";

@@ -155,6 +155,10 @@ class SecurityConfig {
                     } else {
                         authorize.requestMatchers(API_DOCS).access(adminWithMfa());
                     }
+                    // Unlike the API docs, the admin surface stays gated under local too: it reads
+                    // other users' data, and the web's own rule (isAdminSession) never relaxed.
+                    authorize.requestMatchers(PathPatternRequestMatcher.pathPattern("/admin/**"))
+                            .access(adminWithMfa());
                     authorize.anyRequest().authenticated();
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer

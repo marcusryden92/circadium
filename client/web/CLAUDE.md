@@ -8,11 +8,11 @@
 
   ## Stack
 
-  - **Next.js** 16.3 — App Router, server actions, `(protected)` route group. Builds run **webpack, not Turbopack** (`--webpack` in the dev/build scripts): the custom webpack config (rrule alias + `node:` stubs for the Anthropic SDK) and the Vanilla Extract plugin's experimental Turbopack support make the default bundler a later migration. `middleware.ts` is kept deliberately (deprecated in favor of `proxy.ts`, but proxy drops the edge runtime this middleware is built for), and `agentRules: false` stops `next dev` from appending its managed block to this file.
+  - **Next.js** 16.3 — App Router, `(protected)` route group (server actions are gone — see Code style rules). Builds run **webpack, not Turbopack** (`--webpack` in the dev/build scripts): the custom webpack config (rrule alias + `node:` stubs for the Anthropic SDK) and the Vanilla Extract plugin's experimental Turbopack support make the default bundler a later migration. `middleware.ts` is kept deliberately (deprecated in favor of `proxy.ts`, but proxy drops the edge runtime this middleware is built for), and `agentRules: false` stops `next dev` from appending its managed block to this file.
   - **React** 19, **TypeScript** 6.0.3 (strict, `moduleResolution: "bundler"`, `@/*` path alias).
   - **Prisma** 7.8 with `@prisma/adapter-pg` driver adapter (Prisma 7 requires a driver adapter at construction time — see [lib/db.ts](lib/db.ts)). Client is generated to `generated/client` (outside `/prisma/` so the VS Code Prisma extension doesn't merge its embedded `schema.prisma` copy with the source schema) and imported as `@/generated/client`.
   - **PostgreSQL** (local: `docker-compose.dev.yml`, port 5433, db `circadium_dev`).
-  - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server actions. Sign-in, registration, reset, verification, deletion and Google / Microsoft / Apple sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
+  - **Auth is the Java API** (`server/`): it issues an RS256 access JWT and a rotated refresh token as HttpOnly cookies. The web only reads the session — [lib/session/](lib/session/) verifies the access cookie against Java's JWKS with **jose** (edge-safe, used by the middleware too), and [auth.ts](auth.ts) re-exports `getSession` as `auth()` for server components. Sign-in, registration, reset, verification, deletion and Google / Microsoft / Apple sign-in are Java endpoints called from the browser ([lib/api/auth.ts](lib/api/auth.ts)).
   - **Vanilla Extract** for styling — `@vanilla-extract/{css,sprinkles,recipes,dynamic,next-plugin}`. Every page/component has a co-located `*.css.ts` file. There is no Tailwind in this project despite a leftover `components.json`.
   - **Redux Toolkit** for cross-component state, **React Context** for scoped providers (Store, User, Calendar, Capture, Search).
   - **FullCalendar** 6.1 for the calendar surface (with `@fullcalendar/luxon3` + **Luxon** 3 as the timezone plugin); **date-fns** 3 for date math (engine has its own [dateTimeService](utils/calendar-generation/utils/dateTimeService.ts)); **rrule** for template recurrence.
@@ -30,7 +30,7 @@
   - **No narration comments** ("// fixed to handle X", "// updated to use new API"). Comments explain *why* something non-obvious exists, not *what* the code does.
   - **No summary, changelog, refactor-notes, or migration-notes markdown files** added to the repo. Make the change and commit.
   - **Absolute imports with `@/`** prefix.
-  - **Prefer server actions** (`"use server"` files in [actions/](actions/)) over `app/api/` routes. API routes exist only for `admin/`. (The calendar OAuth connect + callback handlers moved to the Java API with the Group C flip, and the AI assistant's old SSE route is gone — its tool-use loop runs in the browser on the user's own key; see the AI-assistant section.)
+  - **There are no server actions and no `app/api/` routes left** — every server call is a Java API endpoint reached through [lib/api/](lib/api/) (plan Phase 2; Group D removed the last six actions). Server components may still READ through Prisma (the protected layout) until the 2.6 cutover. The AI assistant's tool-use loop runs in the browser on the user's own key; see the AI-assistant section.
   - **Zod schemas** in [schemas/](schemas/) for any user-facing form.
   - Spell out "category" — never "cat".
   - The location surface is named **Locations**, not "Places" (Google Places is the underlying API, but the user-facing concept is Location).
@@ -53,7 +53,7 @@
   │   │   ├── categories/               # Role + category management (top-level categories are surfaced as "Roles")
   │   │   ├── dashboard/                # Default landing after login
   │   │   ├── feedback/                 # Support contact (message + consented data snapshot) + suggestion wall with voting
-  │   │   ├── admin/feedback/           # ADMIN-only report inspector (an ADMIN session that signed in with the emailed 2FA code: `isAdminSession` in lib/auth.ts, enforced in the actions) — picker over stored FeedbackReport snapshots (structured read-only views + download) plus IMPERSONATION: "Impersonate" writes the target to sessionStorage ([utils/inspection.ts](utils/inspection.ts)) and reloads; CalendarProvider + UserProvider then hydrate ALL Redux slices from the snapshot instead of the account, every own-account bootstrap is skipped, and useCalendarServerSync takes an explicit `disabled` flag (double gate: initializeState is also never called) so nothing on screen can sync back to the admin's rows. Warning banner (InspectionBanner) with Exit; per-tab, cleared on exit/reload
+  │   │   ├── admin/feedback/           # ADMIN-only report inspector (an ADMIN session that signed in with the emailed 2FA code: `isAdminSession` in lib/auth.ts, enforced by the Java API's /admin/** gate) — picker over stored FeedbackReport snapshots (structured read-only views + download) plus IMPERSONATION: "Impersonate" writes the target to sessionStorage ([utils/inspection.ts](utils/inspection.ts)) and reloads; CalendarProvider + UserProvider then hydrate ALL Redux slices from the snapshot instead of the account, every own-account bootstrap is skipped, and useCalendarServerSync takes an explicit `disabled` flag (double gate: initializeState is also never called) so nothing on screen can sync back to the admin's rows. Warning banner (InspectionBanner) with Exit; per-tab, cleared on exit/reload
   │   │   ├── graph/                    # Directional precedence graph — queues as lanes + dependencies as connectors on a time axis (_lib/graphModel + GraphCanvas)
   │   │   ├── mindmap/                  # Mind-map canvas — roles → categories → items/leaves as a zoomable radial/horizontal tree (_lib/mindmapModel + MindmapCanvas/MindmapControls)
   │   │   ├── items/[id]/               # Item detail (Overview/Subtasks/Schedule/Alerts tabs); sub-routes: subtasks/, schedule/, alerts/ (+ _components/, _hooks/useItemHandlers, _constants.ts)
@@ -63,17 +63,11 @@
   │   │   ├── onboarding/               # First-run 6-step overlay (Welcome/Roles/Locations/Week/BrainDump/AI); _lib builders, _steps, _components
   │   │   └── settings/
   │   ├── auth/                         # login/register/reset/new-password/new-verification/confirm-deletion/oauth/complete/oauth/confirm — client pages that call the Java API
-  │   ├── api/                          # auth/ + admin/ (calendar OAuth connect + callback moved to the Java API)
+  │   ├── api/                          # EMPTY and gone with Group D (the calendar OAuth handlers moved to the Java API in Group C, the admin stub died with the inspector's move)
   │   ├── privacy/                      # Public GDPR privacy-policy page (outside the (protected) group; in publicRoutes)
   │   └── (dev)/                        # Dev scaffolding (test-shell, test-tokens, logo-test); its layout 404s in production builds
   │
-  ├── actions/                          # Server actions (being retired per-group by plan Phase 2; Groups A+B+C — scheduling, viewState, occurrenceCompletions, locations, habits, external calendars, draft conversations — now live on the Java API via lib/api/; actions/categories.ts was deleted dead, the category path is Redux + diff sync end to end)
-  │   ├── settings.ts                   # Display name (+ AI mode/model); everything that decides who can sign in (email change, 2FA switch, password, deletion) is a Java endpoint that re-checks the current password (lib/api/auth.ts)
-  │   ├── onboarding.ts                 # completeOnboarding() — stamps User.onboardedAt
-  │   ├── feedback.ts                   # Support messages (FeedbackReport rows + Resend notification to support@circadium.app; optional exportUserData snapshot stored ON the row, never emailed) + suggestion wall list/create/vote/delete — direct actions, outside the OCC diff sync
-  │   ├── adminFeedback.ts              # ADMIN-gated report surface: list (snapshot presence via an id-only second query — blobs never ride the list), get snapshot blob, clear snapshot, delete report
-  │   ├── dataExport.ts                 # GDPR export — exportUserData() serializes the whole account to one JSON blob (secrets excluded)
-  │   └── dataImport.ts                 # GDPR import/restore — importUserData(payload, "replace"|"add"): replace preserves ids (DB-migration restore), add remaps every id
+  │                                     # (actions/ is GONE — plan Phase 2 retired the server actions per group; the last six — settings, onboarding, feedback, adminFeedback, dataExport, dataImport — moved to the Java API in Group D via lib/api/{profile,feedback,adminFeedback,dataTransfer}.ts)
   │
   ├── components/
   │   ├── auth/                         # AuthCard, the auth forms (post to Java via lib/api/auth), Social (the provider buttons from NEXT_PUBLIC_OAUTH_PROVIDERS; starts a sign-in with a PKCE verifier), OAuthComplete (redeems the handoff code, or shows the "check your email" step), OAuthConfirm (the emailed link after a first Microsoft sign-in: creates the account on a button press, then offers the provider sign-in), LoginButton
@@ -125,12 +119,11 @@
   │
   ├── lib/
   │   ├── aiKey.ts                      # BYOK device vault: user's Anthropic key AES-GCM-encrypted (non-extractable CryptoKey) in IndexedDB, per userId; validateAiKey via free models.list
-  │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401; ApiError.problem keeps the whole error body), auth.ts (account endpoints), calendar.ts (bootstrap + the sync transport: 200 → success, 409 stale → freshState, other answers → error/rollback, no answer or a 502/503/504 → throw/retry), occurrenceCompletions.ts (get/log/unlog), viewState.ts (get/save per kind), scheduling.ts (preferences PATCH incl. defaultTransportMode; reads ride the bootstrap), locations.ts (Places search/create/update + travel-time fetch-missing/refresh-all, both returning fresh rows), habits.ts (bucket/habit/link CRUD + the assistant batch; converts per-field deltas to the wire's {set, value} PatchField), externalCalendars.ts (source CRUD/refresh + busy/location exceptions + the Google/Microsoft integration endpoints: status/list/add-source/disconnect), draftConversations.ts (AI-assistant chat history list/get/upsert/delete), errorMessage.ts (describeApiError)
+  │   ├── api/                          # Browser calls to the Java API: client.ts (apiRequest + ApiError; cookies via credentials 'include', refresh-and-retry on 401; ApiError.problem keeps the whole error body), auth.ts (account endpoints), calendar.ts (bootstrap + the sync transport: 200 → success, 409 stale → freshState, other answers → error/rollback, no answer or a 502/503/504 → throw/retry), occurrenceCompletions.ts (get/log/unlog), viewState.ts (get/save per kind), scheduling.ts (preferences PATCH incl. defaultTransportMode; reads ride the bootstrap), locations.ts (Places search/create/update + travel-time fetch-missing/refresh-all, both returning fresh rows), habits.ts (bucket/habit/link CRUD + the assistant batch; converts per-field deltas to the wire's {set, value} PatchField), externalCalendars.ts (source CRUD/refresh + busy/location exceptions + the Google/Microsoft integration endpoints: status/list/add-source/disconnect), draftConversations.ts (AI-assistant chat history list/get/upsert/delete), feedback.ts (support message + the suggestion wall list/create/vote/delete), adminFeedback.ts (the ADMIN report inspector: list/snapshot/clear/delete), dataTransfer.ts (GDPR exportUserData/importUserData keeping the {success, ...} result shape DataSection branches on), profile.ts (display name, AI mode/model, completeOnboarding), errorMessage.ts (describeApiError)
   │   ├── calendarRealtime.ts           # NEXT_PUBLIC_CALENDAR_REALTIME: "on" opens the realtime WebSocket (wss from the API origin) for cross-session catch-up; unset keeps HTTP sync as the only channel (java backend only; build-time inlined)
   │   ├── session/                      # The Java session: config (API URL, cookie name), accessToken (edge-safe JWKS verify), session (getSession shim), refresh (cross-tab refresh keeper, Web Locks; replaceSession for a request that swaps in new session cookies, e.g. the password change), SessionProvider/useSession, signOut, navigation, callbackUrl (safeCallbackUrl), oauthSignIn (provider list, PKCE start + pending read)
   │   ├── auth.ts                       # currentUser / currentRole over auth()
   │   ├── db.ts                         # Prisma client singleton (PrismaPg adapter)
-  │   ├── mail.ts                       # Support mail only (every account mail comes from Java)
   │   ├── passwordStrength.ts           # loadPasswordCheck: zxcvbn-ts, dictionaries loaded on demand; feeds components/ui/PasswordInput's PasswordStrength meter (guidance only: Java enforces length + the breached-password lookup)
   │   ├── taskItem.ts
   │   └── theme/                        # The whole design system
@@ -234,7 +227,7 @@
   ├── notes/                            # Personal notes / TODOs — NOT documentation, do not quote
   ├── middleware.ts                     # Staging gate + route protection (verifies the Java access cookie, edge-safe)
   ├── routes.ts                         # publicRoutes, authRoutes, DEFAULT_LOGIN_REDIRECT (/dashboard)
-  ├── auth.ts                           # auth() = lib/session getSession, for server actions and route handlers
+  ├── auth.ts                           # auth() = lib/session getSession, for server components (the protected layout)
   ├── docker-compose.dev.yml
   ├── prisma.config.ts, components.json (legacy), jest.config.ts, jest.setup.ts
   ├── next.config.mjs                   # withVanillaExtract + rrule webpack alias
@@ -757,7 +750,7 @@
   ## App routes & access control
 
   - `routes.ts` defines `publicRoutes = ["/", "/privacy", "/auth/new-verification", "/auth/confirm-deletion", "/auth/oauth/complete", "/auth/oauth/confirm"]` (`/privacy` is the public GDPR privacy-policy page, rendered outside the `(protected)` group), `authRoutes = [/auth/login|register|reset|new-password]` (pages for signed-out visitors; a `callbackUrl` pointing at one falls back to the dashboard), and `DEFAULT_LOGIN_REDIRECT = "/dashboard"`.
-  - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only (Prisma, bcrypt). It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` adds the database checks (account still exists, the token's `sid` family still has a `sessions` row, i.e. not signed out or ended by a password change or reset, and token not older than the last password change) on every render and server action. `getSession().twoFactorVerified` comes from the token's `amr` claim: this sign-in passed the emailed code.
+  - `middleware.ts` runs on the **edge**, so it must NOT import anything Node-only (Prisma, bcrypt). It checks only what the access token proves (signature against Java's JWKS, issuer, audience, expiry); `getSession()` adds the database checks (account still exists, the token's `sid` family still has a `sessions` row, i.e. not signed out or ended by a password change or reset, and token not older than the last password change) on every render. `getSession().twoFactorVerified` comes from the token's `amr` claim: this sign-in passed the emailed code.
   - Every route outside `publicRoutes` and `authRoutes` requires a valid access token. Without one the middleware redirects to `/auth/login?callbackUrl=<path>`; the login page first tries a silent refresh (the refresh cookie only ever reaches the API, so only the browser can use it) and sends a signed-in visitor on. If Java's keys cannot be fetched the middleware answers 503 rather than treating the visitor as signed out. The `(protected)` layout redirects to the login page when `getSession()` refuses a token the middleware accepted. Auth pages are never redirected away from by the middleware: a token the database refuses would loop.
   - Session changes (sign-in, sign-out, password change, a user switch in another tab) are always full page loads ([lib/session/navigation.ts](lib/session/navigation.ts)), so no Redux state or PostHog identity crosses accounts; [PostHogProvider](context/PostHogProvider.tsx) resets a stored identity on a signed-out page. An explicit sign-out (and a confirmed deletion) also runs `forgetDeviceData(userId)` ([lib/session/deviceData.ts](lib/session/deviceData.ts)): every localStorage key ending in `.<userId>` except `theme.*` goes, and so does the AI key vault. New user-scoped keys must follow that suffix convention to be cleared. PostHog records no session replay on a page load under `/auth/*` (the emailed-link and OAuth URLs carry credentials).
   - Security headers (next.config.mjs, every route): CSP `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` (`no-referrer` on `/auth/*`), no `X-Powered-By`. Scripts are not CSP-restricted yet (that needs nonces).
@@ -853,14 +846,14 @@
 
   Conventions:
 
-  - Every server action verifies the session first and scopes queries by `userId`.
+  - Every Java endpoint authenticates the caller and scopes queries by the token's user id; the client never sends a userId.
   - Direct mutations (Location create, travel-time refresh) that bypass the diff path must call `markSynced(kind, current)` on the sync hook afterward, or the next diff will treat them as missing-on-server.
-  - Mutations that need to touch many tables go through the Java sync (`POST /calendar/sync`, transactional, OCC-gated). Single-row direct edits (categories, locations) live in their own action files.
+  - Mutations that need to touch many tables go through the Java sync (`POST /calendar/sync`, transactional, OCC-gated). Single-row direct edits live in their own `lib/api/` adapter files.
   - **External-calendar** calls ([lib/api/externalCalendars.ts](lib/api/externalCalendars.ts)) are a third direct-mutation variant: they mutate on the Java API and mirror results into the `externalCalendar` Redux slice rather than calling `markSynced` — they live entirely outside the OCC diff sync (never bump `dataVersion`).
 
   ### Data export / import (GDPR)
 
-  [actions/dataExport.ts](actions/dataExport.ts) (`exportUserData`) serializes the whole account to one JSON blob (`meta.format: "circadium.data-export.v1"`), deliberately excluding secrets (password hashes, OAuth/Google refresh tokens, auth tokens). [actions/dataImport.ts](actions/dataImport.ts) (`importUserData(payload, mode)`) is the counterpart, in one `$transaction`: **`replace`** wipes all of the account's own rows and restores the file with ids **preserved** (a true DB-migration restore, also restoring the single-row `UserSchedulingPreferences` + `UserViewState`); **`add`** brings the file's rows in as **new**, remapping every id (and every FK) so nothing collides, de-duping locations by `[userId, placeId]`. Engine-derived rows (calendar/category/travel events, engine messages) are never imported — the engine regenerates them. Both surface in **Settings → Data & export** ([DataSection](app/(protected)/settings/_components/DataSection/DataSection.tsx)); import bumps `dataVersion` and the client reloads (the write bypasses the diff sync).
+  Both live on the Java API since plan 2.4, called via [lib/api/dataTransfer.ts](lib/api/dataTransfer.ts). `exportUserData` serializes the whole account to one JSON blob (`meta.format: "circadium.data-export.v1"`), deliberately excluding secrets (password hashes, OAuth/calendar refresh tokens, auth tokens). `importUserData(payload, mode)` is the counterpart, in one transaction: **`replace`** wipes all of the account's own rows and restores the file with ids **preserved** (a true DB-migration restore, also restoring the single-row `UserSchedulingPreferences` + `UserViewState`); **`add`** brings the file's rows in as **new**, remapping every id (and every FK) so nothing collides, de-duping locations by `[userId, placeId]`. Engine-derived rows (calendar/category/travel events, engine messages) are never imported — the engine regenerates them. Both surface in **Settings → Data & export** ([DataSection](app/(protected)/settings/_components/DataSection/DataSection.tsx)); import bumps `dataVersion` and the client reloads (the write bypasses the diff sync).
 
   ---
 
@@ -952,7 +945,7 @@
   NEXT_PUBLIC_CALENDAR_REALTIME=""    # "on": open a WebSocket to the Java API so a user's other sessions update live; unset: HTTP sync only (java backend only; see lib/calendarRealtime.ts)
   DATABASE_URL=""                     # Pooled, used by the app
   DIRECT_URL=""                       # Direct, preferred by the seed for bulk writes
-  RESEND_API_KEY=""
+  # RESEND_API_KEY left with Group D — every mail, support included, comes from Java.
   # ANTHROPIC_API_KEY is NOT required: the AI assistant is BYOK — each user's
   # own key, stored on their device, calling Anthropic from the browser.
   # (Reserved for the future MANAGED mode's server-side proxy.)
@@ -964,9 +957,9 @@
 
   ## Adding new features
 
-  ### A new server action
-  1. Add a file under [actions/](actions/) with `"use server"` at the top.
-  2. Call `auth()`, scope every query by `session.user.id`.
+  ### A new server call
+  1. Add the endpoint to the Java API (`server/` — see server/CLAUDE.md) and a thin adapter in [lib/api/](lib/api/) over `apiRequest` (`authenticated: true`).
+  2. The endpoint authenticates and scopes by the token's user id; the adapter never sends one.
   3. If it mutates rows the diff layer tracks, call `markSynced(...)` on the next render or you'll get phantom diffs.
 
   ### A new Prisma model

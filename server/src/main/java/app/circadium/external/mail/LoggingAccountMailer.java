@@ -71,6 +71,13 @@ public class LoggingAccountMailer implements AccountMailer {
         log.info("[mail] existing account notice to {} (hasPassword={})", mask(email), hasPassword);
     }
 
+    @Override
+    public void sendFeedbackNotification(String reportId, String userName, String userEmail, String message,
+            boolean hasSnapshot) {
+        log.info("[mail] feedback notification for report {} from {} (hasSnapshot={})", reportId, mask(userEmail),
+                hasSnapshot);
+    }
+
     private void logSecret(String kind, String email, String secret) {
         if (revealSecrets) {
             // The local profile deliberately logs the raw address and token so a flow can be walked by hand.

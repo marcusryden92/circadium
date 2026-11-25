@@ -166,6 +166,34 @@ fakes in `TestcontainersConfiguration`.
   and caller-supplied bucket/habit ids; its update wire uses `PatchField {set, value}` because the
   per-field delta distinguishes absent from null.
 
+### Feedback, admin inspector, data export/import, profile (plan 2.4 Group D)
+
+The last direct-action surfaces (same out-of-band rules; only the import moves `dataVersion`, by
+design):
+
+- `POST /feedback/support`, `GET/POST /suggestions`, `PUT /suggestions/{id}/vote`,
+  `DELETE /suggestions/{id}` (`feedback/`) — support messages (report row + optional consented
+  export snapshot stored ON the row; the support-inbox notification goes through the Resend mailer
+  with the reporter as reply-to and never fails the report) and the global suggestion wall
+  (25-per-user cap, author's upvote rides the create, vote upsert/removal, admin cross-user delete).
+- `GET/DELETE /admin/feedback-reports[/{id}[/snapshot]]` (`admin/`) — the report inspector. The
+  security chain gates ALL of `/admin/**` with the API-docs rule (ADMIN role + `amr` contains
+  `mfa`), in every profile including `local`.
+- `GET /account/export`, `POST /account/import` (`account/`) — the GDPR pair. The export emits each
+  table with the retired TS export's exact key sets and per-row key order (secrets excluded:
+  no password hash, no OAuth or calendar-connection tokens); the import replays a file in one
+  120-second transaction, `replace` (wipe + restore, ids preserved) or `add` (every id remapped,
+  placeId-deduped locations, rebuilt external-event composite ids). Each table goes in as ONE
+  multi-row `unnest` insert — `Planners.linkedItemId` and `Categories.parentId` are
+  self-referencing FKs, checked at end of statement, so per-row inserts would refuse what Prisma's
+  `createMany` accepted. The committed import broadcasts the new `dataVersion` over the WS.
+  `account/DataTransferIntegrationTest` pins both against one fixture written in the TS export's
+  shape (import it, re-export, compare section for section).
+- `PATCH /account/profile`, `PUT /account/ai-mode`, `PUT /account/ai-model`,
+  `POST /account/onboarding-complete` (`account/ProfileController`) — the small profile settings.
+  The AI model lineup is mirrored from `client/shared/src/draft/assistantEngine/aiModels.ts`; the
+  two lists must change together.
+
 ## Scheduled jobs (`jobs/`)
 
 `@Scheduled` + ShedLock from day one (`jobs/SchedulingConfig`: Postgres `shedlock` table,
@@ -378,12 +406,16 @@ All packages live under `app.circadium` (component scan root). Each has a
 
 - `config` — security, CORS, Jackson, WebSocket, and OpenAPI configuration beans.
 - `auth` — credential/OAuth/2FA/refresh controllers, token service, filters, rate limiting.
+- `account` — the GDPR data export/import pair and the small profile settings (name, AI
+  mode/model, onboarding completion).
 - `sync` — the optimistic-concurrency sync transaction and per-table change handlers.
 - `calendar` — bootstrap and per-domain direct-action endpoints.
+- `feedback` — support messages and the suggestion wall.
 - `ws` — WebSocket handler, per-user session registry, dataVersion publisher.
 - `jobs` — scheduled jobs (push, external-calendar refresh, token cleanup), ShedLock-guarded.
 - `external` — Google Calendar, Microsoft Graph, ICS, Google Places/Routes, Resend mail.
-- `admin` — administrative endpoints (feedback inspector).
+- `admin` — administrative endpoints (feedback inspector), gated `/admin/**` in the security
+  chain (ADMIN + 2FA-verified sign-in).
 
 ## Project-wide rules (inherited from the repo root)
 

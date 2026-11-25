@@ -12,7 +12,7 @@ model FeedbackReport {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
+  createdAt DateTime @db.Timestamp(3)
 
   @@index([userId])
   @@map("FeedbackReports")
@@ -28,7 +28,7 @@ model Suggestion {
 
   votes SuggestionVote[]
 
-  createdAt String @default(dbgenerated("(now())::text"))
+  createdAt DateTime @db.Timestamp(3)
 
   @@index([userId])
   @@map("Suggestions")
@@ -45,7 +45,7 @@ model SuggestionVote {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt String @default(dbgenerated("(now())::text"))
+  createdAt DateTime @db.Timestamp(3)
 
   @@unique([suggestionId, userId])
   @@index([userId])

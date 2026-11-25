@@ -282,7 +282,7 @@ CREATE TABLE "FeedbackReports" (
     "message" TEXT NOT NULL,
     "dataSnapshot" JSONB,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "FeedbackReports_pkey" PRIMARY KEY ("id")
 );
@@ -293,7 +293,7 @@ CREATE TABLE "Suggestions" (
     "title" TEXT NOT NULL,
     "body" TEXT,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Suggestions_pkey" PRIMARY KEY ("id")
 );
@@ -304,7 +304,7 @@ CREATE TABLE "SuggestionVotes" (
     "value" INTEGER NOT NULL,
     "suggestionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "createdAt" TEXT NOT NULL DEFAULT (now())::text,
+    "createdAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SuggestionVotes_pkey" PRIMARY KEY ("id")
 );

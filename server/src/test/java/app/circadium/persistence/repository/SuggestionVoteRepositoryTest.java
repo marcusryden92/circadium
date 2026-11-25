@@ -45,7 +45,7 @@ class SuggestionVoteRepositoryTest {
         suggestion.setId(suggestionId);
         suggestion.setTitle("Add dark mode");
         suggestion.setUserId(userId);
-        suggestion.setCreatedAt("2026-11-16T08:00:00.000Z");
+        suggestion.setCreatedAt(java.time.Instant.parse("2026-11-16T08:00:00.000Z"));
         suggestionRepository.saveAndFlush(suggestion);
 
         String id = UUID.randomUUID().toString();
@@ -54,7 +54,7 @@ class SuggestionVoteRepositoryTest {
         vote.setValue(1);
         vote.setSuggestionId(suggestionId);
         vote.setUserId(userId);
-        vote.setCreatedAt("2026-11-16T08:00:00.000Z");
+        vote.setCreatedAt(java.time.Instant.parse("2026-11-16T08:00:00.000Z"));
 
         suggestionVoteRepository.saveAndFlush(vote);
         entityManager.clear();

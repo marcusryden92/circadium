@@ -8,12 +8,12 @@ package app.circadium.calendar;
  * ported trim or blank check must use these helpers or exotic-whitespace input diverges from the
  * retired action (different stored primary keys, flipped "Untitled"/"Nothing to save" verdicts).
  */
-final class JsText {
+public final class JsText {
 
     private JsText() {
     }
 
-    static String trim(String value) {
+    public static String trim(String value) {
         int start = 0;
         int end = value.length();
         while (start < end && isJsWhitespace(value.codePointAt(start))) {
@@ -29,7 +29,7 @@ final class JsText {
         return value.substring(start, end);
     }
 
-    static boolean isBlank(String value) {
+    public static boolean isBlank(String value) {
         for (int i = 0; i < value.length(); ) {
             int codePoint = value.codePointAt(i);
             if (!isJsWhitespace(codePoint)) {

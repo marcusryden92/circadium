@@ -42,7 +42,7 @@ class FeedbackReportRepositoryTest {
         report.setMessage("The calendar is great");
         report.setDataSnapshot("{\"exported\": true}");
         report.setUserId(userId);
-        report.setCreatedAt("2026-11-16T08:00:00.000Z");
+        report.setCreatedAt(java.time.Instant.parse("2026-11-16T08:00:00.000Z"));
 
         feedbackReportRepository.saveAndFlush(report);
         entityManager.clear();

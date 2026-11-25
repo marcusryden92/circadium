@@ -10,7 +10,8 @@ public class RecordingAccountMailer implements AccountMailer {
 
     public enum Kind {
         VERIFICATION, TWO_FACTOR, PASSWORD_RESET, PASSWORD_CHANGED, ACCOUNT_DELETION, EXISTING_ACCOUNT,
-        EMAIL_CHANGE_VERIFICATION, EMAIL_CHANGE_REQUESTED, EMAIL_CHANGED, TWO_FACTOR_CHANGED, OAUTH_SIGNUP
+        EMAIL_CHANGE_VERIFICATION, EMAIL_CHANGE_REQUESTED, EMAIL_CHANGED, TWO_FACTOR_CHANGED, OAUTH_SIGNUP,
+        FEEDBACK
     }
 
     /** @param value the token or code, or for notices the detail they carry (the new email, the new setting) */
@@ -72,6 +73,13 @@ public class RecordingAccountMailer implements AccountMailer {
     @Override
     public void sendExistingAccountNotice(String email, boolean hasPassword) {
         sent.add(new Sent(Kind.EXISTING_ACCOUNT, email, String.valueOf(hasPassword)));
+    }
+
+    /** Records the report id; the email records the REPORTER'S address so tests can match on it. */
+    @Override
+    public void sendFeedbackNotification(String reportId, String userName, String userEmail, String message,
+            boolean hasSnapshot) {
+        sent.add(new Sent(Kind.FEEDBACK, userEmail, reportId));
     }
 
     public Optional<String> latest(Kind kind, String email) {

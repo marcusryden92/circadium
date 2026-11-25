@@ -17,7 +17,7 @@ import {
 import { hydrateExternalCalendar } from "@/redux/slices/externalCalendarSlice";
 import { hydrateOccurrenceCompletions } from "@/redux/slices/occurrenceCompletionsSlice";
 import { hydrateHabits } from "@/redux/slices/habitsSlice";
-import { getFeedbackReportSnapshot } from "@/actions/adminFeedback";
+import { getFeedbackReportSnapshot } from "@/lib/api/adminFeedback";
 import {
   exitInspection,
   snapshotToInspectionData,

@@ -76,6 +76,7 @@ circadium:
     security-from: Circadium <security@circadium.app>
     # No mailbox behind it on purpose: replies bounce, so support@ only gets mail people meant to send.
     account-from: Circadium <no-reply@circadium.app>
+    support-address: support@circadium.app
     allow-logging-fallback: false
   oauth:
     # Every provider listed must be configured outside local. Narrow the list to roll a provider out (or back)

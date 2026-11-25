@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import type { EventTemplate } from "@/types/prisma";
-import { completeOnboarding } from "@/actions/onboarding";
+import { completeOnboarding } from "@/lib/api/profile";
 import {
   reconcileRoleCategories,
   prefillRoleSelections,

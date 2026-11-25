@@ -113,6 +113,12 @@ public class ResendAccountMailer implements AccountMailer, AutoCloseable {
         dispatch(emails.existingAccount(email, hasPassword));
     }
 
+    @Override
+    public void sendFeedbackNotification(String reportId, String userName, String userEmail, String message,
+            boolean hasSnapshot) {
+        dispatch(emails.feedbackNotification(reportId, userName, userEmail, message, hasSnapshot));
+    }
+
     /** Waits for queued messages so a deploy does not drop mail that requests already promised. */
     @Override
     public void close() {
@@ -155,12 +161,16 @@ public class ResendAccountMailer implements AccountMailer, AutoCloseable {
     }
 
     private static Map<String, Object> payload(EmailMessage message) {
-        return Map.of(
-                "from", message.from(),
-                "to", List.of(message.to()),
-                "subject", message.subject(),
-                "html", message.html(),
-                "text", message.text());
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("from", message.from());
+        payload.put("to", List.of(message.to()));
+        payload.put("subject", message.subject());
+        payload.put("html", message.html());
+        payload.put("text", message.text());
+        if (message.replyTo() != null) {
+            payload.put("reply_to", message.replyTo());
+        }
+        return payload;
     }
 
     private static void fail(EmailMessage message, int attempts, Exception e) {

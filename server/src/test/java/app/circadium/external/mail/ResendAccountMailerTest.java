@@ -27,7 +27,7 @@ class ResendAccountMailerTest {
 
     private static final MailProperties PROPERTIES = new MailProperties("re_test_key", "https://api.resend.test",
             "https://app.example.com/", "Circadium <security@circadium.app>", "Circadium <no-reply@circadium.app>",
-            false);
+            "support@circadium.app", false);
 
     private MockRestServiceServer server;
     private ResendAccountMailer mailer;

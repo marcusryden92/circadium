@@ -332,6 +332,41 @@ public class AccountEmails {
                 """).formatted(loginLink, resetLink));
     }
 
+    /**
+     * The support-inbox notification for a new feedback report, from and to the support address with the
+     * reporting user as reply-to. Copy ported from the web's retired {@code lib/mail.ts}.
+     */
+    public EmailMessage feedbackNotification(String reportId, String userName, String userEmail, String message,
+            boolean hasSnapshot) {
+        String sender = userName == null || userName.isEmpty()
+                ? escape(userEmail)
+                : escape(userName) + " &mdash; " + escape(userEmail);
+        String messageBox = "<div style=\"margin:0 0 16px;padding:14px 16px;background:" + PAPER
+                + ";border:1px solid " + CARD_STROKE + ";border-radius:12px;white-space:pre-wrap;\">"
+                + escape(message) + "</div>";
+        String snapshotNote = hasSnapshot
+                ? "data snapshot attached &mdash; open it in the admin feedback view"
+                : "no data snapshot";
+        String subjectStart = message.length() <= 60 ? message : message.substring(0, 60) + "…";
+        return new EmailMessage("feedback", properties.supportAddress(), properties.supportAddress(), userEmail,
+                "Support: " + subjectStart,
+                render("Support message from " + userEmail, "Support", "New support message",
+                        PARAGRAPH.formatted("<strong>From:</strong> " + sender)
+                                + messageBox
+                                + FINE_PRINT.formatted("Report " + escape(reportId) + " &middot; " + snapshotNote + "."),
+                        null, null),
+                """
+                From: %s%s
+
+                %s
+
+                Report %s - %s.
+                """.formatted(userName == null || userName.isEmpty() ? "" : userName + " - ", userEmail, message,
+                        reportId, hasSnapshot
+                                ? "data snapshot attached - open it in the admin feedback view"
+                                : "no data snapshot"));
+    }
+
     private String link(String path, String token) {
         return webBaseUrl + path + "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
     }

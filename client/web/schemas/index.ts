@@ -42,10 +42,6 @@ const email = z
  * The profile fields the web still writes itself. Email and two-factor
  * changes need the current password and go through the Java API.
  */
-export const SettingsSchema = z.object({
-  name: z.optional(z.string().trim().max(MAX_NAME_LENGTH)),
-});
-
 export const EmailChangeSchema = z.object({
   currentPassword: z
     .string()
@@ -113,28 +109,6 @@ export const RegisterSchema = z
     message: "Passwords do not match.",
     path: ["passwordConfirmation"],
   });
-
-export const FeedbackMessageSchema = z.object({
-  message: z
-    .string()
-    .trim()
-    .min(10, { message: "Tell us a bit more — at least 10 characters." })
-    .max(5000, { message: "Maximum 5000 characters." }),
-  includeSnapshot: z.boolean(),
-});
-
-export const SuggestionSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, { message: "Give the suggestion a short title." })
-    .max(120, { message: "Maximum 120 characters." }),
-  body: z
-    .string()
-    .trim()
-    .max(2000, { message: "Maximum 2000 characters." })
-    .optional(),
-});
 
 // Schemas for creating tasks:
 

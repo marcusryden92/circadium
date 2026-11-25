@@ -174,8 +174,19 @@ export type HabitItem = Omit<Prisma.HabitItemGetPayload<undefined>, "createdAt">
   createdAt: string;
 };
 
-export type FeedbackReport = Prisma.FeedbackReportGetPayload<undefined>;
+// The feedback tables' createdAt migrated TEXT -> timestamp(3) when their
+// writes moved to Java (plan 2.4); the app speaks the ISO string end-to-end.
+export type FeedbackReport = Omit<
+  Prisma.FeedbackReportGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
-export type Suggestion = Prisma.SuggestionGetPayload<undefined>;
+export type Suggestion = Omit<
+  Prisma.SuggestionGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
 
-export type SuggestionVote = Prisma.SuggestionVoteGetPayload<undefined>;
+export type SuggestionVote = Omit<
+  Prisma.SuggestionVoteGetPayload<undefined>,
+  "createdAt"
+> & { createdAt: string };
