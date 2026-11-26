@@ -122,11 +122,14 @@ export const backgroundLayer = style({
   zIndex: 2,
 });
 
+// Hit-testable on purpose: the calendar page resolves the header's category
+// chip with elementsFromPoint, which skips pointer-events: none (FullCalendar
+// kept its background-event content hit-testable for the same reason). A
+// press here still reaches the columns' handlers as an empty-grid create.
 export const backgroundTile = style({
   position: "absolute",
   left: 0,
   right: 0,
-  pointerEvents: "none",
 });
 
 export const highlight = style({
