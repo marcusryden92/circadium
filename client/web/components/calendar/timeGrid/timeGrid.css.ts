@@ -33,7 +33,7 @@ export const headerRow = style({
   top: 0,
   zIndex: 6,
   display: "flex",
-  background: `color-mix(in srgb, ${vars.ink} 3%, ${vars.paper})`,
+  background: vars.paper,
   borderBottom: `1px solid ${vars.rule}`,
 });
 
