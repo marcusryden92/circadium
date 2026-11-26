@@ -155,8 +155,14 @@ const EventWrapper: React.FC<EventWrapperProps> = ({
         // A long-press just selected this tile for touch resize; iOS
         // synthesizes a click on release, which would open the bottom sheet
         // over the fresh resize handles. Tapping empty grid deselects, so a
-        // normal tap on an unselected tile still opens the sheet.
-        if (elementRef.current.closest(".fc-event-selected")) return;
+        // normal tap on an unselected tile still opens the sheet. Both
+        // renderers mark the selected tile (FullCalendar by class, the own
+        // renderer by attribute).
+        if (
+          elementRef.current.closest(".fc-event-selected, [data-tile-selected]")
+        ) {
+          return;
+        }
         handleDoubleClick(e, elementRef, setEventRect, setShowPopover);
       }}
       onDoubleClick={(e) =>

@@ -23,6 +23,13 @@ export interface TileGeometry {
   left: number;
   /** Width as a 0-1 fraction of column width. */
   width: number;
+  /** Nesting level in the overlap web (0 = leftmost); renderers stack by it. */
+  stackDepth: number;
+  /**
+   * Levels from this tile to the deepest one stacked to its right, itself
+   * included (a tile with nothing forward of it is 1).
+   */
+  stackForward: number;
   isOvernightContinuation: boolean;
 }
 
@@ -125,6 +132,8 @@ function segRectToTile(
     height: minutesToPx(seg.endMinutes - seg.startMinutes, hourHeight),
     left: rect.levelCoord,
     width: rect.thickness,
+    stackDepth: rect.stackDepth,
+    stackForward: rect.stackForward,
     isOvernightContinuation: seg.isOvernightContinuation,
   };
 }
