@@ -16,6 +16,7 @@ import {
   autoScrollSpeed,
   type CommittedState,
   type DragKind,
+  type AllowHook,
   type DragMachineConfig,
   type DragState,
   type DragTransition,
@@ -27,7 +28,6 @@ import type {
   CalendarEvent,
   CalendarRange,
 } from "@circadium/shared/calendar-core/model";
-import { SNAP_MINUTES } from "./ownCalendarGeometry";
 
 // A mouse press only becomes a drag once it travels this far, so clicks and
 // double-clicks on tiles (which open the popover) never start one.
@@ -69,7 +69,11 @@ interface UseDragInteractionOptions {
   range: CalendarRange;
   hourHeight: number;
   dayCount: number;
+  snapMinutes: number;
   longPressDelay: number;
+  // Live validation of the drag position; read through a ref on every hit,
+  // so a fresh closure per render is fine.
+  allowHook?: AllowHook;
   resolveEvent: (id: string) => CalendarEvent | undefined;
   onCommit: (state: CommittedState, pointerType: string) => void;
   // A touch on empty grid: the FullCalendar convention for deselecting a tile.
@@ -113,6 +117,7 @@ export function useDragInteraction(options: UseDragInteractionOptions) {
     return {
       longPressDelay: optionsRef.current.longPressDelay,
       moveThreshold: TOUCH_MOVE_THRESHOLD,
+      allowHook: optionsRef.current.allowHook,
     };
   }, []);
 
@@ -127,7 +132,7 @@ export function useDragInteraction(options: UseDragInteractionOptions) {
       hourHeight,
       columnWidth: rect.width / dayCount,
       visibleRange: range,
-      snapMinutes: SNAP_MINUTES,
+      snapMinutes: optionsRef.current.snapMinutes,
       scrollTop: scroller.scrollTop,
       scrollHeight: scroller.scrollHeight,
       viewportHeight: scroller.clientHeight,

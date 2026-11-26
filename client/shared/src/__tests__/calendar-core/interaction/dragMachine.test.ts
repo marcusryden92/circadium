@@ -421,6 +421,30 @@ describe("allow hook rejecting mid-drag", () => {
     );
     expect(r5.state.phase).toBe("committed");
   });
+
+  it("hands the hook the start and current hits, across columns", () => {
+    const seen: { startDay: number; currentDay: number; minute: number }[] = [];
+    const recordHook: AllowHook = (_preview, _event, _kind, hits) => {
+      seen.push({
+        startDay: hits.startHit.day.getDate(),
+        currentDay: hits.currentHit.day.getDate(),
+        minute: hits.currentHit.minute,
+      });
+      return true;
+    };
+    const recordConfig: DragMachineConfig = { ...config, allowHook: recordHook };
+    const event = makePlannerEvent("e1", 10, 11);
+
+    const r1 = transition(idle, ptr("start", 50, 600), metrics, recordConfig, event, "move");
+    const r2 = confirmLongPress(r1.state, recordConfig);
+    transition(r2.state, ptr("move", 250, 120), metrics, recordConfig, event, "move");
+
+    // Long-press confirm sees the start hit twice; the move sees column 2.
+    expect(seen).toEqual([
+      { startDay: 23, currentDay: 23, minute: 600 },
+      { startDay: 23, currentDay: 25, minute: 120 },
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

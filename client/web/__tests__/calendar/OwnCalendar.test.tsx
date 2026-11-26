@@ -17,6 +17,10 @@ jest.mock(
   "../../app/(protected)/calendar/_components/own/OwnCalendar.css",
   () => new Proxy({}, { get: (_target, key) => String(key) }),
 );
+jest.mock(
+  "../../components/calendar/timeGrid/timeGrid.css",
+  () => new Proxy({}, { get: (_target, key) => String(key) }),
+);
 jest.mock("../../lib/theme", () => ({
   vars: {
     accent: { primary: "A" },

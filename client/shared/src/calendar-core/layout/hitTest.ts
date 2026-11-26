@@ -1,6 +1,8 @@
 import { addDays, startOfDay } from "date-fns";
 import type { CalendarRange } from "../model/calendarEvent";
-import { pxToMinutes, snapMinutes } from "./timeGrid";
+import { pxToMinutes } from "./timeGrid";
+
+const MINUTES_PER_DAY = 24 * 60;
 
 export interface HitResult {
   /** The day column the hit lands in (midnight Date). */
@@ -44,11 +46,13 @@ export function hitTest(
   }
 
   const day = addDays(rangeStart, colIndex);
-  const rawMinutes = pxToMinutes(y, hourHeight);
+  // The column's bottom edge is 24:00 and stays reachable so a range can end
+  // at midnight; snapMinutes alone would cap at the last slot's start.
+  const rawMinutes = Math.min(pxToMinutes(y, hourHeight), MINUTES_PER_DAY);
   const minute =
     snapMin > 0
-      ? snapMinutes(rawMinutes, snapMin)
-      : Math.max(0, Math.min(rawMinutes, 24 * 60));
+      ? Math.min(Math.round(rawMinutes / snapMin) * snapMin, MINUTES_PER_DAY)
+      : rawMinutes;
 
   return { day, minute };
 }

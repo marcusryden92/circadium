@@ -106,10 +106,19 @@ export interface DragPreview {
 // Allow hook — called during drag to validate the preview position
 // ---------------------------------------------------------------------------
 
+// The hits ride along because the preview is day-local: it cannot express a
+// span that crosses midnight or a move into another column, which a caller
+// validating the real dropped range (an overnight window, say) needs.
+export interface AllowHits {
+  startHit: HitResult;
+  currentHit: HitResult;
+}
+
 export type AllowHook = (
   preview: DragPreview,
   event: CalendarEvent | null,
   kind: DragKind,
+  hits: AllowHits,
 ) => boolean;
 
 // ---------------------------------------------------------------------------

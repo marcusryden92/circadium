@@ -20,6 +20,7 @@ export type {
   CancelledState,
   DragPreview,
   AllowHook,
+  AllowHits,
   MoveDelta,
   ResizeDelta,
   CreateRange,

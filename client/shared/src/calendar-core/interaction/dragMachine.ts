@@ -109,10 +109,12 @@ function evaluateAllow(
   event: CalendarEvent | null,
   kind: DragKind,
   allowHook: AllowHook | undefined,
+  startHit: HitResult,
+  currentHit: HitResult,
 ): boolean {
   if (!preview) return false;
   if (!allowHook) return true;
-  return allowHook(preview, event, kind);
+  return allowHook(preview, event, kind, { startHit, currentHit });
 }
 
 /**
@@ -232,6 +234,8 @@ export function transition(
           state.event,
           state.kind,
           resolvedConfig.allowHook,
+          state.startHit,
+          hit,
         );
         return {
           state: {
@@ -288,6 +292,8 @@ export function confirmLongPress(
     state.event,
     state.kind,
     config.allowHook,
+    state.startHit,
+    state.startHit,
   );
 
   return {

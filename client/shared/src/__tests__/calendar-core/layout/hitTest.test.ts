@@ -44,6 +44,13 @@ describe("hitTest", () => {
     expect(hit!.minute).toBe(75);
   });
 
+  it("reaches 24:00 at the column's bottom edge, so a range can end at midnight", () => {
+    expect(hitTest(50, 24 * HOUR_HEIGHT, COL_WIDTH, HOUR_HEIGHT, weekRange, 15)!.minute).toBe(1440);
+    expect(hitTest(50, 24 * HOUR_HEIGHT - 5, COL_WIDTH, HOUR_HEIGHT, weekRange, 15)!.minute).toBe(1440);
+    expect(hitTest(50, 24 * HOUR_HEIGHT - 10, COL_WIDTH, HOUR_HEIGHT, weekRange, 15)!.minute).toBe(1425);
+    expect(hitTest(50, 24 * HOUR_HEIGHT + 30, COL_WIDTH, HOUR_HEIGHT, weekRange, 5)!.minute).toBe(1440);
+  });
+
   it("returns null for negative x", () => {
     expect(hitTest(-1, 50, COL_WIDTH, HOUR_HEIGHT, weekRange)).toBeNull();
   });

@@ -1,28 +1,30 @@
 import {
   HOUR_HEIGHT_DESKTOP,
   HOUR_HEIGHT_MOBILE,
-  commitIntent,
-  compareSegments,
-  createSpan,
   dayIndexForDate,
-  dragIntent,
   hourHeightFor,
-  hourLabels,
-  moveSpan,
   nowLinePosition,
-  resizeSpan,
   selectViewType,
-  sliceEdges,
-  spanSegments,
-  tileBox,
   viewDayCount,
   viewRange,
 } from "@/app/(protected)/calendar/_components/own/ownCalendarGeometry";
 import {
+  commitIntent,
+  compareSegments,
+  createSpan,
+  dragIntent,
+  hourLabels,
+  moveSpan,
+  resizeSpan,
+  sliceEdges,
+  spanSegments,
+  tileBox,
+} from "@/components/calendar/timeGrid/timeGridGeometry";
+import {
   resolveDragTarget,
   TILE_ID_ATTR,
   RESIZE_ATTR,
-} from "@/app/(protected)/calendar/_components/own/useDragInteraction";
+} from "@/components/calendar/timeGrid/useDragInteraction";
 import { rendererFromParam } from "@/app/(protected)/calendar/_components/calendarRenderer";
 import type { CalendarEvent } from "@circadium/shared/calendar-core/model";
 import type {

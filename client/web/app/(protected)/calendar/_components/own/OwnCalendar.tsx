@@ -62,25 +62,35 @@ import {
 import { TileContent } from "../TileContent";
 import {
   EVENT_MIN_HEIGHT,
-  SCROLL_TIME_MINUTES,
   compareSegments,
   commitIntent,
   dragIntent,
-  hourHeightFor,
-  hourLabels,
-  nowLinePosition,
-  rangeDays,
-  selectViewType,
   sliceEdges,
   spanSegments,
   tileBox,
-  viewDayCount,
-  viewRange,
   type PreviewSegment,
   type TimeSpan,
+} from "@/components/calendar/timeGrid/timeGridGeometry";
+import {
+  TILE_ID_ATTR,
+  useDragInteraction,
+} from "@/components/calendar/timeGrid/useDragInteraction";
+import {
+  TimeGridShell,
+  type TimeGridColumn,
+} from "@/components/calendar/timeGrid/TimeGridShell";
+import * as styles from "@/components/calendar/timeGrid/timeGrid.css";
+import {
+  SCROLL_TIME_MINUTES,
+  SNAP_MINUTES,
+  hourHeightFor,
+  nowLinePosition,
+  rangeDays,
+  selectViewType,
+  viewDayCount,
+  viewRange,
 } from "./ownCalendarGeometry";
-import { TILE_ID_ATTR, useDragInteraction } from "./useDragInteraction";
-import * as styles from "./OwnCalendar.css";
+import { bodyClearance } from "./OwnCalendar.css";
 
 export interface DayHeaderArg {
   date: Date;
@@ -101,7 +111,6 @@ interface HeldEdit {
   end: Date;
 }
 
-const HOUR_LABELS = hourLabels();
 const NOW_TICK_MS = 60_000;
 
 interface OwnTileProps {
@@ -205,7 +214,6 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
   );
   const days = useMemo(() => rangeDays(range), [range]);
   const hourHeight = hourHeightFor(isMobile);
-  const gridHeight = 24 * hourHeight;
 
   const calendarEvents = useMemo(
     () =>
@@ -482,7 +490,7 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
 
   const onCommit = useCallback(
     (state: CommittedState, pointerType: string) => {
-      const intent = commitIntent(state);
+      const intent = commitIntent(state, SNAP_MINUTES);
       if (!intent) {
         // A touch long-press released in place selects the tile, exposing
         // its resize handles (FullCalendar's touch model).
@@ -514,6 +522,7 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
     range,
     hourHeight,
     dayCount,
+    snapMinutes: SNAP_MINUTES,
     longPressDelay: CALENDAR_LONG_PRESS_DELAY_MS,
     resolveEvent,
     onCommit,
@@ -537,7 +546,7 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
   // The live drag: the mirror (or create highlight) follows the machine's
   // current hit; the dragged event's own tiles hide, as in FullCalendar.
   const dragging = dragState.phase === "dragging" ? dragState : null;
-  const liveIntent = dragging ? dragIntent(dragging) : null;
+  const liveIntent = dragging ? dragIntent(dragging, SNAP_MINUTES) : null;
   const draggedEvent = dragging?.event ?? null;
   const mirrorSpan: TimeSpan | null = draggedEvent
     ? liveIntent && liveIntent.type !== "create"
@@ -561,138 +570,108 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
     });
   }, [draggedEvent, mirrorSpan]);
 
-  return (
-    <div className={styles.root}>
-      <div className={styles.scroller} ref={scrollerRef}>
-        <div className={styles.headerRow}>
-          <div className={styles.headerCorner} />
-          {days.map((date) => {
-            const isToday = isSameDay(date, now);
-            return (
-              <div
-                key={date.getTime()}
-                className={styles.headerCell}
-                data-today={isToday ? "" : undefined}
-              >
-                {dayHeaderContent({ date, isToday })}
-              </div>
-            );
-          })}
-        </div>
-        <div className={styles.body} style={{ height: gridHeight }}>
-          <div className={styles.gutter}>
-            {HOUR_LABELS.map(({ hour, label }) => (
-              <span
-                key={hour}
-                className={styles.hourLabel}
-                style={{ top: (hour + 0.25) * hourHeight }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <div className={styles.columns} ref={columnsRef} {...handlers}>
-            <div className={styles.slotLines} aria-hidden>
-              {Array.from({ length: 48 }, (_, slot) => (
+  const columns: TimeGridColumn[] = days.map((date, dayIndex) => {
+    const isToday = isSameDay(date, now);
+    return {
+      key: date.getTime(),
+      today: isToday,
+      header: dayHeaderContent({ date, isToday }),
+      content: (
+        <>
+          <div className={styles.backgroundLayer}>
+            {backgroundByDay[dayIndex].map(({ event, segment }) => {
+              const tileEvent = tileEvents.get(event.id);
+              if (!tileEvent) return null;
+              return (
                 <div
-                  key={slot}
-                  className={styles.slotLine}
-                  data-minor={slot % 2 === 1 ? "" : undefined}
-                  style={{ top: (slot * hourHeight) / 2 }}
+                  key={event.id}
+                  className={styles.backgroundTile}
+                  style={{ top: segment.top, height: segment.height }}
+                >
+                  <TileContent
+                    event={tileEvent}
+                    getEditContext={getEditContext}
+                    onTemplateScope={resolveTemplateScope}
+                  />
+                </div>
+              );
+            })}
+            {highlightSegments
+              .filter((s) => s.dayIndex === dayIndex)
+              .map((s) => (
+                <div
+                  key={`highlight-${s.top}`}
+                  className={styles.highlight}
+                  style={{ top: s.top, height: s.height }}
                 />
               ))}
-            </div>
-            {days.map((date, dayIndex) => (
-              <div
-                key={date.getTime()}
-                className={styles.column}
-                data-today={isSameDay(date, now) ? "" : undefined}
-              >
-                <div className={styles.backgroundLayer}>
-                  {backgroundByDay[dayIndex].map(({ event, segment }) => {
-                    const tileEvent = tileEvents.get(event.id);
-                    if (!tileEvent) return null;
-                    return (
-                      <div
-                        key={event.id}
-                        className={styles.backgroundTile}
-                        style={{ top: segment.top, height: segment.height }}
-                      >
-                        <TileContent
-                          event={tileEvent}
-                          getEditContext={getEditContext}
-                          onTemplateScope={resolveTemplateScope}
-                        />
-                      </div>
-                    );
-                  })}
-                  {highlightSegments
-                    .filter((s) => s.dayIndex === dayIndex)
-                    .map((s) => (
-                      <div
-                        key={`highlight-${s.top}`}
-                        className={styles.highlight}
-                        style={{ top: s.top, height: s.height }}
-                      />
-                    ))}
-                </div>
-                <div className={styles.eventsLayer}>
-                  {foregroundByDay[dayIndex].map((tile) => {
-                    const tileEvent = tileEvents.get(tile.event.id);
-                    if (!tileEvent) return null;
-                    const edges = sliceEdges(tile.event, tile);
-                    const selected = selectedTileId === tile.event.id;
-                    return (
-                      <OwnTile
-                        key={tile.event.id}
-                        tileEvent={tileEvent}
-                        box={tileBox(tile)}
-                        editable={tile.event.editable}
-                        isStart={edges.isStart}
-                        isEnd={edges.isEnd}
-                        hidden={draggedEvent?.id === tile.event.id}
-                        selected={selected}
-                        showHandles={!coarsePointer || selected}
+          </div>
+          <div className={styles.eventsLayer}>
+            {foregroundByDay[dayIndex].map((tile) => {
+              const tileEvent = tileEvents.get(tile.event.id);
+              if (!tileEvent) return null;
+              const edges = sliceEdges(tile.event, tile);
+              const selected = selectedTileId === tile.event.id;
+              return (
+                <OwnTile
+                  key={tile.event.id}
+                  tileEvent={tileEvent}
+                  box={tileBox(tile)}
+                  editable={tile.event.editable}
+                  isStart={edges.isStart}
+                  isEnd={edges.isEnd}
+                  hidden={draggedEvent?.id === tile.event.id}
+                  selected={selected}
+                  showHandles={!coarsePointer || selected}
+                  getEditContext={getEditContext}
+                  onTemplateScope={resolveTemplateScope}
+                />
+              );
+            })}
+          </div>
+          {mirrorTileEvent && (
+            <div className={styles.mirrorLayer}>
+              {mirrorSegments
+                .filter((s) => s.dayIndex === dayIndex)
+                .map((s) => (
+                  <div
+                    key={`mirror-${s.top}`}
+                    className={styles.tileHarness}
+                    style={{
+                      top: s.top,
+                      height: Math.max(s.height, EVENT_MIN_HEIGHT),
+                      left: 0,
+                      right: 0,
+                    }}
+                  >
+                    <div className={styles.mirrorTile}>
+                      <TileContent
+                        event={mirrorTileEvent}
                         getEditContext={getEditContext}
                         onTemplateScope={resolveTemplateScope}
                       />
-                    );
-                  })}
-                </div>
-                {mirrorTileEvent && (
-                  <div className={styles.mirrorLayer}>
-                    {mirrorSegments
-                      .filter((s) => s.dayIndex === dayIndex)
-                      .map((s) => (
-                        <div
-                          key={`mirror-${s.top}`}
-                          className={styles.tileHarness}
-                          style={{
-                            top: s.top,
-                            height: Math.max(s.height, EVENT_MIN_HEIGHT),
-                            left: 0,
-                            right: 0,
-                          }}
-                        >
-                          <div className={styles.mirrorTile}>
-                            <TileContent
-                              event={mirrorTileEvent}
-                              getEditContext={getEditContext}
-                              onTemplateScope={resolveTemplateScope}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                    </div>
                   </div>
-                )}
-                {nowLine?.dayIndex === dayIndex && (
-                  <div className={styles.nowLine} style={{ top: nowLine.top }} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+                ))}
+            </div>
+          )}
+          {nowLine?.dayIndex === dayIndex && (
+            <div className={styles.nowLine} style={{ top: nowLine.top }} />
+          )}
+        </>
+      ),
+    };
+  });
+
+  return (
+    <TimeGridShell
+      scrollerRef={scrollerRef}
+      columnsRef={columnsRef}
+      handlers={handlers}
+      hourHeight={hourHeight}
+      columns={columns}
+      bodyClassName={bodyClearance}
+    >
       <ScopeModals
         pendingOccurrenceMove={pendingOccurrenceMove}
         setPendingOccurrenceMove={resolveOccurrenceMove}
@@ -717,7 +696,7 @@ function OwnCalendar({ initialDate, dayHeaderContent }: OwnCalendarProps) {
           setPendingPlan(null);
         }}
       />
-    </div>
+    </TimeGridShell>
   );
 }
 
