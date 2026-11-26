@@ -146,6 +146,76 @@ describe("expandTemplateOccurrences", () => {
     expect((moved.end.getTime() - moved.start.getTime()) / 60000).toBe(90);
   });
 
+  it("includes an overnight occurrence that started before the range", () => {
+    // Sunday 22:00 for 9 hours runs into Monday 07:00; a range starting Monday
+    // midnight still shows its tail.
+    const sleep = tpl({
+      startDay: 0 as WeekDayIntegers,
+      startTime: "22:00",
+      duration: 540,
+    });
+    const occ = expandTemplateOccurrences({
+      template: sleep,
+      rangeStart: RANGE_START,
+      rangeEnd: new Date(2026, 5, 8, 0, 0),
+    });
+    expect(occ.map((o) => o.start.getTime())).toEqual([
+      new Date(2026, 4, 31, 22, 0).getTime(),
+      new Date(2026, 5, 7, 22, 0).getTime(),
+    ]);
+    expect(occ[0].end.getTime()).toBe(new Date(2026, 5, 1, 7, 0).getTime());
+  });
+
+  it("excludes an occurrence that ended exactly at rangeStart", () => {
+    const occ = expandTemplateOccurrences({
+      template: tpl({ startDay: 0 as WeekDayIntegers, startTime: "23:00" }),
+      rangeStart: RANGE_START,
+      rangeEnd: new Date(2026, 5, 7, 0, 0),
+    });
+    expect(occ).toHaveLength(0);
+  });
+
+  it("includes a moved occurrence whose rule slot is outside the range", () => {
+    // Rule slot Monday May 25 (previous week), moved into Tuesday June 2.
+    const outsideKey = occurrenceKey(new Date(2026, 4, 25, 9, 0));
+    const newStart = new Date(2026, 5, 2, 15, 0);
+    const occ = expandTemplateOccurrences({
+      template: tpl({
+        recurrenceExceptions: serializeRecurrenceExceptions([
+          { key: outsideKey, type: "moved", newStart: newStart.toISOString() },
+        ]),
+      }),
+      rangeStart: RANGE_START,
+      rangeEnd: new Date(2026, 5, 8, 0, 0),
+    });
+    expect(occ).toHaveLength(2);
+    const moved = occ.find((o) => o.key === outsideKey);
+    expect(moved).toBeDefined();
+    expect(moved!.moved).toBe(true);
+    expect(moved!.start.getTime()).toBe(newStart.getTime());
+    // Sorted by start: the June 1 series tile comes first.
+    expect(occ[0].start.getTime()).toBe(new Date(2026, 5, 1, 9, 0).getTime());
+  });
+
+  it("excludes a moved occurrence whose new start left the range", () => {
+    // Rule slot Monday June 1 is inside the range, moved out to June 10.
+    const insideKey = occurrenceKey(new Date(2026, 5, 1, 9, 0));
+    const occ = expandTemplateOccurrences({
+      template: tpl({
+        recurrenceExceptions: serializeRecurrenceExceptions([
+          {
+            key: insideKey,
+            type: "moved",
+            newStart: new Date(2026, 5, 10, 9, 0).toISOString(),
+          },
+        ]),
+      }),
+      rangeStart: RANGE_START,
+      rangeEnd: new Date(2026, 5, 8, 0, 0),
+    });
+    expect(occ).toHaveLength(0);
+  });
+
   it("returns nothing for an unparseable startTime", () => {
     expect(
       expandTemplateOccurrences({
