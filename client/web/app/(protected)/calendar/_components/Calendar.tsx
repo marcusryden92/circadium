@@ -51,6 +51,11 @@ import {
   planIsRecurring,
   hasMovedException,
 } from "@/utils/planRecurrence";
+import {
+  decideEdit,
+  type EditContext,
+  type EditKind,
+} from "@circadium/shared/calendar-core/edit";
 import { NewPlanModal } from "@/components/events/NewPlanModal";
 import { RecurrenceScopeModal } from "@/components/events/RecurrenceScopeModal";
 import type FullCalendarComponent from "@fullcalendar/react";
@@ -62,9 +67,85 @@ import {
 } from "@/utils/template-handlers/templateEventHandlers";
 import { EventImpl } from "@fullcalendar/core/internal";
 import { RuntimeEventExtendedProps } from "@/types/ui";
-import { EventType, Planner, PlannerType } from "@/types/prisma";
+import {
+  EventType,
+  EventTemplate,
+  Planner,
+  PlannerType,
+} from "@/types/prisma";
+import type { CalendarEvent } from "@circadium/shared/calendar-core/model";
 
 const EVENT_INTERACTION_ENABLED = true;
+
+function stubCalendarEvent(
+  id: string,
+  eventType: string | undefined,
+  editable: boolean,
+  start: Date,
+  end: Date,
+): CalendarEvent | null {
+  if (eventType === EventType.template) {
+    return {
+      kind: EventType.template,
+      id,
+      title: "",
+      start,
+      end,
+      editable,
+      templateId: "",
+      occurrenceKey: "",
+      moved: false,
+      color: "",
+    };
+  }
+  if (eventType === EventType.planner || eventType === undefined) {
+    return {
+      kind: EventType.planner,
+      id,
+      title: "",
+      start,
+      end,
+      editable,
+      color: "",
+      borderColor: "",
+      props: null,
+    };
+  }
+  return null;
+}
+
+function buildEditContext(
+  templates: EventTemplate[],
+  planner: Planner[],
+): EditContext {
+  return {
+    hasMovedException,
+    planIsRecurring,
+    resolveTemplateOccurrence: (eventId, startForKey) => {
+      const result = resolveTemplateOccurrence(eventId, templates, startForKey);
+      if (!result) return null;
+      const tmpl = templates.find((t) => t.id === result.templateId);
+      return {
+        ...result,
+        recurrenceExceptions: tmpl?.recurrenceExceptions ?? null,
+      };
+    },
+    resolvePlanOccurrence: (eventId) => {
+      const key = occurrenceKeyFromEventId(eventId);
+      if (key === null) return null;
+      const planId = plannerIdFromEventId(eventId);
+      const plan = planner.find((p) => p.id === planId);
+      if (!plan) return null;
+      return {
+        planId,
+        planTitle: plan.title,
+        occurrenceKey: key,
+        recurrenceExceptions: plan.recurrenceExceptions,
+        recurrence: plan.recurrence,
+      };
+    },
+  };
+}
 
 // A completed whole-item dynamic tile (task / goal leaf) renders from its
 // completion window, so dragging or resizing it re-times completion rather than
@@ -286,50 +367,39 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
   const onEventResize = useCallback(
     (resizeInfo: EventResizeDoneArg) => {
       const { event, oldEvent, revert } = resizeInfo;
+      if (!event.start || !event.end) { revert(); return; }
       const eventType = (
         event.extendedProps as RuntimeEventExtendedProps | undefined
       )?.eventType;
+
       if (eventType === EventType.template) {
-        // Key from the PRE-resize start — a top-edge resize moves event.start,
-        // so it can't stand in for the occurrence's rule position.
-        const occurrence = resolveTemplateOccurrence(
-          event.id,
-          templateRef.current,
-          oldEvent.start,
-        );
-        if (!occurrence || !event.start || !event.end) {
-          revert();
-          return;
-        }
-        const template = templateRef.current.find(
-          (t) => t.id === occurrence.templateId,
-        );
-        // An already-customized occurrence skips the prompt — re-resizing a
-        // one-off always means "just this one".
-        if (
-          template &&
-          hasMovedException(
-            template.recurrenceExceptions,
-            occurrence.occurrenceKey,
-          )
-        ) {
+        const stub = stubCalendarEvent(event.id, eventType, true, event.start, event.end);
+        if (!stub) { revert(); return; }
+        const ctx = buildEditContext(templateRef.current, plannerRef.current);
+        const decision = decideEdit(stub, "resize", ctx, oldEvent.start);
+        if (decision.action === "reject") { revert(); return; }
+        if (decision.action === "apply" && decision.scope === "single") {
           applyTemplateOccurrenceResize(
             updateTemplateArray,
-            occurrence.templateId,
-            occurrence.occurrenceKey,
+            decision.entityId,
+            decision.occurrenceKey,
             event.start,
             getDuration(event.start, event.end),
           );
           return;
         }
-        setPendingTemplateScope({
-          mode: "resize",
-          ...occurrence,
-          newStart: event.start,
-          newDurationMinutes: getDuration(event.start, event.end),
-          revert,
-        });
-        return;
+        if (decision.action === "askScope") {
+          setPendingTemplateScope({
+            mode: "resize",
+            templateId: decision.entityId,
+            templateTitle: decision.entityTitle,
+            occurrenceKey: decision.occurrenceKey,
+            newStart: event.start,
+            newDurationMinutes: getDuration(event.start, event.end),
+            revert,
+          });
+          return;
+        }
       }
 
       const completedRow = completedLeafFromEvent(event, plannerRef.current);
@@ -354,86 +424,69 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
   const onEventDrop = useCallback(
     (dropInfo: EventDropArg) => {
       const { event, oldEvent, revert } = dropInfo;
+      if (!event.start) { revert(); return; }
 
-      // Templates first: a moved template occurrence carries a composite
-      // `templateId|key` id, which would otherwise be misread as a plan
-      // occurrence below.
       const eventType = (
         event.extendedProps as RuntimeEventExtendedProps | undefined
       )?.eventType;
-      if (eventType === EventType.template) {
-        // Key from the PRE-drag position — the post-drag one is the override.
-        const occurrence = resolveTemplateOccurrence(
-          event.id,
-          templateRef.current,
-          oldEvent.start,
-        );
-        if (!occurrence || !event.start) {
-          revert();
+      const stub = stubCalendarEvent(
+        event.id,
+        eventType,
+        true,
+        event.start,
+        event.end ?? event.start,
+      );
+      if (stub) {
+        const ctx = buildEditContext(templateRef.current, plannerRef.current);
+        const decision = decideEdit(stub, "move", ctx, oldEvent.start);
+
+        if (decision.action === "askScope" && decision.entityType === "template") {
+          setPendingTemplateScope({
+            mode: "move",
+            templateId: decision.entityId,
+            templateTitle: decision.entityTitle,
+            occurrenceKey: decision.occurrenceKey,
+            newStart: event.start,
+            revert,
+          });
           return;
         }
-        const template = templateRef.current.find(
-          (t) => t.id === occurrence.templateId,
-        );
-        // An already-customized occurrence skips the prompt — re-dragging a
-        // one-off always means "just this one".
-        if (
-          template &&
-          hasMovedException(
-            template.recurrenceExceptions,
-            occurrence.occurrenceKey,
-          )
-        ) {
+        if (decision.action === "apply" && decision.scope === "single" && decision.entityType === "template") {
           applyTemplateOccurrenceMove(
             updateTemplateArray,
-            occurrence.templateId,
-            occurrence.occurrenceKey,
+            decision.entityId,
+            decision.occurrenceKey,
             event.start,
           );
           return;
         }
-        setPendingTemplateScope({
-          mode: "move",
-          ...occurrence,
-          newStart: event.start,
-          revert,
-        });
-        return;
-      }
-
-      const occurrenceKeyValue = occurrenceKeyFromEventId(event.id);
-      if (occurrenceKeyValue !== null) {
-        const planId = plannerIdFromEventId(event.id);
-        const plan = plannerRef.current.find((p) => p.id === planId);
-        if (
-          !plan ||
-          !planIsRecurring(plan) ||
-          !event.start ||
-          !oldEvent.start
-        ) {
+        if (decision.action === "reject" && eventType === EventType.template) {
           revert();
           return;
         }
-        // An already-customized plan occurrence skips the prompt too.
-        if (hasMovedException(plan.recurrenceExceptions, occurrenceKeyValue)) {
+
+        if (decision.action === "askScope" && decision.entityType === "plan") {
+          if (!oldEvent.start) { revert(); return; }
+          setPendingOccurrenceMove({
+            planId: decision.entityId,
+            planTitle: decision.entityTitle,
+            occurrenceKey: decision.occurrenceKey,
+            newStart: event.start,
+            deltaMs: event.start.getTime() - oldEvent.start.getTime(),
+            revert,
+          });
+          return;
+        }
+        if (decision.action === "apply" && decision.scope === "single" && decision.entityType === "plan") {
           applyOccurrenceMove(
             updatePlannerArray,
-            planId,
-            occurrenceKeyValue,
+            decision.entityId,
+            decision.occurrenceKey,
             event.start,
-            plan.title,
+            decision.entityTitle,
           );
           return;
         }
-        setPendingOccurrenceMove({
-          planId,
-          planTitle: plan.title,
-          occurrenceKey: occurrenceKeyValue,
-          newStart: event.start,
-          deltaMs: event.start.getTime() - oldEvent.start.getTime(),
-          revert,
-        });
-        return;
       }
 
       const completedRow = completedLeafFromEvent(event, plannerRef.current);
@@ -499,74 +552,60 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
               handleTemplateEventCopy(updateTemplateArray, event, userId)
             }
             onDelete={() => {
-              const occurrence = resolveTemplateOccurrence(
-                event.id,
-                templateRef.current,
-                event.start,
-              );
-              if (!occurrence) return;
-              const template = templateRef.current.find(
-                (t) => t.id === occurrence.templateId,
-              );
-              // An already-customized occurrence skips the prompt — deleting a
-              // one-off always means "just this one".
-              if (
-                template &&
-                hasMovedException(
-                  template.recurrenceExceptions,
-                  occurrence.occurrenceKey,
-                )
-              ) {
+              if (!event.start || !event.end) return;
+              const stub = stubCalendarEvent(event.id, EventType.template, true, event.start, event.end);
+              if (!stub) return;
+              const ctx = buildEditContext(templateRef.current, plannerRef.current);
+              const decision = decideEdit(stub, "delete", ctx, event.start);
+              if (decision.action === "reject") return;
+              if (decision.action === "apply" && decision.scope === "single") {
                 applyTemplateOccurrenceDelete(
                   updateTemplateArray,
-                  occurrence.templateId,
-                  occurrence.occurrenceKey,
+                  decision.entityId,
+                  decision.occurrenceKey,
                 );
                 return;
               }
-              setPendingTemplateScope({ mode: "delete", ...occurrence });
+              if (decision.action === "askScope") {
+                setPendingTemplateScope({
+                  mode: "delete",
+                  templateId: decision.entityId,
+                  templateTitle: decision.entityTitle,
+                  occurrenceKey: decision.occurrenceKey,
+                });
+              }
             }}
             hideHoverButtons
             scopedDelete
             onEditTimes={(newStart, newEnd) => {
-              // Keyed from the CURRENT rendered start — unlike drag-resize the
-              // form hasn't moved the tile, so no oldEvent is needed.
-              const occurrence = resolveTemplateOccurrence(
-                event.id,
-                templateRef.current,
-                event.start,
-              );
-              if (!occurrence) return;
+              if (!event.start || !event.end) return;
+              const stub = stubCalendarEvent(event.id, EventType.template, true, event.start, event.end);
+              if (!stub) return;
+              const ctx = buildEditContext(templateRef.current, plannerRef.current);
+              const decision = decideEdit(stub, "resize", ctx, event.start);
+              if (decision.action === "reject") return;
               const newDurationMinutes = getDuration(newStart, newEnd);
-              const template = templateRef.current.find(
-                (t) => t.id === occurrence.templateId,
-              );
-              // An already-customized occurrence skips the prompt — re-editing
-              // a one-off always means "just this one".
-              if (
-                template &&
-                hasMovedException(
-                  template.recurrenceExceptions,
-                  occurrence.occurrenceKey,
-                )
-              ) {
+              if (decision.action === "apply" && decision.scope === "single") {
                 applyTemplateOccurrenceResize(
                   updateTemplateArray,
-                  occurrence.templateId,
-                  occurrence.occurrenceKey,
+                  decision.entityId,
+                  decision.occurrenceKey,
                   newStart,
                   newDurationMinutes,
                 );
                 return;
               }
-              setPendingTemplateScope({
-                mode: "resize",
-                ...occurrence,
-                newStart,
-                newDurationMinutes,
-                // Nothing moved visually — a form edit never touches the tile.
-                revert: () => {},
-              });
+              if (decision.action === "askScope") {
+                setPendingTemplateScope({
+                  mode: "resize",
+                  templateId: decision.entityId,
+                  templateTitle: decision.entityTitle,
+                  occurrenceKey: decision.occurrenceKey,
+                  newStart,
+                  newDurationMinutes,
+                  revert: () => {},
+                });
+              }
             }}
           />
         );
