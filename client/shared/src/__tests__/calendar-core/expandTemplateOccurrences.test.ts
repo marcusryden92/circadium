@@ -10,7 +10,7 @@ function tpl(overrides: Partial<EventTemplate> = {}): EventTemplate {
   return {
     id: "tpl-1",
     title: "Gym",
-    startDay: 1 as WeekDayIntegers, // Monday
+    startDay: 1, // Monday
     startTime: "09:00",
     userId: "u1",
     duration: 60,

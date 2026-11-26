@@ -410,7 +410,7 @@ export function walkForwardForFit(args: {
       };
     }
 
-    const candidate = slot as ForwardCandidateSlot;
+    const candidate = slot;
     const { preFitTarget, naturalFitTarget } = resolveLandingTargets(
       candidate,
       args.availableCandidateMode,

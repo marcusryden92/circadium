@@ -23,7 +23,7 @@ const getGoalTreesTool: Anthropic.Tool = {
       },
     },
     required: ["goalIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const searchItemsTool: Anthropic.Tool = {
@@ -39,7 +39,7 @@ const searchItemsTool: Anthropic.Tool = {
       },
     },
     required: ["query"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Goal forest: items ------------------------------------------------------
@@ -159,7 +159,7 @@ const updateItemsTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const moveItemTool: Anthropic.Tool = {
@@ -175,7 +175,7 @@ const moveItemTool: Anthropic.Tool = {
       atStart: { type: "boolean" },
     },
     required: ["itemId", "newParentId"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const addItemsTool: Anthropic.Tool = {
@@ -258,7 +258,7 @@ const addItemsTool: Anthropic.Tool = {
       },
     },
     required: ["parentId", "items"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteItemsTool: Anthropic.Tool = {
@@ -274,7 +274,7 @@ const deleteItemsTool: Anthropic.Tool = {
       },
     },
     required: ["itemIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Goal forest: building + display -----------------------------------------
@@ -410,7 +410,7 @@ const proposeGoalsTool: Anthropic.Tool = {
       },
     },
     required: ["goals"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const showGoalsTool: Anthropic.Tool = {
@@ -430,7 +430,7 @@ const showGoalsTool: Anthropic.Tool = {
         description: "Display every goal.",
       },
     },
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Weekly templates --------------------------------------------------------
@@ -476,7 +476,7 @@ const addTemplatesTool: Anthropic.Tool = {
       },
     },
     required: ["templates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateTemplatesTool: Anthropic.Tool = {
@@ -504,7 +504,7 @@ const updateTemplatesTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteTemplatesTool: Anthropic.Tool = {
@@ -519,7 +519,7 @@ const deleteTemplatesTool: Anthropic.Tool = {
       },
     },
     required: ["templateIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Category time windows ---------------------------------------------------
@@ -556,7 +556,7 @@ const addTimeWindowsTool: Anthropic.Tool = {
       },
     },
     required: ["windows"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateTimeWindowsTool: Anthropic.Tool = {
@@ -582,7 +582,7 @@ const updateTimeWindowsTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteTimeWindowsTool: Anthropic.Tool = {
@@ -597,7 +597,7 @@ const deleteTimeWindowsTool: Anthropic.Tool = {
       },
     },
     required: ["windowIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Categories --------------------------------------------------------------
@@ -636,7 +636,7 @@ const addCategoriesTool: Anthropic.Tool = {
       },
     },
     required: ["categories"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateCategoriesTool: Anthropic.Tool = {
@@ -665,7 +665,7 @@ const updateCategoriesTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteCategoriesTool: Anthropic.Tool = {
@@ -681,7 +681,7 @@ const deleteCategoriesTool: Anthropic.Tool = {
       },
     },
     required: ["categoryIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Precedence: queues + dependencies ---------------------------------------
@@ -721,7 +721,7 @@ const addQueuesTool: Anthropic.Tool = {
       },
     },
     required: ["queues"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateQueuesTool: Anthropic.Tool = {
@@ -746,7 +746,7 @@ const updateQueuesTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteQueuesTool: Anthropic.Tool = {
@@ -762,7 +762,7 @@ const deleteQueuesTool: Anthropic.Tool = {
       },
     },
     required: ["queueIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const addQueueMembersTool: Anthropic.Tool = {
@@ -783,7 +783,7 @@ const addQueueMembersTool: Anthropic.Tool = {
       },
     },
     required: ["queueId", "plannerIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const moveQueueMemberTool: Anthropic.Tool = {
@@ -798,7 +798,7 @@ const moveQueueMemberTool: Anthropic.Tool = {
       toIndex: { type: "integer" },
     },
     required: ["queueId", "plannerId", "toIndex"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const removeQueueMembersTool: Anthropic.Tool = {
@@ -814,7 +814,7 @@ const removeQueueMembersTool: Anthropic.Tool = {
       },
     },
     required: ["plannerIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const addDependenciesTool: Anthropic.Tool = {
@@ -837,7 +837,7 @@ const addDependenciesTool: Anthropic.Tool = {
       },
     },
     required: ["dependencies"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const removeDependenciesTool: Anthropic.Tool = {
@@ -860,7 +860,7 @@ const removeDependenciesTool: Anthropic.Tool = {
       },
     },
     required: ["dependencies"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Habit trackers ----------------------------------------------------------
@@ -888,7 +888,7 @@ const addHabitBucketsTool: Anthropic.Tool = {
       },
     },
     required: ["buckets"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateHabitBucketsTool: Anthropic.Tool = {
@@ -911,7 +911,7 @@ const updateHabitBucketsTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteHabitBucketsTool: Anthropic.Tool = {
@@ -927,7 +927,7 @@ const deleteHabitBucketsTool: Anthropic.Tool = {
       },
     },
     required: ["bucketIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const addHabitsTool: Anthropic.Tool = {
@@ -964,7 +964,7 @@ const addHabitsTool: Anthropic.Tool = {
       },
     },
     required: ["habits"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateHabitsTool: Anthropic.Tool = {
@@ -993,7 +993,7 @@ const updateHabitsTool: Anthropic.Tool = {
       },
     },
     required: ["updates"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const deleteHabitsTool: Anthropic.Tool = {
@@ -1009,7 +1009,7 @@ const deleteHabitsTool: Anthropic.Tool = {
       },
     },
     required: ["habitIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const addHabitItemsTool: Anthropic.Tool = {
@@ -1026,7 +1026,7 @@ const addHabitItemsTool: Anthropic.Tool = {
       },
     },
     required: ["habitId", "itemIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const removeHabitItemsTool: Anthropic.Tool = {
@@ -1042,7 +1042,7 @@ const removeHabitItemsTool: Anthropic.Tool = {
       },
     },
     required: ["habitId", "itemIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // -- Structure + settings -----------------------------------------------------
@@ -1057,7 +1057,7 @@ const promoteItemTool: Anthropic.Tool = {
       itemId: { type: "string" },
     },
     required: ["itemId"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const demoteItemTool: Anthropic.Tool = {
@@ -1071,7 +1071,7 @@ const demoteItemTool: Anthropic.Tool = {
       targetGoalId: { type: "string" },
     },
     required: ["itemId", "targetGoalId"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const triageItemsTool: Anthropic.Tool = {
@@ -1087,7 +1087,7 @@ const triageItemsTool: Anthropic.Tool = {
       },
     },
     required: ["itemIds"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateSchedulingSettingsTool: Anthropic.Tool = {
@@ -1104,7 +1104,7 @@ const updateSchedulingSettingsTool: Anthropic.Tool = {
         enum: ["DRIVING", "TRANSIT", "BICYCLING", "WALKING"],
       },
     },
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 const updateTemplateExceptionsTool: Anthropic.Tool = {
@@ -1154,7 +1154,7 @@ const updateTemplateExceptionsTool: Anthropic.Tool = {
       },
     },
     required: ["edits"],
-  } as Anthropic.Tool["input_schema"],
+  },
 };
 
 // The array passed to every stream call. ORDER IS LOAD-BEARING — see the note

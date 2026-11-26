@@ -155,7 +155,7 @@ export function occurrenceKeyFromEventId(eventId: string): string | null {
   return separatorIndex === -1 ? null : eventId.slice(separatorIndex + 1);
 }
 
-export function planIsRecurring(plan: Planner): boolean {
+export function planIsRecurring(plan: Pick<Planner, "recurrence">): boolean {
   return parsePlanRecurrence(plan.recurrence) !== null;
 }
 

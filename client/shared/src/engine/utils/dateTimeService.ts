@@ -151,7 +151,7 @@ export class DateTimeService {
    * Get weekday integer from string
    */
   getWeekdayInteger(weekday: WeekDayType): WeekDayIntegers {
-    return WEEKDAYS[weekday] as WeekDayIntegers;
+    return WEEKDAYS[weekday];
   }
 
   /**

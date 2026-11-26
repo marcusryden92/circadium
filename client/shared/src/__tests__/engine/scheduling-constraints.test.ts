@@ -277,9 +277,9 @@ describe("impossible constraint intersection", () => {
           recurrenceExceptions: null,
           categoryId: CATEGORY_ID,
           userId: USER_ID,
-        } as CategoryTimeWindow,
+        },
       ],
-    } as Category;
+    };
   }
 
   function runWithCategory(planners: Planner[]) {
@@ -640,9 +640,9 @@ describe("category windows x template structure", () => {
             recurrenceExceptions: null,
             categoryId: CATEGORY_ID,
             userId: USER_ID,
-          }) as CategoryTimeWindow,
+          }),
       ),
-    } as Category;
+    };
   }
 
   function blockTemplate(

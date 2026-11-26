@@ -146,7 +146,7 @@ function makePlanner(id: string, overrides: Partial<Planner> = {}): Planner {
     createdAt: ts,
     updatedAt: ts,
     ...overrides,
-  } as Planner;
+  };
 }
 
 function makeEvent(id: string, startMin: number, endMin: number): SimpleEvent {

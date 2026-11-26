@@ -8,7 +8,6 @@ import type {
   DragKind,
   DragState,
   IdleState,
-  PendingState,
   DraggingState,
   DragPreview,
   AllowHook,

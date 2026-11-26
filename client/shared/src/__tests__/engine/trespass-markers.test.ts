@@ -82,10 +82,7 @@ function trespassFlags(event: SimpleEvent | undefined): {
   trespassingStart?: boolean;
   trespassingEnd?: boolean;
 } {
-  return (event?.extendedProps ?? {}) as {
-    trespassingStart?: boolean;
-    trespassingEnd?: boolean;
-  };
+  return (event?.extendedProps ?? {});
 }
 
 function overlapMessages(messages: EngineMessage[]) {

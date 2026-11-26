@@ -7,7 +7,6 @@ import type {
   Planner,
   SimpleEvent,
   EventTemplate,
-  EventExtendedProps,
   Category,
   CategoryEvent,
   TravelEvent,
@@ -20,10 +19,6 @@ import type {
   SyncResponse,
 } from "../contracts";
 import { objectsAreEqual } from "../domain/generalUtils";
-
-// SimpleEvent splits into its own-row core (calendar) and its 1:1 extendedProps
-// row, which are diffed into separate groups below.
-type CalendarChange = Omit<SimpleEvent, "extendedProps">;
 
 // Keyed inputs: each group pairs the current arrays with the last
 // server-confirmed snapshot. Optional groups skip their diff entirely when
@@ -178,13 +173,13 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
 
     if (!prevEvent) {
       const { extendedProps, ...eventCore } = event;
-      databaseChanges.calendar.create.push(eventCore as CalendarChange);
+      databaseChanges.calendar.create.push(eventCore);
 
       if (extendedProps) {
         databaseChanges.extendedProps.create.push({
           ...extendedProps,
           eventId: event.id,
-        } as EventExtendedProps);
+        });
       }
 
       return;
@@ -192,7 +187,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
 
     if (!objectsAreEqual(stripDbMetadata(prevEvent), stripDbMetadata(event))) {
       const { extendedProps: _extendedProps, ...eventCore } = event;
-      databaseChanges.calendar.update.push(eventCore as CalendarChange);
+      databaseChanges.calendar.update.push(eventCore);
     }
 
     if (
@@ -203,7 +198,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
       databaseChanges.extendedProps.update.push({
         ...event.extendedProps,
         eventId: event.id,
-      } as EventExtendedProps);
+      });
     }
   });
 
@@ -211,7 +206,7 @@ export function compareData(inputs: SyncInputs): DatabaseChanges {
   prevCalMap.forEach((event) => {
     if (!calendarMap.has(event.id)) {
       const { extendedProps: _extendedProps, ...eventCore } = event;
-      databaseChanges.calendar.destroy.push(eventCore as CalendarChange);
+      databaseChanges.calendar.destroy.push(eventCore);
     }
   });
 

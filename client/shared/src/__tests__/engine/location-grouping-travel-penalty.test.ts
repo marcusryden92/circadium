@@ -55,7 +55,7 @@ function makePlanner(id: string, overrides: Partial<Planner> = {}): Planner {
     createdAt: TS,
     updatedAt: TS,
     ...overrides,
-  } as Planner;
+  };
 }
 
 function matrixEntry(

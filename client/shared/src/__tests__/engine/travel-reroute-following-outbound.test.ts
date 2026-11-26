@@ -1,7 +1,6 @@
 import { generateCalendar } from "../../engine/calendarGeneration";
 import type {
   Category,
-  CategoryTimeWindow,
   EventTemplate,
   Planner,
   TravelEvent,
@@ -83,7 +82,7 @@ function makePlanner(id: string, overrides: Partial<Planner>): Planner {
     createdAt: ts,
     updatedAt: ts,
     ...overrides,
-  } as Planner;
+  };
 }
 
 function makeFitnessCategory(): Category {
@@ -111,9 +110,9 @@ function makeFitnessCategory(): Category {
         recurrenceExceptions: null,
         categoryId: CATEGORY_ID,
         userId: USER_ID,
-      } as CategoryTimeWindow,
+      },
     ],
-  } as Category;
+  };
 }
 
 function run(planners: Planner[]) {

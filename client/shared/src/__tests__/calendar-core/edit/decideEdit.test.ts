@@ -1,6 +1,5 @@
 import { decideEdit, type EditContext } from "../../../calendar-core/edit/decideEdit";
 import type {
-  CalendarEvent,
   TemplateCalendarEvent,
   PlannerCalendarEvent,
   CategoryCalendarEvent,
@@ -131,7 +130,7 @@ function buildContext(opts?: {
   return {
     hasMovedException: () => opts?.hasMoved ?? false,
     planIsRecurring: () => opts?.isRecurring ?? false,
-    resolveTemplateOccurrence: (eventId, startForKey) =>
+    resolveTemplateOccurrence: () =>
       (opts?.templateResolvable ?? true)
         ? {
             templateId: "tmpl1",
@@ -140,7 +139,7 @@ function buildContext(opts?: {
             recurrenceExceptions: null,
           }
         : null,
-    resolvePlanOccurrence: (eventId) =>
+    resolvePlanOccurrence: () =>
       (opts?.planResolvable ?? false)
         ? {
             planId: "plan1",

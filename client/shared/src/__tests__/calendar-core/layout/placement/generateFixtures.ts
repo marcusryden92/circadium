@@ -13,12 +13,14 @@
  * but is a script, not a .test.ts).
  */
 
+import * as fs from "fs";
+import * as path from "path";
 // FullCalendar v6.1.21 internal exports
-// @ts-expect-error -- untyped internal module
-import { SegHierarchy, groupIntersectingEntries, binarySearch, insertAt } from "@fullcalendar/core/internal";
+import { SegHierarchy, groupIntersectingEntries, binarySearch } from "@fullcalendar/core/internal";
 
 type SegEntry = { index: number; thickness: number; span: { start: number; end: number } };
 type WebNode = SegEntry & { nextLevelNodes: WebNode[] };
+type SegHierarchyView = { levelCoords: number[]; entriesByLevel: SegEntry[][] };
 type SegRect = SegEntry & { levelCoord: number; stackDepth: number; stackForward: number };
 
 function buildEntryKey(entry: SegEntry): string {
@@ -41,7 +43,7 @@ function cacheable<Args extends unknown[], R>(
 }
 
 function findNextLevelSegs(
-  hierarchy: any,
+  hierarchy: SegHierarchyView,
   subjectLevel: number,
   subjectLateral: number
 ): { level: number; lateralStart: number; lateralEnd: number } | null {
@@ -66,7 +68,7 @@ function findNextLevelSegs(
   return null;
 }
 
-function buildWeb(hierarchy: any): WebNode[] {
+function buildWeb(hierarchy: SegHierarchyView): WebNode[] {
   const { entriesByLevel } = hierarchy;
   const buildNode = cacheable(
     (level: number, lateral: number) => level + ":" + lateral,
@@ -161,7 +163,9 @@ function runFC(inputs: SegEntry[], strictOrder?: boolean | null, maxStackCnt?: n
   if (maxStackCnt != null) hierarchy.maxStackCnt = maxStackCnt;
   const hiddenEntries = hierarchy.addSegs(inputs);
   const hiddenGroups = groupIntersectingEntries(hiddenEntries);
-  let web = buildWeb(hierarchy);
+  // FullCalendar types thickness as optional, but the hierarchy only stores
+  // the entries passed to addSegs, and every scenario input carries one.
+  let web = buildWeb(hierarchy as SegHierarchyView);
   web = stretchWeb(web, 1);
   const segRects = webToRects(web);
   return { segRects, hiddenGroups };
@@ -285,8 +289,6 @@ const fixtures: FixtureScenario[] = scenarios.map((s) => {
   };
 });
 
-const fs = require("fs");
-const path = require("path");
 const outPath = path.join(__dirname, "fixtures.json");
 fs.writeFileSync(outPath, JSON.stringify(fixtures, null, 2) + "\n");
 console.log(`Wrote ${fixtures.length} scenarios to ${outPath}`);

@@ -6,7 +6,6 @@ import type {
   ExternalEvent,
   SimpleEvent,
   TravelEvent,
-  WeekDayIntegers,
 } from "../../../contracts";
 
 const START = "2026-06-08T07:00:00.000Z";
@@ -30,7 +29,7 @@ const simple: SimpleEvent = {
 const template: EventTemplate = {
   id: "tpl-1",
   title: "Standup",
-  startDay: 1 as WeekDayIntegers,
+  startDay: 1,
   startTime: "09:00",
   duration: 30,
   color: null,

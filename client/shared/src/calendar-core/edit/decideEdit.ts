@@ -1,9 +1,5 @@
 import { EventType } from "../../contracts";
-import type {
-  CalendarEvent,
-  TemplateCalendarEvent,
-  PlannerCalendarEvent,
-} from "../model/calendarEvent";
+import type { CalendarEvent } from "../model/calendarEvent";
 import type { EditKind, EditDecision } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -17,8 +13,7 @@ export interface EditContext {
     recurrenceExceptions: string | null | undefined,
     occurrenceKey: string,
   ) => boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  planIsRecurring: (plan: any) => boolean;
+  planIsRecurring: (plan: { recurrence: string | null }) => boolean;
   /** Resolve a template event to its row + occurrence key. */
   resolveTemplateOccurrence: (
     eventId: string,

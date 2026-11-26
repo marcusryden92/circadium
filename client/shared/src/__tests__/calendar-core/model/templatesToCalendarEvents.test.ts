@@ -11,7 +11,7 @@ function template(recurrenceExceptions: string | null): EventTemplate {
   return {
     id: "tpl-1",
     title: "Standup",
-    startDay: 1 as WeekDayIntegers, // Monday
+    startDay: 1, // Monday
     startTime: "07:00",
     duration: 120,
     color: "#123456",
