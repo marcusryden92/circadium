@@ -150,6 +150,7 @@ the selected check, C.6), `ExternalEventContent.tsx` L54 / `.css.ts` L6
 | C.4 | C.4 item 4 says FullCalendar background events are `pointer-events: none`: true of the box, but the global `app/calendar.css` re-enabled the content, which is what the chip needs | corrected by 68531fab |
 | C.5 | `createSpan` single-column on the main calendar | fixed by 5452a4fd |
 | C.5 | ring, start-edge weekday update, `startDay` normalization | accept |
+| C review | plan start-edge resize (both renderers): `applyEventResize` wrote only `duration`, so the regen re-anchored the new length at the old `starts` (Wed 16-20 dragged to Tue 12 committed as Wed 16 -> Fri 00). Present in prod (`b64ae300`, same code since 0.6). Now writes `starts` too for non-recurring plans; occurrences still resize the series without moving its anchor; tasks/goals duration only | fixed |
 
 ## 5. Consciously dropped (never-vs-not-currently rule)
 

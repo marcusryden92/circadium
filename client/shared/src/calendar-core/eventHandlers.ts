@@ -110,6 +110,12 @@ export const createPlanFromSelection = (
 // Shared commit for drag-resize and the popover time fields. Occurrence
 // events resolve to their plan row; resizing one occurrence resizes the
 // series (duration lives on the planner).
+//
+// A non-recurring plan's tile is rebuilt from `starts` + duration by the
+// inline regen, so a start-edge resize must move `starts` too; writing
+// duration alone re-anchors the new length at the old start. Occurrences keep
+// the series anchor: their start is a rule position, not the row's `starts`.
+// Tasks and goals are engine-placed, so only their duration is user-owned.
 export const applyEventResize = (
   updateAll: UpdateAllFn,
   eventId: string,
@@ -118,14 +124,23 @@ export const applyEventResize = (
   title?: string | null,
 ) => {
   const plannerId = plannerIdFromEventId(eventId);
+  const duration = dateTimeService.getDuration(start, end);
 
   updateAll(
     (prevPlanner) =>
-      prevPlanner.map((p) =>
-        p.id === plannerId
-          ? { ...p, duration: dateTimeService.getDuration(start, end) }
-          : p,
-      ),
+      prevPlanner.map((p) => {
+        if (p.id !== plannerId) return p;
+        // Compared as instants so an end-edge resize never rewrites a starts
+        // string stored in a different ISO format (a spurious sync diff).
+        const startMoved =
+          p.plannerType === PlannerType.plan &&
+          eventId === p.id &&
+          p.starts !== null &&
+          new Date(p.starts).getTime() !== start.getTime();
+        return startMoved
+          ? { ...p, starts: start.toISOString(), duration }
+          : { ...p, duration };
+      }),
     (prevEvents) =>
       prevEvents.map((ev) =>
         ev.id === eventId
