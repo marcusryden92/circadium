@@ -54,7 +54,6 @@ import {
 import {
   decideEdit,
   type EditContext,
-  type EditKind,
 } from "@circadium/shared/calendar-core/edit";
 import { NewPlanModal } from "@/components/events/NewPlanModal";
 import { RecurrenceScopeModal } from "@/components/events/RecurrenceScopeModal";
