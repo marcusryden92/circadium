@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Copy, Repeat, RotateCcw, Trash2 } from "lucide-react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { Button, CategoryBadge, FieldStack, TypeBadge } from "@/components/ui";
 import {
@@ -31,7 +31,7 @@ import {
 } from "../popover";
 
 interface TemplateEventPopoverProps {
-  event: EventImpl;
+  event: TileEvent;
   eventRect: DOMRect;
   startTime: Date;
   endTime: Date;

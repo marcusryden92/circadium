@@ -9,7 +9,7 @@ import { ConfirmModal } from "@/components/ui";
 import { floorMinutes } from "@/utils/calendarUtils";
 import EventPopover from "../EventPopover";
 import EventWrapper from "../EventWrapper";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import {
   handleClickCompleteTask,
   handleClickDelete,
@@ -48,7 +48,7 @@ import {
 import { hoverActions, actionGroup, iconButton } from "./EventContent.css";
 
 interface EventContentProps {
-  event: EventImpl;
+  event: TileEvent;
 }
 
 const EventContent: React.FC<EventContentProps> = ({ event }) => {

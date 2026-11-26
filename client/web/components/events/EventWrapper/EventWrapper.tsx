@@ -1,5 +1,5 @@
 import React, { ReactNode, useLayoutEffect, useMemo } from "react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { Lock, Pin } from "lucide-react";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -31,7 +31,7 @@ interface EventExtendedPropsWithTrespassing {
 }
 
 interface EventWrapperProps {
-  event: EventImpl;
+  event: TileEvent;
   elementRef: React.RefObject<HTMLDivElement | null>;
   elementHeight: number;
   elementWidth: number;

@@ -1,7 +1,7 @@
 import { SimpleEvent, Planner, PlannerType } from "@/types/prisma";
-import { EventDropArg } from "@fullcalendar/core/index.js";
-import { EventResizeStartArg } from "@fullcalendar/interaction/index.js";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { EventDropArg } from "@fullcalendar/core/index.js";
+import type { EventResizeStartArg } from "@fullcalendar/interaction/index.js";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { v4 as uuidv4 } from "uuid";
 import React from "react";
 import { getPlannerAndCalendarForCompletedTask } from "@/utils/taskHelpers";
@@ -53,7 +53,7 @@ export const handleEventDrop = (
   applyEventStartEdit(updatePlannerArray, event.id, event.start, event.title);
 };
 
-export const handleEventCopy = (event: EventImpl, updateAll: UpdateAllFn) => {
+export const handleEventCopy = (event: TileEvent, updateAll: UpdateAllFn) => {
   assert(event, "Event undefined in handleEventCopy");
   assert(event.start, "Event.start undefined in handleEventCopy");
   assert(event.end, "Event.end undefined in handleEventCopy");
@@ -133,7 +133,7 @@ export const handleUpdateTitle = (
 // tile elements across regens, and an imperative backgroundColor sticks to
 // whatever event inherits the node.
 export const handleClickCompleteTask = (
-  event: EventImpl,
+  event: TileEvent,
   isCompleted: boolean,
   setIsCompleted: React.Dispatch<React.SetStateAction<boolean>>,
   planner: Planner[],
@@ -254,7 +254,7 @@ export const handleClickCompleteTask = (
 };
 
 export const handlePostponeTask = (
-  event: EventImpl,
+  event: TileEvent,
   calendar: SimpleEvent[],
   updateAll: UpdateAllFn,
 ) => {
@@ -263,7 +263,7 @@ export const handlePostponeTask = (
 };
 
 export const handleClickDelete = (
-  event: EventImpl,
+  event: TileEvent,
   calendar: SimpleEvent[],
   updateAll: UpdateAllFn,
   plannerType: string,

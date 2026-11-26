@@ -1,5 +1,5 @@
-import FullCalendar from "@fullcalendar/react";
-import { DateSelectArg } from "@fullcalendar/core/index.js";
+import type FullCalendar from "@fullcalendar/react";
+import type { DateSelectArg } from "@fullcalendar/core/index.js";
 import { EventTemplate } from "@/types/prisma";
 import { WeekDayIntegers } from "@/types/calendarTypes";
 import { calendarColors } from "@/data/calendarColors";
@@ -8,7 +8,7 @@ import { historyMessages } from "../historyMessages";
 import { getTimeFromDate } from "../templateBuilderUtils";
 
 import { v4 as uuidv4 } from "uuid";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 
 const dayOfWeek = (d: Date): WeekDayIntegers => d.getDay() as WeekDayIntegers;
 
@@ -62,7 +62,7 @@ export const handleTemplateSelect = (
 
 export const handleTemplateEventCopy = (
   updateTemplateArray: UpdateTemplateArrayFn,
-  event: EventImpl,
+  event: TileEvent,
   userId: string,
 ) => {
   const now = new Date();

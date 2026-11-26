@@ -1,10 +1,10 @@
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { handleUpdateTitle } from "@/utils/calendarEventHandlers";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { useState, useRef, useEffect } from "react";
 
 interface UseTitleEditorOptions {
-  event: EventImpl;
+  event: TileEvent;
 }
 
 const useTitleEditor = ({ event }: UseTitleEditorOptions) => {

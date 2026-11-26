@@ -1,5 +1,5 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { CalendarClock } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { formatTime } from "@/utils/calendarUtils";
@@ -23,7 +23,7 @@ import {
 } from "./ExternalEventContent.css";
 
 interface ExternalEventContentProps {
-  event: EventImpl;
+  event: TileEvent;
 }
 
 const ExternalEventContent: React.FC<ExternalEventContentProps> = ({

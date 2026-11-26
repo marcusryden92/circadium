@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, Check, Clock, Copy, Trash2 } from "lucide-react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { format } from "date-fns";
 import useTitleEditor from "@/hooks/useTitleEditor";
 import { useCalendarProvider } from "@/context/CalendarProvider";
@@ -47,7 +47,7 @@ import {
 } from "../popover";
 
 interface EventPopoverProps {
-  event: EventImpl;
+  event: TileEvent;
   eventRect: DOMRect;
   startTime: Date;
   endTime: Date;
