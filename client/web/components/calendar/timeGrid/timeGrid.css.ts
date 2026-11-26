@@ -218,6 +218,18 @@ globalStyle(`${tile}[data-tile-selected] > ${resizer}[data-resize="end"]`, {
   bottom: -8,
 });
 
+// A 16px dot alone is too small for a finger, and FullCalendar's stock -20px
+// inset would swallow short tiles' bodies; -12px keeps a 40px target (the
+// tuning both FullCalendar surfaces carried).
+globalStyle(`${tile}[data-tile-selected] > ${resizer}::before`, {
+  content: '""',
+  position: "absolute",
+  top: -12,
+  right: -12,
+  bottom: -12,
+  left: -12,
+});
+
 export const nowLine = style({
   position: "absolute",
   left: 0,

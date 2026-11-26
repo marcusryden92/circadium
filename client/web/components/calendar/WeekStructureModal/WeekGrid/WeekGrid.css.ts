@@ -1,6 +1,5 @@
-import { globalStyle, style } from "@vanilla-extract/css";
+import { style } from "@vanilla-extract/css";
 import { vars } from "@/lib/theme/tokens.css";
-import { resizer, tile } from "@/components/calendar/timeGrid/timeGrid.css";
 
 // The reference-week grid's own pieces on top of the shared time-grid shell.
 
@@ -58,16 +57,4 @@ export const createHighlight = style({
       background: `color-mix(in srgb, ${vars.status.error} 22%, transparent)`,
     },
   },
-});
-
-// The touch handles are 16px dots; with a bare dot the target is too small
-// for a finger, and FullCalendar's stock -20px inset would swallow short
-// tiles' bodies. -12px keeps a 40px target (the modal's earlier tuning).
-globalStyle(`${root} ${tile}[data-tile-selected] > ${resizer}::before`, {
-  content: '""',
-  position: "absolute",
-  top: -12,
-  right: -12,
-  bottom: -12,
-  left: -12,
 });
