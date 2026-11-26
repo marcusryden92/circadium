@@ -23,7 +23,7 @@ import {
 } from "../domain/planRecurrence";
 import { historyMessages } from "../domain/historyMessages";
 import { setCompletedWindow } from "../domain/goal-handlers/subtaskCompletion";
-import { dateTimeService } from "../engine/utils/dateTimeService";
+import { dateTimeService } from "./dateTimeService";
 import { timeFromDate } from "./timeWindow";
 
 export type UpdateOptions = { engineMode?: "inline" | "worker"; label?: string };
