@@ -7,7 +7,6 @@
 
 import { WeekDayIntegers, WeekDayType } from "@/types/calendarTypes";
 import { SimpleEvent } from "@/types/prisma";
-import { EventInput } from "@fullcalendar/core/index.js";
 import { RRule, Weekday } from "rrule";
 import { format } from "date-fns";
 import { dateTimeService } from "@circadium/shared/engine/utils/dateTimeService";
@@ -106,28 +105,6 @@ export function getRRuleDayTypeFromIndex(day: number): Weekday {
   ];
   return rruleWeekdays[day];
 }
-
-export const transformEventsForFullCalendar = (
-  events: SimpleEvent[],
-): EventInput[] => {
-  return events.map((event) => ({
-    id: event.id,
-    title: event.title,
-    start: event.start,
-    end: event.end,
-    duration: event.duration ?? undefined,
-    rrule: event.rrule
-      ? (JSON.parse(event.rrule) as Record<string, unknown>)
-      : undefined,
-    backgroundColor: event.backgroundColor,
-    borderColor: event.borderColor,
-    editable: true,
-    extendedProps: {
-      ...event.extendedProps,
-      backgroundColor: event.backgroundColor,
-    },
-  }));
-};
 
 // Bucket calendar events into per-day groups, preserving input order within
 // each day. Day key is YYYY-MM-DD in local time, and `date` is the day-start

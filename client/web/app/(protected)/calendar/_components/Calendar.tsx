@@ -5,9 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-
-import RRulePlugin from "@fullcalendar/rrule";
-import luxonPlugin from "@fullcalendar/luxon3";
+import { addDays, startOfWeek } from "date-fns";
 
 import EventContent from "@/components/events/EventContent";
 import TemplateEventContent from "@/components/events/TemplateEventContent";
@@ -15,21 +13,23 @@ import TravelEventContent from "@/components/events/TravelEventContent";
 import ExternalEventContent from "@/components/events/ExternalEventContent";
 import { CategoryWrapperEvent } from "@/components/events/CategoryWrapperEvent";
 
-import type { EventDropArg, EventInput } from "@fullcalendar/core/index.js";
+import type {
+  DatesSetArg,
+  EventDropArg,
+  EventInput,
+} from "@fullcalendar/core/index.js";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction/index.js";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
-  transformEventsForFullCalendar,
   getDuration,
   CALENDAR_LONG_PRESS_DELAY_MS,
 } from "@/utils/calendarUtils";
+import { toFullCalendarInput } from "@/utils/calendar-rendering";
 import {
-  templatesToEventInput,
-  categoryEventsToEventInput,
-  travelEventsToEventInput,
-  externalEventsToEventInput,
-} from "@/utils/calendar-rendering";
+  buildCalendarEvents,
+  type CalendarRange,
+} from "@circadium/shared/calendar-core/model";
 
 import {
   createPlanFromSelection,
@@ -86,13 +86,7 @@ function completedLeafFromEvent(
 }
 
 // Identity-stable FullCalendar option values (see the note on Calendar below).
-const PLUGINS = [
-  dayGridPlugin,
-  timeGridPlugin,
-  interactionPlugin,
-  RRulePlugin,
-  luxonPlugin,
-];
+const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
 const TIME_FORMAT = {
   hour: "2-digit",
   minute: "2-digit",
@@ -227,44 +221,59 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
     return () => clearTimeout(timeout);
   }, [isMobile]);
 
-  // Five render streams merged into the single FullCalendar event array:
-  //   1. persisted SimpleEvents (plans + scheduled tasks)
-  //   2. templates expanded from EventTemplate config at render time (RRule)
-  //   3. category occurrences from the persisted CategoryEvent table (with
-  //      trespass info)
-  //   4. travel blocks from the persisted TravelEvent table
-  //   5. imported external-calendar events (read-only overlay/busy blocks)
-  // Only #1 lives in `calendar` — the other streams each live in their own
-  // source of truth and survive reloads without a Regenerate.
-  const fullCalendarEvents: EventInput[] = useMemo(() => {
-    const persisted = calendar ? transformEventsForFullCalendar(calendar) : [];
-    const templates = templatesToEventInput(template ?? []);
-    const categoryWindows = categoryEventsToEventInput(
-      categoryEvents ?? [],
-      categories ?? [],
+  // The range FullCalendar is showing, reported through datesSet; templates
+  // expand over it. Seeded with the week around initialDate so templates are
+  // there on the first paint instead of after the first datesSet.
+  const [visibleRange, setVisibleRange] = useState<CalendarRange>(() => {
+    const start = startOfWeek(initialDate, { weekStartsOn: weekStartDay });
+    return { start, end: addDays(start, 7) };
+  });
+  // Keeps the previous object for an unchanged range: a fresh one would
+  // rebuild the event array, and FullCalendar re-parses every new array.
+  const onDatesSet = useCallback((arg: DatesSetArg) => {
+    setVisibleRange((prev) =>
+      prev.start.getTime() === arg.start.getTime() &&
+      prev.end.getTime() === arg.end.getTime()
+        ? prev
+        : { start: arg.start, end: arg.end },
     );
-    const travel = travelEventsToEventInput(travelEvents ?? [], locations);
-    const external = externalEventsToEventInput(
-      externalEvents ?? [],
-      externalSources ?? [],
-    );
-    return [
-      ...persisted,
-      ...templates,
-      ...categoryWindows,
-      ...travel,
-      ...external,
-    ];
-  }, [
-    calendar,
-    template,
-    categories,
-    categoryEvents,
-    travelEvents,
-    locations,
-    externalEvents,
-    externalSources,
-  ]);
+  }, []);
+
+  // Five render streams merged into the single event array (order and sources
+  // in buildCalendarEvents): persisted SimpleEvents, templates expanded over
+  // the visible range, category occurrences, travel blocks, and imported
+  // external-calendar events. Only the first lives in `calendar`; the other
+  // streams each live in their own source of truth and survive reloads
+  // without a Regenerate.
+  const calendarEvents = useMemo(
+    () =>
+      buildCalendarEvents({
+        calendar,
+        templates: template,
+        categories,
+        categoryEvents,
+        travelEvents,
+        locations,
+        externalEvents,
+        externalSources,
+        range: visibleRange,
+      }),
+    [
+      calendar,
+      template,
+      categories,
+      categoryEvents,
+      travelEvents,
+      locations,
+      externalEvents,
+      externalSources,
+      visibleRange,
+    ],
+  );
+  const fullCalendarEvents: EventInput[] = useMemo(
+    () => calendarEvents.map(toFullCalendarInput),
+    [calendarEvents],
+  );
 
   const onSelect = useCallback(
     (selectInfo: { start: Date; end: Date }) =>
@@ -584,6 +593,7 @@ function Calendar({ initialDate, dayHeaderContent }: CalendarProps) {
         initialDate={initialDate}
         timeZone={"local"}
         events={fullCalendarEvents}
+        datesSet={onDatesSet}
         initialView="timeGridWeek"
         views={VIEWS}
         scrollTime={"05:00:00"}

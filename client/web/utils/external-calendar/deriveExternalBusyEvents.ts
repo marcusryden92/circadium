@@ -75,15 +75,4 @@ export function deriveExternalBusyEvents(
   return busy;
 }
 
-// True busy-ness for a single event, shared by the renderer (popover toggle
-// state) and anything else that needs the resolved value outside the engine.
-export function isExternalEventBusy(
-  source: Pick<ExternalCalendarSource, "enabled" | "mode" | "modeExceptions">,
-  event: Pick<ExternalEvent, "uid" | "allDay">,
-): boolean {
-  if (!source.enabled || event.allDay) return false;
-  const excepted = parseModeExceptions(source.modeExceptions).includes(
-    event.uid,
-  );
-  return (source.mode === ExternalCalendarMode.BUSY) !== excepted;
-}
+export { isExternalEventBusy } from "@circadium/shared/domain/external-calendar/externalBusy";
