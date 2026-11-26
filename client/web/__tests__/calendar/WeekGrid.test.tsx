@@ -118,6 +118,7 @@ const point = (column: number, hours: number, pointerType = "mouse") => ({
   clientX: column * COLUMN + COLUMN / 2,
   clientY: hours * HOUR,
   button: 0,
+  buttons: 1,
   pointerId: 1,
   pointerType,
 });

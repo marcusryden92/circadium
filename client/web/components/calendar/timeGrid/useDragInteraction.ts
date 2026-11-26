@@ -338,6 +338,13 @@ export function useDragInteraction(options: UseDragInteractionOptions) {
       const press = pressRef.current;
       if (press && stateRef.current.phase === "idle") {
         if (e.pointerId !== press.pointerId) return;
+        // The press was released outside the grid (no capture is taken until
+        // the drag starts, so that pointerup never reached us); without this
+        // a later hover would start a drag with no button held.
+        if ((e.buttons & 1) === 0) {
+          pressRef.current = null;
+          return;
+        }
         const distance = Math.hypot(
           e.clientX - press.clientX,
           e.clientY - press.clientY,

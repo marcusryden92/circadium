@@ -267,6 +267,7 @@ const point = (dayIndex: number, hours: number) => ({
   clientX: dayIndex * COLUMN + COLUMN / 2,
   clientY: hours * HOUR,
   button: 0,
+  buttons: 1,
   pointerId: 1,
   pointerType: "mouse",
 });
@@ -325,6 +326,17 @@ describe("OwnCalendar", () => {
     fireEvent.pointerUp(tile, point(0, 9.25));
     expect(mockContext.updatePlannerArray).not.toHaveBeenCalled();
     expect(mockContext.updateAll).not.toHaveBeenCalled();
+  });
+
+  it("a press released outside the grid never turns a later hover into a drag", () => {
+    renderCalendar();
+    const tile = screen.getByTestId("tile-planner");
+    fireEvent.pointerDown(tile, point(0, 9.25));
+    // The release happened outside the grid: the next move arrives buttonless.
+    fireEvent.pointerMove(tile, { ...point(0, 10.25), buttons: 0 });
+    fireEvent.pointerMove(tile, { ...point(0, 11.25), buttons: 0 });
+    fireEvent.pointerUp(tile, { ...point(0, 11.25), buttons: 0 });
+    expect(mockContext.updatePlannerArray).not.toHaveBeenCalled();
   });
 
   it("dragging empty grid opens the new-plan modal on the swept range", () => {
