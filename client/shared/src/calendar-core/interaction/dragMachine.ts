@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "../model/calendarEvent";
 import type { HitResult } from "../layout/hitTest";
 import { hitTest } from "../layout/hitTest";
+import { wallMinutes } from "../layout/wallClock";
 import type {
   NormalizedPointerEvent,
   GridMetrics,
@@ -44,10 +45,8 @@ export function computePreview(
   }
 
   if (!event) return null;
-  const eventStartMinute =
-    event.start.getHours() * 60 + event.start.getMinutes();
-  const eventEndMinute =
-    event.end.getHours() * 60 + event.end.getMinutes();
+  const eventStartMinute = wallMinutes(event.start);
+  const eventEndMinute = wallMinutes(event.end);
   const duration = eventEndMinute - eventStartMinute;
 
   if (kind === "move") {
@@ -350,10 +349,8 @@ function computePreviewFromHits(
   }
 
   if (!event) return null;
-  const eventStartMinute =
-    event.start.getHours() * 60 + event.start.getMinutes();
-  const eventEndMinute =
-    event.end.getHours() * 60 + event.end.getMinutes();
+  const eventStartMinute = wallMinutes(event.start);
+  const eventEndMinute = wallMinutes(event.end);
   const duration = eventEndMinute - eventStartMinute;
 
   if (kind === "move") {

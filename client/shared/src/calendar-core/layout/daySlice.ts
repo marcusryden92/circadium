@@ -1,5 +1,8 @@
-import { startOfDay, addDays, differenceInMinutes } from "date-fns";
+import { startOfDay, addDays } from "date-fns";
 import type { CalendarRange } from "../model/calendarEvent";
+import { wallMinutes } from "./wallClock";
+
+const MINUTES_PER_DAY = 24 * 60;
 
 /** A segment of an event within a single day column. */
 export interface DaySlice {
@@ -48,8 +51,16 @@ export function sliceEventIntoDays(
       Math.min(nextDayStart.getTime(), clippedEnd.getTime())
     );
 
-    const startMin = differenceInMinutes(sliceStart, currentDayStart);
-    const endMin = differenceInMinutes(sliceEnd, currentDayStart);
+    // Wall-clock minutes, not elapsed ones: on a DST day the column still
+    // shows 24 labelled hours (see wallClock.ts).
+    const startMin =
+      sliceStart.getTime() === currentDayStart.getTime()
+        ? 0
+        : wallMinutes(sliceStart);
+    const endMin =
+      sliceEnd.getTime() === nextDayStart.getTime()
+        ? MINUTES_PER_DAY
+        : wallMinutes(sliceEnd);
 
     if (endMin > startMin) {
       slices.push({

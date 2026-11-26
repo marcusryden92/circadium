@@ -1,3 +1,5 @@
+import { wallMinutes } from "./wallClock";
+
 /** Pixels-per-hour drives all vertical geometry. */
 export interface TimeGridMetrics {
   /** Pixels per hour in the time grid. */
@@ -58,5 +60,5 @@ export function snapPx(
  * Convert a Date to its minutes-from-midnight in local time.
  */
 export function dateToMinutes(date: Date): number {
-  return date.getHours() * MINUTES_PER_HOUR + date.getMinutes();
+  return wallMinutes(date);
 }

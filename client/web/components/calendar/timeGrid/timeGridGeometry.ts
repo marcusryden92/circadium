@@ -1,15 +1,16 @@
-import { addDays, addMinutes, startOfDay } from "date-fns";
+import { addDays, addMinutes } from "date-fns";
 import {
   enumerateDays,
   sliceEventIntoDays,
   minutesToPx,
+  atWallMinute,
+  shiftWall,
   type HitResult,
   type SegmentComparator,
   type TileGeometry,
 } from "@circadium/shared/calendar-core/layout";
 import {
   computeMoveDelta,
-  computeCreateRange,
   type CommittedState,
   type DraggingState,
 } from "@circadium/shared/calendar-core/interaction";
@@ -23,7 +24,6 @@ import type {
 // Each grid passes its own snap; the default is the main calendar's.
 export const DEFAULT_SNAP_MINUTES = 5;
 export const EVENT_MIN_HEIGHT = 15;
-const MINUTES_PER_DAY = 24 * 60;
 
 // FullCalendar's eventOrder "-duration,start": longest event first, then
 // earliest. Duration is the whole event's, not the day slice's, so both halves
@@ -78,23 +78,19 @@ export interface TimeSpan {
   end: Date;
 }
 
-// Minutes between two hits, whole days included.
-export function hitDelta(startHit: HitResult, endHit: HitResult): number {
-  const { dayOffset, minuteOffset } = computeMoveDelta(startHit, endHit);
-  return dayOffset * MINUTES_PER_DAY + minuteOffset;
-}
-
 // A move shifts start and end by the hit delta, days included, so an event
 // dragged to another column keeps its time-of-day offset from the pointer.
+// The delta is calendar days plus wall-clock minutes (FullCalendar's
+// day-and-time duration), so a drag across a DST change keeps the clock time.
 export function moveSpan(
   event: TimeSpan,
   startHit: HitResult,
   endHit: HitResult,
 ): TimeSpan {
-  const delta = hitDelta(startHit, endHit);
+  const { dayOffset, minuteOffset } = computeMoveDelta(startHit, endHit);
   return {
-    start: addMinutes(event.start, delta),
-    end: addMinutes(event.end, delta),
+    start: shiftWall(event.start, dayOffset, minuteOffset),
+    end: shiftWall(event.end, dayOffset, minuteOffset),
   };
 }
 
@@ -107,28 +103,29 @@ export function resizeSpan(
   edge: "start" | "end",
   snap = DEFAULT_SNAP_MINUTES,
 ): TimeSpan {
-  const delta = hitDelta(startHit, endHit);
+  const { dayOffset, minuteOffset } = computeMoveDelta(startHit, endHit);
   if (edge === "end") {
-    const end = addMinutes(event.end, delta);
+    const end = shiftWall(event.end, dayOffset, minuteOffset);
     const floor = addMinutes(event.start, snap);
     return { start: event.start, end: end < floor ? floor : end };
   }
-  const start = addMinutes(event.start, delta);
+  const start = shiftWall(event.start, dayOffset, minuteOffset);
   const ceiling = addMinutes(event.end, -snap);
   return { start: start > ceiling ? ceiling : start, end: event.end };
 }
 
-// A create gesture's range, or null for a zero-length press.
+// A create gesture's range, or null for a zero-length press. The two hits
+// join into one continuous range, across columns too (FullCalendar's
+// time-grid selection), so a drag from one evening into the next morning
+// selects the overnight span.
 export function createSpan(
   startHit: HitResult,
   endHit: HitResult,
 ): TimeSpan | null {
-  const range = computeCreateRange(startHit, endHit);
-  if (range.endMinute <= range.startMinute) return null;
-  return {
-    start: addMinutes(startOfDay(range.day), range.startMinute),
-    end: addMinutes(startOfDay(range.day), range.endMinute),
-  };
+  const a = atWallMinute(startHit.day, startHit.minute);
+  const b = atWallMinute(endHit.day, endHit.minute);
+  if (a.getTime() === b.getTime()) return null;
+  return a < b ? { start: a, end: b } : { start: b, end: a };
 }
 
 export type DragIntent =

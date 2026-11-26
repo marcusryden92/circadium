@@ -17,6 +17,7 @@ export {
   dateToMinutes,
   type TimeGridMetrics,
 } from "./layout/timeGrid";
+export { wallMinutes, atWallMinute, shiftWall } from "./layout/wallClock";
 export {
   hitTest,
   type HitResult,

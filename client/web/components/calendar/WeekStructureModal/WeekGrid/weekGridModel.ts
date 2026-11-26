@@ -1,9 +1,10 @@
-import { addDays, addMinutes, startOfDay } from "date-fns";
+import { addDays } from "date-fns";
 import type { HitResult } from "@circadium/shared/calendar-core/layout";
 import type { AllowHook } from "@circadium/shared/calendar-core/interaction";
 import type { CalendarRange } from "@circadium/shared/calendar-core/model";
 import { rangeAllowed } from "@circadium/shared/calendar-core/edit";
 import {
+  createSpan,
   dragIntent,
   spanSegments,
   type DragIntent,
@@ -85,28 +86,15 @@ export function ringSegments(
   );
 }
 
-function hitInstant(hit: HitResult): Date {
-  return addMinutes(startOfDay(hit.day), hit.minute);
-}
-
 // A create gesture joins its two hits into one continuous range, across
-// columns too (FullCalendar's time-grid selection), so an overnight block can
-// be drawn by dragging from one evening into the next morning.
-export function createSpanFromHits(
+// columns too, so an overnight block can be drawn by dragging from one
+// evening into the next morning.
+export const createSpanFromHits: (
   startHit: HitResult,
   endHit: HitResult,
-): TimeSpan | null {
-  const a = hitInstant(startHit);
-  const b = hitInstant(endHit);
-  if (a.getTime() === b.getTime()) return null;
-  return a < b ? { start: a, end: b } : { start: b, end: a };
-}
+) => TimeSpan | null = createSpan;
 
 export function weekGridIntent(input: DragIntentInput): DragIntent | null {
-  if (input.kind === "create") {
-    const span = createSpanFromHits(input.startHit, input.currentHit);
-    return span ? { type: "create", span } : null;
-  }
   return dragIntent(input, WEEK_GRID_SNAP_MINUTES);
 }
 
