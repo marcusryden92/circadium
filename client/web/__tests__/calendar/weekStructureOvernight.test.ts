@@ -48,8 +48,8 @@ describe("windowToEvent overnight rendering", () => {
       true,
       true,
     );
-    const start = event.start as Date;
-    const end = event.end as Date;
+    const start = event.start;
+    const end = event.end;
     expect(start.getHours()).toBe(23);
     expect(end.getDate()).toBe(start.getDate() + 1);
     expect(end.getHours()).toBe(7);
@@ -66,8 +66,8 @@ describe("windowToEvent overnight rendering", () => {
       true,
       true,
     );
-    const start = event.start as Date;
-    const end = event.end as Date;
+    const start = event.start;
+    const end = event.end;
     expect(end.getDate()).toBe(start.getDate());
     expect((end.getTime() - start.getTime()) / 3600000).toBe(8);
   });

@@ -1,0 +1,495 @@
+[
+  {
+    "name": "no_overlap",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 100
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 200,
+          "end": 300
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 400,
+          "end": 500
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 0,
+        "spanEnd": 100
+      },
+      {
+        "index": 1,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 200,
+        "spanEnd": 300
+      },
+      {
+        "index": 2,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 400,
+        "spanEnd": 500
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "two_partial_overlap",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 200
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.5,
+        "spanStart": 0,
+        "spanEnd": 200
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.5,
+        "thickness": 0.5,
+        "spanStart": 100,
+        "spanEnd": 300
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "three_deep_nesting",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 400
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 50,
+          "end": 350
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.3333333333,
+        "spanStart": 0,
+        "spanEnd": 400
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.3333333333,
+        "thickness": 0.3333333333,
+        "spanStart": 50,
+        "spanEnd": 350
+      },
+      {
+        "index": 2,
+        "levelCoord": 0.6666666667,
+        "thickness": 0.3333333333,
+        "spanStart": 100,
+        "spanEnd": 300
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "identical_start_end",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.3333333333,
+        "spanStart": 100,
+        "spanEnd": 300
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.3333333333,
+        "thickness": 0.3333333333,
+        "spanStart": 100,
+        "spanEnd": 300
+      },
+      {
+        "index": 2,
+        "levelCoord": 0.6666666667,
+        "thickness": 0.3333333333,
+        "spanStart": 100,
+        "spanEnd": 300
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "dense_cluster",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 200
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 50,
+          "end": 250
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      },
+      {
+        "index": 3,
+        "thickness": 1,
+        "span": {
+          "start": 150,
+          "end": 350
+        }
+      },
+      {
+        "index": 4,
+        "thickness": 1,
+        "span": {
+          "start": 200,
+          "end": 400
+        }
+      },
+      {
+        "index": 5,
+        "thickness": 1,
+        "span": {
+          "start": 250,
+          "end": 450
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.25,
+        "spanStart": 0,
+        "spanEnd": 200
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.25,
+        "thickness": 0.25,
+        "spanStart": 50,
+        "spanEnd": 250
+      },
+      {
+        "index": 2,
+        "levelCoord": 0.5,
+        "thickness": 0.25,
+        "spanStart": 100,
+        "spanEnd": 300
+      },
+      {
+        "index": 3,
+        "levelCoord": 0.75,
+        "thickness": 0.25,
+        "spanStart": 150,
+        "spanEnd": 350
+      },
+      {
+        "index": 4,
+        "levelCoord": 0,
+        "thickness": 0.25,
+        "spanStart": 200,
+        "spanEnd": 400
+      },
+      {
+        "index": 5,
+        "levelCoord": 0.25,
+        "thickness": 0.25,
+        "spanStart": 250,
+        "spanEnd": 450
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "zero_duration",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 100
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 200
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 100,
+        "spanEnd": 100
+      },
+      {
+        "index": 1,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 100,
+        "spanEnd": 200
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "back_to_back",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 100
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 200
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 200,
+          "end": 300
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 0,
+        "spanEnd": 100
+      },
+      {
+        "index": 1,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 100,
+        "spanEnd": 200
+      },
+      {
+        "index": 2,
+        "levelCoord": 0,
+        "thickness": 1,
+        "spanStart": 200,
+        "spanEnd": 300
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "overnight_split_segment",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 180
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 60,
+          "end": 240
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 120,
+          "end": 180
+        }
+      }
+    ],
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.3333333333,
+        "spanStart": 0,
+        "spanEnd": 180
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.3333333333,
+        "thickness": 0.3333333333,
+        "spanStart": 60,
+        "spanEnd": 240
+      },
+      {
+        "index": 2,
+        "levelCoord": 0.6666666667,
+        "thickness": 0.3333333333,
+        "spanStart": 120,
+        "spanEnd": 180
+      }
+    ],
+    "hiddenCount": 0
+  },
+  {
+    "name": "strict_order",
+    "inputs": [
+      {
+        "index": 0,
+        "thickness": 1,
+        "span": {
+          "start": 0,
+          "end": 200
+        }
+      },
+      {
+        "index": 1,
+        "thickness": 1,
+        "span": {
+          "start": 100,
+          "end": 300
+        }
+      },
+      {
+        "index": 2,
+        "thickness": 1,
+        "span": {
+          "start": 50,
+          "end": 150
+        }
+      }
+    ],
+    "strictOrder": true,
+    "expected": [
+      {
+        "index": 0,
+        "levelCoord": 0,
+        "thickness": 0.3333333333,
+        "spanStart": 0,
+        "spanEnd": 200
+      },
+      {
+        "index": 1,
+        "levelCoord": 0.3333333333,
+        "thickness": 0.3333333333,
+        "spanStart": 100,
+        "spanEnd": 300
+      },
+      {
+        "index": 2,
+        "levelCoord": 0.6666666667,
+        "thickness": 0.3333333333,
+        "spanStart": 50,
+        "spanEnd": 150
+      }
+    ],
+    "hiddenCount": 0
+  }
+]

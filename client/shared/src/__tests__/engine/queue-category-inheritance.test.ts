@@ -35,7 +35,7 @@ function makeWindow(
     categoryId: WORK_ID,
     userId: USER_ID,
     ...overrides,
-  } as CategoryTimeWindow;
+  };
 }
 
 function makeCategory(overrides: Partial<Category> & { id: string }): Category {

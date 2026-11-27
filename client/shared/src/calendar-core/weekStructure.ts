@@ -1,5 +1,5 @@
 import type { EventTemplate, WeekDayIntegers } from "../contracts";
-import { dateTimeService } from "../engine/utils/dateTimeService";
+import { dateTimeService } from "./dateTimeService";
 import type { WorkingWindow } from "./timeWindow";
 
 // EventTemplate.startDay arrives as either a WeekDayType string ("monday",...)

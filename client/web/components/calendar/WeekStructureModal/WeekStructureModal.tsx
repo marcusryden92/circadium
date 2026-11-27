@@ -1,19 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import type {
-  DateSelectArg,
-  DateSpanApi,
-  EventApi,
-  EventClickArg,
-  EventContentArg,
-  EventDropArg,
-} from "@fullcalendar/core";
-import type { EventResizeDoneArg } from "@fullcalendar/interaction";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, format } from "date-fns";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -29,12 +16,10 @@ import { useShellPortalTarget } from "@/components/ui/shell/ShellPortalContext";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { Category, EventTemplate } from "@/types/prisma";
-import {
-  getWeekFirstDate,
-  CALENDAR_LONG_PRESS_DELAY_MS,
-} from "@/utils/calendarUtils";
+import { rangeAllowed } from "@circadium/shared/calendar-core/edit";
+import type { TimeSpan } from "@/components/calendar/timeGrid/timeGridGeometry";
 
-import { REFERENCE_WEEK_DATE, TEMPLATE_PALETTE } from "./constants";
+import { TEMPLATE_PALETTE } from "./constants";
 import {
   dateToWeekDay,
   durationMinutes,
@@ -47,11 +32,14 @@ import {
   templateToEvent,
   windowToEvent,
   windowRangeToDates,
+  startDayAsInt,
+  type WeekGridEvent,
 } from "./eventSerializers";
 import { useWeekStructureState } from "./useWeekStructureState";
 import { TemplateEditor } from "./TemplateEditor";
 import { WindowEditor } from "./WindowEditor";
-import { EventTile } from "./EventTile";
+import { WeekGrid } from "./WeekGrid";
+import { referenceWeekStart } from "./WeekGrid/weekGridModel";
 
 import {
   overlay,
@@ -84,26 +72,6 @@ import {
 
 type Mode = "templates" | "windows";
 
-// Templates and windows may both run past midnight (an overnight sleep block
-// or a 23:00-07:00 window); each is capped at 24h so a block can't overrun its
-// own next weekly occurrence. Window overlap is enforced separately.
-function rangeAllowed(start: Date, end: Date): boolean {
-  return end > start && durationMinutes(start, end) <= 24 * 60;
-}
-
-// Identity-stable FullCalendar options (see the contract in Calendar.tsx /
-// CLAUDE.md): the React connector shallow-diffs its props, and a fresh inline
-// array/object counts as a changed option — an internal option reset landing
-// mid-drag corrupts the drag/revert state machine (a rejected drop's tile is
-// left painted wherever the disturbed interaction dropped it).
-const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
-const TIME_FORMAT_24H = {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-} as const;
-const DAY_HEADER_FORMAT = { weekday: "short" } as const;
-
 interface WeekStructureModalProps {
   open: boolean;
   onClose: () => void;
@@ -125,7 +93,6 @@ export function WeekStructureModal({
   // would only fill mainColumn — absolute inset anchors to the canvas there).
   const portalTarget = useShellPortalTarget();
   const { userId, categories, weekStartDay } = useCalendarProvider();
-  const calendarRef = useRef<FullCalendar>(null);
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -160,7 +127,7 @@ export function WeekStructureModal({
   }, [categories]);
 
   const weekStart = useMemo(
-    () => getWeekFirstDate(weekStartDay, REFERENCE_WEEK_DATE),
+    () => referenceWeekStart(weekStartDay),
     [weekStartDay],
   );
 
@@ -174,24 +141,9 @@ export function WeekStructureModal({
       setMobileDayIdx((new Date().getDay() - weekStartDay + 7) % 7);
     }
   }, [open, weekStartDay]);
-  useEffect(() => {
-    if (!open) return;
-    // Deferred: FullCalendar flushSyncs on API calls, which React warns about
-    // inside an effect's commit phase.
-    const timeout = setTimeout(() => {
-      const api = calendarRef.current?.getApi();
-      if (!api) return;
-      if (isMobile) {
-        api.changeView("timeGridDay", addDays(weekStart, mobileDayIdx));
-      } else if (api.view.type !== "timeGridWeek") {
-        api.changeView("timeGridWeek", weekStart);
-      }
-    }, 0);
-    return () => clearTimeout(timeout);
-  }, [open, isMobile, mobileDayIdx, weekStart]);
 
   const events = useMemo(() => {
-    const out = [];
+    const out: WeekGridEvent[] = [];
     for (const tpl of tplsWorking) {
       out.push(
         templateToEvent(tpl, weekStart, weekStartDay, mode === "templates"),
@@ -237,20 +189,25 @@ export function WeekStructureModal({
     [selected, winsWorking],
   );
 
-  const handleSelect = useCallback(
-    (info: DateSelectArg) => {
-      if (!rangeAllowed(info.start, info.end)) {
-        calendarRef.current?.getApi().unselect();
-        return;
-      }
-      const startTime = timeFromDate(info.start);
-      const endTime = endTimeFromDate(info.end);
-      const day = dateToWeekDay(info.start);
-      calendarRef.current?.getApi().unselect();
+  const overlapsWindow = useCallback(
+    (start: Date, end: Date, excludeWindowId: string | null) =>
+      windowRangeOverlaps(winsWorking, start, end, excludeWindowId),
+    [winsWorking],
+  );
+
+  // The grid's allow hook already refuses these live (the release reverts);
+  // the checks here keep a write from ever trusting the live rejection alone.
+  const handleCreate = useCallback(
+    ({ start, end }: TimeSpan) => {
+      if (!rangeAllowed(start, end)) return;
+      if (mode === "windows" && overlapsWindow(start, end, null)) return;
+      const startTime = timeFromDate(start);
+      const endTime = endTimeFromDate(end);
+      const day = dateToWeekDay(start);
 
       if (mode === "templates") {
         const id = `tmp-${uuidv4()}`;
-        const dur = durationMinutes(info.start, info.end);
+        const dur = durationMinutes(start, end);
         const now = new Date().toISOString();
         const newTpl = {
           id,
@@ -282,150 +239,37 @@ export function WeekStructureModal({
         setSelected({ kind: "windows", id });
       }
     },
-    [mode, userId, tplsWorking.length, setTplsWorking, setWinsWorking],
+    [mode, userId, tplsWorking.length, setTplsWorking, setWinsWorking, overlapsWindow],
   );
 
-  const overlapsWindow = useCallback(
-    (start: Date, end: Date, excludeWindowId: string | null) =>
-      windowRangeOverlaps(winsWorking, start, end, excludeWindowId),
-    [winsWorking],
-  );
-
-  const selectAllow = useCallback(
-    (info: DateSpanApi) => {
-      if (!rangeAllowed(info.start, info.end)) return false;
-      if (mode === "windows" && overlapsWindow(info.start, info.end, null)) {
-        return false;
-      }
-      return true;
-    },
-    [mode, overlapsWindow],
-  );
-
-  // Direct DOM writes: eventAllow fires per hovered position during a drag,
-  // and a React state write from there would re-render mid-interaction — the
-  // exact churn the identity-stable options exist to prevent.
-  const calendarHostRef = useRef<HTMLDivElement>(null);
-  const setDropInvalid = useCallback((invalid: boolean) => {
-    const host = calendarHostRef.current;
-    if (!host) return;
-    if (invalid) host.dataset.dropInvalid = "true";
-    else delete host.dataset.dropInvalid;
-  }, []);
-  const clearDropInvalid = useCallback(
-    () => setDropInvalid(false),
-    [setDropInvalid],
-  );
-
-  const eventAllow = useCallback(
-    (info: DateSpanApi, draggedEvent: EventApi | null) => {
-      if (!info.start || !info.end) return false;
-      if (!rangeAllowed(info.start, info.end)) return false;
-      const ext = draggedEvent?.extendedProps as
-        | {
-            kind?: "template" | "window";
-            windowId?: string;
-          }
-        | undefined;
-      if (ext?.kind === "window") {
-        // Rejecting the position here would nudge the preview away from the
-        // cursor — jumpy and annoying. Let the preview keep following, mark
-        // the host so the tile paints red, and let the drop handler revert
-        // on release.
-        setDropInvalid(
-          overlapsWindow(info.start, info.end, ext.windowId ?? null),
-        );
-      }
-      return true;
-    },
-    [overlapsWindow, setDropInvalid],
-  );
-
-  const handleEventClick = useCallback((info: EventClickArg) => {
-    const ext = info.event.extendedProps as {
-      kind: "template" | "window";
-      templateId?: string;
-      windowId?: string;
-      active?: boolean;
-    };
-    if (!ext.active) return;
-    if (ext.kind === "template" && ext.templateId) {
-      setSelected({ kind: "templates", id: ext.templateId });
-    } else if (ext.kind === "window" && ext.windowId) {
-      setSelected({ kind: "windows", id: ext.windowId });
-    }
-  }, []);
-
-  // Selection never changes mid-drag, so [selected] keeps this stable through
-  // every interaction that matters.
-  const renderEventTile = useCallback(
-    ({ event, timeText }: EventContentArg) => {
-      const ext = event.extendedProps as {
-        kind: "template" | "window";
-        templateId?: string;
-        windowId?: string;
-        color: string;
-        active: boolean;
-        assigned?: boolean;
-        focused?: boolean;
-      };
-      const isSelected =
-        selected !== null &&
-        ((selected.kind === "templates" &&
-          ext.kind === "template" &&
-          ext.templateId === selected.id) ||
-          (selected.kind === "windows" &&
-            ext.kind === "window" &&
-            ext.windowId === selected.id));
-      return (
-        <EventTile
-          title={event.title}
-          timeText={timeText}
-          kind={ext.kind}
-          color={ext.color}
-          active={ext.active}
-          assigned={ext.assigned}
-          focused={ext.focused}
-          selected={isSelected}
-        />
-      );
-    },
-    [selected],
-  );
-
-  const handleEventDrop = useCallback(
-    (info: EventDropArg) => {
-      const ext = info.event.extendedProps as {
-        kind: "template" | "window";
-        templateId?: string;
-        windowId?: string;
-      };
-      const start = info.event.start;
-      const end = info.event.end;
-      if (!start || !end) return;
-      if (!rangeAllowed(start, end)) {
-        info.revert();
-        return;
-      }
+  // A move or resize from the grid. The span is the block's new absolute
+  // range in the reference week (possibly a week to either side, after a
+  // drag across the ring's edge); only its weekday and times are kept, and
+  // the weekday is the same on every copy of the week.
+  const handleEdit = useCallback(
+    (block: WeekGridEvent, { start, end }: TimeSpan) => {
+      if (!rangeAllowed(start, end)) return;
       const newStartTime = timeFromDate(start);
       const newEndTime = endTimeFromDate(end);
       const newDay = dateToWeekDay(start);
 
-      if (ext.kind === "template" && ext.templateId) {
+      if (block.gridKind === "template") {
         const dur = durationMinutes(start, end);
         setTplsWorking((prev) =>
           prev.map((t) =>
-            t.id === ext.templateId
+            t.id === block.sourceId
               ? ({
                   ...t,
                   startDay: newDay,
                   startTime: newStartTime,
                   duration: dur,
-                  // A series re-anchor invalidates per-occurrence exceptions —
-                  // their keys point at the old weekly pattern (stale exdates
-                  // resurrect deleted occurrences, moved one-offs go ghost).
+                  // A series re-anchor (a move, or a start-edge resize)
+                  // invalidates per-occurrence exceptions — their keys point
+                  // at the old weekly pattern (stale exdates resurrect deleted
+                  // occurrences, moved one-offs go ghost). An end-edge resize
+                  // keeps them.
                   recurrenceExceptions:
-                    newDay !== t.startDay || newStartTime !== t.startTime
+                    newDay !== startDayAsInt(t) || newStartTime !== t.startTime
                       ? null
                       : t.recurrenceExceptions,
                   updatedAt: new Date().toISOString(),
@@ -433,96 +277,35 @@ export function WeekStructureModal({
               : t,
           ),
         );
-      } else if (ext.kind === "window" && ext.windowId) {
-        // eventAllow already rejects this live; the post-hoc check makes the
-        // revert deterministic — this is the one path with no corrective
-        // state write, so it must never trust the live rejection alone.
-        if (overlapsWindow(start, end, ext.windowId)) {
-          info.revert();
-          return;
-        }
-        setWinsWorking((prev) =>
-          prev.map((w) =>
-            w.id === ext.windowId
-              ? {
-                  ...w,
-                  day: newDay,
-                  startTime: newStartTime,
-                  endTime: newEndTime,
-                  // Same re-anchor rule as templates above: exception keys
-                  // point at the old weekly pattern.
-                  recurrenceExceptions:
-                    newDay !== w.day || newStartTime !== w.startTime
-                      ? null
-                      : w.recurrenceExceptions,
-                }
-              : w,
-          ),
-        );
+        return;
       }
+      if (overlapsWindow(start, end, block.sourceId)) return;
+      setWinsWorking((prev) =>
+        prev.map((w) =>
+          w.id === block.sourceId
+            ? {
+                ...w,
+                day: newDay,
+                startTime: newStartTime,
+                endTime: newEndTime,
+                // Same re-anchor rule as templates above.
+                recurrenceExceptions:
+                  newDay !== w.day || newStartTime !== w.startTime
+                    ? null
+                    : w.recurrenceExceptions,
+              }
+            : w,
+        ),
+      );
     },
     [setTplsWorking, setWinsWorking, overlapsWindow],
   );
 
-  const handleEventResize = useCallback(
-    (info: EventResizeDoneArg) => {
-      const ext = info.event.extendedProps as {
-        kind: "template" | "window";
-        templateId?: string;
-        windowId?: string;
-      };
-      const start = info.event.start;
-      const end = info.event.end;
-      if (!start || !end) return;
-      if (!rangeAllowed(start, end)) {
-        info.revert();
-        return;
-      }
-      const newStartTime = timeFromDate(start);
-      const newEndTime = endTimeFromDate(end);
-      if (ext.kind === "template" && ext.templateId) {
-        const dur = durationMinutes(start, end);
-        setTplsWorking((prev) =>
-          prev.map((t) =>
-            t.id === ext.templateId
-              ? ({
-                  ...t,
-                  startTime: newStartTime,
-                  duration: dur,
-                  // Start-edge resize re-anchors the weekly start time — see
-                  // the exception clear in handleEventDrop above.
-                  recurrenceExceptions:
-                    newStartTime !== t.startTime
-                      ? null
-                      : t.recurrenceExceptions,
-                  updatedAt: new Date().toISOString(),
-                })
-              : t,
-          ),
-        );
-      } else if (ext.kind === "window" && ext.windowId) {
-        if (overlapsWindow(start, end, ext.windowId)) {
-          info.revert();
-          return;
-        }
-        setWinsWorking((prev) =>
-          prev.map((w) =>
-            w.id === ext.windowId
-              ? {
-                  ...w,
-                  startTime: newStartTime,
-                  endTime: newEndTime,
-                  recurrenceExceptions:
-                    newStartTime !== w.startTime
-                      ? null
-                      : w.recurrenceExceptions,
-                }
-              : w,
-          ),
-        );
-      }
+  const handleSelectBlock = useCallback(
+    (kind: "template" | "window", id: string) => {
+      setSelected({ kind: kind === "template" ? "templates" : "windows", id });
     },
-    [setTplsWorking, setWinsWorking, overlapsWindow],
+    [],
   );
 
   const updateTemplate = (id: string, patch: Partial<EventTemplate>) => {
@@ -740,41 +523,25 @@ export function WeekStructureModal({
               </span>
             </div>
 
-            <div
-              className={`${calendarWrap} week-structure-fc`}
-              ref={calendarHostRef}
-            >
-              <FullCalendar
-                ref={calendarRef}
-                initialDate={REFERENCE_WEEK_DATE}
-                plugins={PLUGINS}
+            <div className={calendarWrap}>
+              <WeekGrid
+                weekStartDay={weekStartDay}
+                mode={mode}
                 events={events}
-                initialView="timeGridWeek"
-                firstDay={weekStartDay}
-                snapDuration="00:15:00"
-                slotDuration="00:30:00"
-                longPressDelay={CALENDAR_LONG_PRESS_DELAY_MS}
-                scrollTime="06:00:00"
-                height="100%"
-                headerToolbar={false}
-                slotLabelFormat={TIME_FORMAT_24H}
-                eventTimeFormat={TIME_FORMAT_24H}
-                editable={true}
-                eventResizableFromStart={true}
-                eventOverlap={true}
-                selectable={true}
-                selectMirror={true}
-                selectAllow={selectAllow}
-                eventAllow={eventAllow}
-                allDaySlot={false}
-                dayHeaderFormat={DAY_HEADER_FORMAT}
-                select={handleSelect}
-                eventClick={handleEventClick}
-                eventDrop={handleEventDrop}
-                eventResize={handleEventResize}
-                eventDragStop={clearDropInvalid}
-                eventResizeStop={clearDropInvalid}
-                eventContent={renderEventTile}
+                windows={winsWorking}
+                selected={
+                  selected
+                    ? {
+                        kind: selected.kind === "templates" ? "template" : "window",
+                        id: selected.id,
+                      }
+                    : null
+                }
+                dayIndex={isMobile ? mobileDayIdx : null}
+                isMobile={isMobile}
+                onSelect={handleSelectBlock}
+                onCreate={handleCreate}
+                onEdit={handleEdit}
               />
             </div>
           </div>

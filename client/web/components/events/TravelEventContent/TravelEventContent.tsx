@@ -1,5 +1,5 @@
 import React, { useRef, useState, useLayoutEffect, useMemo } from "react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { AlertTriangle, Car } from "lucide-react";
 // TODO: replace `Car` with a per-event mode icon (Car/Bike/Bus/Walk) once
 // TravelTime's transportMode is plumbed through to the calendar event's
@@ -35,7 +35,7 @@ interface TravelExtendedProps {
 }
 
 interface TravelEventContentProps {
-  event: EventImpl;
+  event: TileEvent;
 }
 
 const TravelEventContent: React.FC<TravelEventContentProps> = ({ event }) => {

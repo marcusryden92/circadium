@@ -6,6 +6,7 @@ const config: Config = {
   transform: {
     "^.+\\.(t|j)sx?$": "@swc/jest",
   },
+  testPathIgnorePatterns: ["/node_modules/", "generateFixtures\\.ts$"],
 };
 
 export default config;

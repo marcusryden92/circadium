@@ -71,7 +71,7 @@ function makePlanner(id: string, overrides: Partial<Planner> = {}): Planner {
     createdAt: TS,
     updatedAt: TS,
     ...overrides,
-  } as Planner;
+  };
 }
 
 function makeGoal(rootId: string, leafIds: string[]): Planner[] {
@@ -133,7 +133,7 @@ function makeQueue(id: string, memberPlannerIds: string[]): Queue {
       createdAt: TS,
       updatedAt: TS,
     })),
-  } as Queue;
+  };
 }
 
 let consoleSpies: jest.SpyInstance[] = [];
@@ -264,7 +264,7 @@ describe("queue with a horizon-overflowing first member", () => {
         userId: USER_ID,
         createdAt: TS,
         updatedAt: TS,
-      }) as PlannerDependency;
+      });
 
     const { events, messages } = generateCalendar(
       USER_ID,

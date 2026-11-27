@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { CalendarClock, RefreshCw, Settings } from "lucide-react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import type { AppDispatch } from "@/redux/store";
 import {
   applyExternalRefresh,
@@ -42,7 +42,7 @@ import {
 } from "../popover";
 
 interface ExternalEventPopoverProps {
-  event: EventImpl;
+  event: TileEvent;
   eventRect: DOMRect;
   startTime: Date;
   endTime: Date;

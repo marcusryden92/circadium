@@ -36,6 +36,9 @@ importers:
         specifier: ^4.6.6
         version: 4.6.7
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.5
+        version: 9.39.5
       '@swc/jest':
         specifier: ^0.2.39
         version: 0.2.39(@swc/core@1.16.22(@swc/helpers@0.5.23))
@@ -45,6 +48,21 @@ importers:
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.74.0
+        version: 8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.74.0
+        version: 8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-plugin-jest:
+        specifier: ^29.17.1
+        version: 29.17.1(@typescript-eslint/eslint-plugin@8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(jest@29.7.0(@types/node@26.6.6))(typescript@6.0.3)
+      globals:
+        specifier: ^16.5.0
+        version: 16.5.0
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@26.6.6)(ts-node@10.9.2(@swc/core@1.16.22(@swc/helpers@0.5.23))(@types/node@26.6.6)(typescript@6.0.3))
@@ -69,15 +87,9 @@ importers:
       '@fullcalendar/interaction':
         specifier: ^6.1.22
         version: 6.1.22(@fullcalendar/core@6.1.22)
-      '@fullcalendar/luxon3':
-        specifier: ^6.1.22
-        version: 6.1.22(@fullcalendar/core@6.1.22)(luxon@3.7.2)
       '@fullcalendar/react':
         specifier: ^6.1.22
         version: 6.1.22(@fullcalendar/core@6.1.22)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@fullcalendar/rrule':
-        specifier: ^6.1.22
-        version: 6.1.22(@fullcalendar/core@6.1.22)(rrule@2.8.1)
       '@fullcalendar/timegrid':
         specifier: ^6.1.22
         version: 6.1.22(@fullcalendar/core@6.1.22)
@@ -144,9 +156,6 @@ importers:
       lucide-react:
         specifier: ^1.78.0
         version: 1.78.0(@types/react@19.3.0)(react@19.3.1)
-      luxon:
-        specifier: ^3.7.2
-        version: 3.7.2
       next:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.13)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -205,9 +214,6 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
-      '@types/luxon':
-        specifier: ^3.7.6
-        version: 3.7.6
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -231,7 +237,7 @@ importers:
         version: 9.39.5(jiti@2.7.0)
       eslint-plugin-jest:
         specifier: ^29.17.1
-        version: 29.17.1(@typescript-eslint/eslint-plugin@8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(jest@29.7.0(@types/node@26.6.6)(ts-node@10.9.2(@swc/core@1.16.22(@swc/helpers@0.5.23))(@types/node@26.6.6)(typescript@6.0.3)))(typescript@6.0.3)
+        version: 29.17.1(@typescript-eslint/eslint-plugin@8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(jest@29.7.0(@types/node@26.6.6))(typescript@6.0.3)
       eslint-plugin-react:
         specifier: ^7.37.5
         version: 7.37.5(eslint@9.39.5(jiti@2.7.0))
@@ -687,24 +693,12 @@ packages:
     peerDependencies:
       '@fullcalendar/core': ~6.1.22
 
-  '@fullcalendar/luxon3@6.1.22':
-    resolution: {integrity: sha512-or43T5SQAzb3d8U6Th6Q3vclas8rGEYSsJsUohC+jySJyJuqCLcqgW+NnbrSYIYXx3MUUk32h8au+BEjfjuo1A==}
-    peerDependencies:
-      '@fullcalendar/core': ~6.1.22
-      luxon: ^3.0.0
-
   '@fullcalendar/react@6.1.22':
     resolution: {integrity: sha512-H7woM4nhvXjyM4Up2D3iSp5f8o3pRPGkiHRixvxxvIMdSMBxboGTqCI7T/vjnAfz5TCxXdeX5HxmSHeANsa6gg==}
     peerDependencies:
       '@fullcalendar/core': ~6.1.22
       react: ^16.7.0 || ^17 || ^18 || ^19
       react-dom: ^16.7.0 || ^17 || ^18 || ^19
-
-  '@fullcalendar/rrule@6.1.22':
-    resolution: {integrity: sha512-24SfhETnh5JF9g3CuvHiXlHHJZs28CnE61kTa+KUAXePC9DUWcytNSH6dxY26k+bTgM5O8x45ujn0+k0M+uUDw==}
-    peerDependencies:
-      '@fullcalendar/core': ~6.1.22
-      rrule: ^2.6.0
 
   '@fullcalendar/timegrid@6.1.22':
     resolution: {integrity: sha512-gNMtkXrkfN3iszXty+pYbJwGxcozL0xBVKYmEd1lm0DMEbrffpVJyV+vifmtl/eIbWCNRWrMWUtGLbYy/ukykA==}
@@ -1750,9 +1744,6 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
-
-  '@types/luxon@3.7.6':
-    resolution: {integrity: sha512-6KSjliQAXK8ZLgFQO4B7iE4Rpf/B3rItzCFuXezBY/XIAGxOdLd7vRNK9/StRPwiS/yJsVbB7HKpW46B8tcEuQ==}
 
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
@@ -3419,10 +3410,6 @@ packages:
       '@types/react':
         optional: true
 
-  luxon@3.7.2:
-    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
-    engines: {node: '>=12'}
-
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -5081,21 +5068,11 @@ snapshots:
     dependencies:
       '@fullcalendar/core': 6.1.22
 
-  '@fullcalendar/luxon3@6.1.22(@fullcalendar/core@6.1.22)(luxon@3.7.2)':
-    dependencies:
-      '@fullcalendar/core': 6.1.22
-      luxon: 3.7.2
-
   '@fullcalendar/react@6.1.22(@fullcalendar/core@6.1.22)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@fullcalendar/core': 6.1.22
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
-
-  '@fullcalendar/rrule@6.1.22(@fullcalendar/core@6.1.22)(rrule@2.8.1)':
-    dependencies:
-      '@fullcalendar/core': 6.1.22
-      rrule: 2.8.1
 
   '@fullcalendar/timegrid@6.1.22(@fullcalendar/core@6.1.22)':
     dependencies:
@@ -6053,8 +6030,6 @@ snapshots:
       parse5: 7.3.0
 
   '@types/json-schema@7.0.15': {}
-
-  '@types/luxon@3.7.6': {}
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -7071,7 +7046,7 @@ snapshots:
     optionalDependencies:
       source-map: 0.6.1
 
-  eslint-plugin-jest@29.17.1(@typescript-eslint/eslint-plugin@8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(jest@29.7.0(@types/node@26.6.6)(ts-node@10.9.2(@swc/core@1.16.22(@swc/helpers@0.5.23))(@types/node@26.6.6)(typescript@6.0.3)))(typescript@6.0.3):
+  eslint-plugin-jest@29.17.1(@typescript-eslint/eslint-plugin@8.74.0(@typescript-eslint/parser@8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(jest@29.7.0(@types/node@26.6.6))(typescript@6.0.3):
     dependencies:
       '@typescript-eslint/utils': 8.74.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
       eslint: 9.39.5(jiti@2.7.0)
@@ -8200,8 +8175,6 @@ snapshots:
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
-
-  luxon@3.7.2: {}
 
   lz-string@1.5.0: {}
 

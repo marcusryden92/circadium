@@ -71,7 +71,7 @@ export function categoriesToDraftWindows(
         .map((w) => ({
           id: w.id,
           categoryId: w.categoryId as string,
-          day: w.day as number,
+          day: w.day,
           startTime: w.startTime,
           endTime: w.endTime,
         })),

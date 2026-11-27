@@ -37,7 +37,7 @@ const category = (
   ({ id, name: id, timeSlots, ...extra }) as unknown as Category;
 
 const location = (id: string, name: string): SerializedLocation =>
-  ({ id, name, address: `${name} St`, placeId: `place-${id}` }) as SerializedLocation;
+  ({ id, name, address: `${name} St`, placeId: `place-${id}` });
 
 const travelTime = (
   id: string,

@@ -183,7 +183,7 @@ describe("own-location fallback when useParentLocation has nothing to inherit", 
       createdAt: FAKE_TODAY.toISOString(),
       updatedAt: FAKE_TODAY.toISOString(),
       timeSlots: [],
-    } as unknown as Category;
+    };
 
     const task = makePlanner("cat-task", {
       duration: 120,

@@ -2,14 +2,14 @@ import { Planner } from "@/types/prisma";
 import { SimpleEvent } from "@/types/prisma";
 import { getMinuteDifference } from "@circadium/shared/engine/utils/dateTimeService";
 import { floorMinutes } from "./calendarUtils";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { assert } from "./assert/assert";
 import { plannerIsCompleted } from "./plannerCompletion";
 
 export function getPlannerAndCalendarForCompletedTask(
   planner: Planner[],
   calendar: SimpleEvent[] = [],
-  event: EventImpl
+  event: TileEvent
 ):
   | {
       manuallyUpdatedTaskArray: Planner[];
@@ -88,7 +88,7 @@ export function getPlannerAndCalendarForCompletedTask(
   return { manuallyUpdatedTaskArray, manuallyUpdatedCalendar };
 }
 
-export function currentlyInEvent(event: SimpleEvent | EventImpl) {
+export function currentlyInEvent(event: SimpleEvent | TileEvent) {
   assert(event.start, "event.start missing from currentlyInEvent");
   assert(event.end, "event.end missing from currentlyInEvent");
 

@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Car, Settings } from "lucide-react";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { Button, FieldStack, FieldValue, TypeBadge } from "@/components/ui";
 import { CalendarPopover } from "../CalendarPopover";
@@ -35,7 +35,7 @@ interface TravelExtendedProps {
 }
 
 interface TravelEventPopoverProps {
-  event: EventImpl;
+  event: TileEvent;
   eventRect: DOMRect;
   startTime: Date;
   endTime: Date;

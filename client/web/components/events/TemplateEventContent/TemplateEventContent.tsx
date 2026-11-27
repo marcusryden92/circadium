@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 
 import { useCalendarProvider } from "@/context/CalendarProvider";
 import { ConfirmModal } from "@/components/ui";
-import { EventImpl } from "@fullcalendar/core/internal";
+import type { TileEvent } from "@/utils/calendar-rendering/tileEvent";
 import { EventTemplate } from "@/types/prisma";
 
 import TemplateEventPopover from "../TemplateEventPopover";
@@ -11,7 +11,7 @@ import EventWrapper from "../EventWrapper";
 import { hoverRow, hoverBtnGroup, hoverBtn } from "./TemplateEventContent.css";
 
 interface TemplateEventContentProps {
-  event: EventImpl;
+  event: TileEvent;
   onEditTitle: (
     updateTemplateArray: (
       template: EventTemplate[] | ((prev: EventTemplate[]) => EventTemplate[]),

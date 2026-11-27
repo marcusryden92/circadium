@@ -37,7 +37,7 @@ function makeHarness(overrides: Partial<SyncLoopPorts> = {}) {
   const onError = jest.fn();
 
   const ports: SyncLoopPorts = {
-    transport: jest.fn(async () => ({ success: true, newDataVersion: 2 }) as SyncResponse),
+    transport: jest.fn(() => Promise.resolve({ success: true, newDataVersion: 2 })),
     getSnapshot: () => snapshot,
     getBaseline: () => baseline,
     getDataVersion: () => dataVersion,
@@ -79,11 +79,13 @@ describe("createSyncLoop", () => {
   it("adopts fresh server state when the sync is rejected as stale", async () => {
     const freshState = { dataVersion: 9 } as unknown as BootstrapPayload;
     const h = makeHarness({
-      transport: jest.fn(async () => ({
-        success: false,
-        reason: "stale",
-        freshState,
-      }) as SyncResponse),
+      transport: jest.fn(() =>
+        Promise.resolve({
+          success: false,
+          reason: "stale",
+          freshState,
+        }),
+      ),
     });
     const loop = createSyncLoop(h.ports);
     await loop.runSync();
@@ -95,11 +97,13 @@ describe("createSyncLoop", () => {
 
   it("rolls back when the server rejects the diff with an error", async () => {
     const h = makeHarness({
-      transport: jest.fn(async () => ({
-        success: false,
-        reason: "error",
-        error: "Sync failed",
-      }) as SyncResponse),
+      transport: jest.fn(() =>
+        Promise.resolve({
+          success: false,
+          reason: "error",
+          error: "Sync failed",
+        }),
+      ),
     });
     const loop = createSyncLoop(h.ports);
     await loop.runSync();

@@ -62,7 +62,7 @@ export function addSubtask({
       completedStartTime: null,
       completedEndTime: null,
       priority: Number(task.priority),
-      color: (task?.color as string) || calendarColors[0],
+      color: (task?.color) || calendarColors[0],
       userId,
       locationId: null,
       useParentLocation: true,
