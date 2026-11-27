@@ -6,6 +6,11 @@ const createJestConfig = nextJest({
   dir: "./",
 });
 
+// Calendar tests build local wall-clock dates (template expansion, DST grid
+// math); CI runners sit in UTC, which observes no DST. Pin the zone so the
+// suite behaves the same on every machine.
+process.env.TZ = "Europe/Stockholm";
+
 // Add any custom config to be passed to Jest
 const config: Config = {
   coverageProvider: "v8",
