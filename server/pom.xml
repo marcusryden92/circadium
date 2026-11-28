@@ -28,10 +28,10 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<sentry.version>8.65.0</sentry.version>
-		<bucket4j.version>8.22.0</bucket4j.version>
+		<sentry.version>8.65.1</sentry.version>
+		<bucket4j.version>8.23.0</bucket4j.version>
 		<shedlock.version>6.10.0</shedlock.version>
-		<ical4j.version>4.1.1</ical4j.version>
+		<ical4j.version>4.4.0</ical4j.version>
 		<dependency-check.version>12.1.0</dependency-check.version>
 	</properties>
 	<dependencies>
