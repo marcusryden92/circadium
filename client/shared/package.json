@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.109.1",
+    "@anthropic-ai/sdk": "^1.14.0",
     "@reduxjs/toolkit": "^2.15.0",
     "date-fns": "^4.4.0",
     "partial-json": "^0.1.7",
