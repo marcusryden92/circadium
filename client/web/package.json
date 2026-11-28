@@ -17,7 +17,7 @@
     "db:reset:dev": "docker compose -f docker-compose.dev.yml down --volumes && docker compose -f docker-compose.dev.yml up -d && pnpm exec wait-on tcp:localhost:5433"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.109.1",
+    "@anthropic-ai/sdk": "^1.14.0",
     "@circadium/shared": "workspace:*",
     "@fullcalendar/core": "^6.1.22",
     "@fullcalendar/daygrid": "^6.1.22",
